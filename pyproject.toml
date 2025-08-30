@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=40.8.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vector-mcp"
+version = "0.0.2"
+description = "Manage your git projects"
+readme = "README.md"
+authors = [{ name = "Audel Rouhi", email = "knucklessg1@gmail.com" }]
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: Public Domain",
+    "Environment :: Console",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3"
+]
+requires-python = ">=3.8"
+dependencies = [
+    "fastmcp>=2.11.3",
+]
+
+[project.scripts]
+vector-mcp = "vector_mcp.vector_mcp:main"
+
+[tool.setuptools]
+packages = ["vector_mcp"]
+py-modules = ["vector_mcp"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+vector_mcp = ["vector_mcp"]
