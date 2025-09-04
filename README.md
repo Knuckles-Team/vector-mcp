@@ -20,7 +20,7 @@
 ![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
 ![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
 
-*Version: 0.0.4*
+*Version: 0.0.5*
 
 This is an MCP Server implementation which allows for a standardized
 collection management system across vector database technologies.
@@ -37,11 +37,11 @@ AI Agents can:
 
 Supports:
 
-- ChromaDB - 95%
-- PGVector - 90%
-- Couchbase - 80%
-- Qdrant - 80%
-- MongoDB - 80%
+- ChromaDB - 95% Tested
+- PGVector - 90% Tested
+- Couchbase - 80% Tested
+- Qdrant - 80% Tested
+- MongoDB - 80% Tested
 
 This repository is actively maintained - Contributions and bug reports are welcome!
 
