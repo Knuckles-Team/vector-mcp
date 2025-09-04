@@ -45,6 +45,8 @@ Supports:
 
 This repository is actively maintained - Contributions and bug reports are welcome!
 
+Automated tests are planned
+
 <details>
   <summary><b>Usage:</b></summary>
 
