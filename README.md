@@ -30,7 +30,7 @@ this was changed to an MCP server model instead.
 
 AI Agents can:
 
-- Create collections with documents
+- Create collections with documents stored on the local filesystem or URLs
 - Add documents to a collection
 - Utilize collection for retrieval augmented generation (RAG)
 - Delete collection
