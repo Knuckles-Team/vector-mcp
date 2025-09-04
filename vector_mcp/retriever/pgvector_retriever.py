@@ -19,7 +19,7 @@ from llama_index.core.schema import Document as LlamaDocument
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 with optional_import_block():
-    from llama_index.vector_stores.pgvector import PGVectorStore
+    from llama_index.vector_stores.postgres import PGVectorStore
     from sentence_transformers import SentenceTransformer
     import psycopg
     from vector_mcp.vectordb.pgvector import PGVectorDB
@@ -27,10 +27,11 @@ with optional_import_block():
 __all__ = ["PGVectorRetriever"]
 
 DEFAULT_COLLECTION_NAME = "memory"
-EMPTY_RESPONSE_TEXT = (
-    "Empty Response"  # Indicates that the query did not return any results
+EMPTY_RESPONSE_TEXT = "Empty Response"
+EMPTY_RESPONSE_REPLY = (
+    "Sorry, I couldn't find any information on that. "
+    "If you haven't ingested any documents, please try that."
 )
-EMPTY_RESPONSE_REPLY = "Sorry, I couldn't find any information on that. If you haven't ingested any documents, please try that."  # Default response for queries without results
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -55,27 +56,26 @@ class PGVectorRetriever(RAGRetriever):
     """
 
     def __init__(  # type: ignore[no-any-unimported]
-            self,
-            connection_string: Optional[str] = Field(
-                description="Connection string of postgres instance", default=None
-            ),
-            host: Optional[Union[str, int]] = Field(
-                description="Host of PGVector Instance", default=None
-            ),
-            port: Optional[Union[str, int]] = Field(
-                description="Port of PGVector Instance", default=None
-            ),
-            dbname: Optional[str] = Field(description="Database name", default=None
-                                          ),
-            username: Optional[str] = Field(
-                description="Username for the PGVector instance", default=None
-            ),
-            password: Optional[str] = Field(
-                description="Password for the PGVector instance", default=None
-            ),
-            database_name: str | None = None,
-            embedding_function: Union["BaseEmbedding", Callable[..., Any]] | None = None,  # type: ignore[type-arg]
-            collection_name: str | None = None,
+        self,
+        connection_string: Optional[str] = Field(
+            description="Connection string of postgres instance", default=None
+        ),
+        host: Optional[Union[str, int]] = Field(
+            description="Host of PGVector Instance", default=None
+        ),
+        port: Optional[Union[str, int]] = Field(
+            description="Port of PGVector Instance", default=None
+        ),
+        dbname: Optional[str] = Field(description="Database name", default=None),
+        username: Optional[str] = Field(
+            description="Username for the PGVector instance", default=None
+        ),
+        password: Optional[str] = Field(
+            description="Password for the PGVector instance", default=None
+        ),
+        database_name: str | None = None,
+        embedding_function: Union["BaseEmbedding", Callable[..., Any]] | None = None,  # type: ignore[type-arg]
+        collection_name: str | None = None,
     ):
         """Initializes a PGVectorRetriever instance.
 
@@ -164,8 +164,7 @@ class PGVectorRetriever(RAGRetriever):
             metadata={"hnsw:space": "ip", "hnsw:construction_ef": 30, "hnsw:M": 32},
         )
         self.vector_db.create_collection(
-            collection_name=self.collection_name,
-            overwrite=overwrite
+            collection_name=self.collection_name, overwrite=overwrite
         )
         logger.info("Vector database created.")
 
@@ -173,13 +172,15 @@ class PGVectorRetriever(RAGRetriever):
             database=self.dbname,
             host=self.host,
             port=self.port,
-            user=self.username if hasattr(self, 'username') else None,
-            password=self.password if hasattr(self, 'password') else None,
+            user=self.username if hasattr(self, "username") else None,
+            password=self.password if hasattr(self, "password") else None,
             table_name=self.collection_name,
             embed_dim=self.embed_dim,
         )
         logger.info("Vector store created.")
-        self.storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
+        self.storage_context = StorageContext.from_defaults(
+            vector_store=self.vector_store
+        )
 
     def _check_existing_collection(self) -> bool:
         """Checks if the specified collection (table) exists in the PostgreSQL database.
@@ -231,12 +232,12 @@ class PGVectorRetriever(RAGRetriever):
             return False
 
     def initialize_collection(
-            self,
-            document_directory: Path | str | None = None,
-            document_paths: Sequence[Path | str] | None = None,
-            overwrite: Optional[bool] | None = True,
-            *args: Any,
-            **kwargs: Any,
+        self,
+        document_directory: Path | str | None = None,
+        document_paths: Sequence[Path | str] | None = None,
+        overwrite: Optional[bool] | None = True,
+        *args: Any,
+        **kwargs: Any,
     ) -> bool:
         """Initializes the PostgreSQL database by creating or overwriting the collection and indexing documents.
 
@@ -292,7 +293,7 @@ class PGVectorRetriever(RAGRetriever):
             )
 
     def _load_doc(  # type: ignore[no-any-unimported]
-            self, input_dir: Path | str | None, input_docs: Sequence[Path | str] | None
+        self, input_dir: Path | str | None, input_docs: Sequence[Path | str] | None
     ) -> Sequence["LlamaDocument"]:
         """Loads documents from a directory or a list of file paths.
 
@@ -329,11 +330,11 @@ class PGVectorRetriever(RAGRetriever):
         return loaded_documents
 
     def add_documents(
-            self,
-            document_directory: Path | str | None = None,
-            document_paths: Sequence[Path | str] | None = None,
-            *args: Any,
-            **kwargs: Any,
+        self,
+        document_directory: Path | str | None = None,
+        document_paths: Sequence[Path | str] | None = None,
+        *args: Any,
+        **kwargs: Any,
     ) -> Sequence["LlamaDocument"]:
         """Adds new documents to the existing vector store index.
 

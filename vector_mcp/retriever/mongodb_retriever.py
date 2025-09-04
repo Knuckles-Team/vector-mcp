@@ -23,10 +23,11 @@ with optional_import_block():
 __all__ = ["MongoDBRetriever"]
 
 DEFAULT_COLLECTION_NAME = "memory"
-EMPTY_RESPONSE_TEXT = (
-    "Empty Response"  # Indicates that the query did not return any results
+EMPTY_RESPONSE_TEXT = "Empty Response"
+EMPTY_RESPONSE_REPLY = (
+    "Sorry, I couldn't find any information on that. "
+    "If you haven't ingested any documents, please try that."
 )
-EMPTY_RESPONSE_REPLY = "Sorry, I couldn't find any information on that. If you haven't ingested any documents, please try that."  # Default response for queries without results
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

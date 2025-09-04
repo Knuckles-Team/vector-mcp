@@ -19,36 +19,17 @@ from pathlib import Path
 from typing import Generic, Optional, TypeVar
 
 from packaging import version
-
-import asyncio
-import functools
-from collections.abc import AsyncGenerator, AsyncIterable, Awaitable
-from contextlib import (
-    AbstractContextManager,
-    AsyncExitStack,
-    ExitStack,
-    asynccontextmanager,
-)
 from typing import (
     TYPE_CHECKING,
-    Annotated,
-    ForwardRef,
-    cast,
-    get_args,
-    get_origin,
 )
 
-import anyio
 from typing_extensions import (
     ParamSpec,
 )
 
 __all__ = [
     "optional_import_block",
-    "patch_object",
     "require_optional_import",
-    "run_for_optional_imports",
-    "skip_on_missing_imports",
 ]
 
 logger = getLogger(__name__)
@@ -405,7 +386,7 @@ class PatchObject(ABC, Generic[T]):
         msg = f"{'Modules' if plural else 'A module'} needed for {fqn} {'are' if plural else 'is'} missing:\n"
         for _, status in self.missing_modules.items():
             msg += f" - {status}\n"
-        msg += f"Please install {'them' if plural else 'it'} using:\n'pip install ag2[{self.dep_target}]'"
+        msg += f"Please install {'them' if plural else 'it'} using:\n'pip install vector-mcp[{self.dep_target}]'"
         return msg
 
     def copy_metadata(self, retval: T) -> None:
@@ -607,7 +588,7 @@ def require_optional_import(
 
     Args:
         modules: Module name or list of module names required
-        dep_target: Target name for pip installation (e.g. 'test' in pip install ag2[test])
+        dep_target: Target name for pip installation
         except_for: Name or list of names of objects to exclude from patching
     """
     missing_modules = get_missing_imports(modules)
@@ -630,249 +611,8 @@ def require_optional_import(
     return decorator
 
 
-def _mark_object(o: T, dep_target: str) -> T:
-    import pytest
-
-    markname = dep_target.replace("-", "_")
-    pytest_mark_markname = getattr(pytest.mark, markname)
-    pytest_mark_o = pytest_mark_markname(o)
-
-    pytest_mark_o = pytest.mark.aux_neg_flag(pytest_mark_o)
-
-    return pytest_mark_o  # type: ignore[no-any-return]
-
-
-def run_for_optional_imports(
-    modules: str | Iterable[str], dep_target: str
-) -> Callable[[G], G]:
-    """Decorator to run a test if and only if optional modules are installed
-
-    Args:
-        modules: Module name or list of module names
-        dep_target: Target name for pip installation (e.g. 'test' in pip install ag2[test])
-    """
-    # missing_modules = get_missing_imports(modules)
-    # if missing_modules:
-    #     raise ImportError(f"Missing module{'s' if len(missing_modules) > 1 else ''}: {', '.join(missing_modules)}. Install using 'pip install ag2[{dep_target}]'")
-
-    def decorator(o: G) -> G:
-        missing_modules = get_missing_imports(modules)
-
-        if isinstance(o, type):
-            wrapped = require_optional_import(modules, dep_target)(o)
-        else:
-            if is_coroutine_callable(o):
-
-                @wraps(o)
-                async def wrapped(*args: Any, **kwargs: Any) -> Any:
-                    if missing_modules:
-                        raise ImportError(
-                            f"Missing module{'s' if len(missing_modules) > 1 else ''}: {', '.join(missing_modules)}. Install using 'pip install ag2[{dep_target}]'"
-                        )
-                    return await o(*args, **kwargs)
-
-            else:
-
-                @wraps(o)
-                def wrapped(*args: Any, **kwargs: Any) -> Any:
-                    if missing_modules:
-                        raise ImportError(
-                            f"Missing module{'s' if len(missing_modules) > 1 else ''}: {', '.join(missing_modules)}. Install using 'pip install ag2[{dep_target}]'"
-                        )
-                    return o(*args, **kwargs)
-
-        pytest_mark_o: G = _mark_object(wrapped, dep_target)  # type: ignore[assignment]
-
-        return pytest_mark_o
-
-    return decorator
-
-
-def skip_on_missing_imports(
-    modules: str | Iterable[str], dep_target: str
-) -> Callable[[T], T]:
-    """Decorator to skip a test if an optional module is missing
-
-    Args:
-        modules: Module name or list of module names
-        dep_target: Target name for pip installation (e.g. 'test' in pip install ag2[test])
-    """
-    import pytest
-
-    missing_modules = get_missing_imports(modules)
-
-    if not missing_modules:
-
-        def decorator(o: T) -> T:
-            pytest_mark_o = _mark_object(o, dep_target)
-            return pytest_mark_o  # type: ignore[no-any-return]
-
-    else:
-
-        def decorator(o: T) -> T:
-            pytest_mark_o = _mark_object(o, dep_target)
-
-            return pytest.mark.skip(  # type: ignore[return-value,no-any-return]
-                f"Missing module{'s' if len(missing_modules) > 1 else ''}: {', '.join(missing_modules)}. Install using 'pip install ag2[{dep_target}]'"
-            )(pytest_mark_o)
-
-    return decorator
-
-
 if TYPE_CHECKING:
-    from types import FrameType
+    pass
 
 P = ParamSpec("P")
 T = TypeVar("T")
-
-
-async def run_async(
-    func: Callable[P, T] | Callable[P, Awaitable[T]],
-    *args: P.args,
-    **kwargs: P.kwargs,
-) -> T:
-    if is_coroutine_callable(func):
-        return await cast(Callable[P, Awaitable[T]], func)(*args, **kwargs)
-    else:
-        return await run_in_threadpool(cast(Callable[P, T], func), *args, **kwargs)
-
-
-async def run_in_threadpool(
-    func: Callable[P, T], *args: P.args, **kwargs: P.kwargs
-) -> T:
-    if kwargs:
-        func = functools.partial(func, **kwargs)
-    return await anyio.to_thread.run_sync(func, *args)
-
-
-async def solve_generator_async(
-    *sub_args: Any, call: Callable[..., Any], stack: AsyncExitStack, **sub_values: Any
-) -> Any:
-    if is_gen_callable(call):
-        cm = contextmanager_in_threadpool(contextmanager(call)(**sub_values))
-    elif is_async_gen_callable(call):  # pragma: no branch
-        cm = asynccontextmanager(call)(*sub_args, **sub_values)
-    return await stack.enter_async_context(cm)
-
-
-def solve_generator_sync(
-    *sub_args: Any, call: Callable[..., Any], stack: ExitStack, **sub_values: Any
-) -> Any:
-    cm = contextmanager(call)(*sub_args, **sub_values)
-    return stack.enter_context(cm)
-
-
-def get_typed_signature(call: Callable[..., Any]) -> tuple[inspect.Signature, Any]:
-    signature = inspect.signature(call)
-
-    locals = collect_outer_stack_locals()
-
-    # We unwrap call to get the original unwrapped function
-    call = inspect.unwrap(call)
-
-    globalns = getattr(call, "__globals__", {})
-    typed_params = [
-        inspect.Parameter(
-            name=param.name,
-            kind=param.kind,
-            default=param.default,
-            annotation=get_typed_annotation(
-                param.annotation,
-                globalns,
-                locals,
-            ),
-        )
-        for param in signature.parameters.values()
-    ]
-
-    return inspect.Signature(typed_params), get_typed_annotation(
-        signature.return_annotation,
-        globalns,
-        locals,
-    )
-
-
-def collect_outer_stack_locals() -> dict[str, Any]:
-    frame = inspect.currentframe()
-
-    frames: list[FrameType] = []
-    while frame is not None:
-        if "fast_depends" not in frame.f_code.co_filename:
-            frames.append(frame)
-        frame = frame.f_back
-
-    locals = {}
-    for f in frames[::-1]:
-        locals.update(f.f_locals)
-
-    return locals
-
-
-def get_typed_annotation(
-    annotation: Any,
-    globalns: dict[str, Any],
-    locals: dict[str, Any],
-) -> Any:
-    if isinstance(annotation, str):
-        annotation = ForwardRef(annotation)
-
-    if get_origin(annotation) is Annotated and (args := get_args(annotation)):
-        solved_args = [get_typed_annotation(x, globalns, locals) for x in args]
-        annotation.__origin__, annotation.__metadata__ = solved_args[0], tuple(
-            solved_args[1:]
-        )
-
-    return annotation
-
-
-@asynccontextmanager
-async def contextmanager_in_threadpool(
-    cm: AbstractContextManager[T],
-) -> AsyncGenerator[T, None]:
-    exit_limiter = anyio.CapacityLimiter(1)
-    try:
-        yield await run_in_threadpool(cm.__enter__)
-    except Exception as e:
-        ok = bool(
-            await anyio.to_thread.run_sync(
-                cm.__exit__, type(e), e, None, limiter=exit_limiter
-            )
-        )
-        if not ok:  # pragma: no branch
-            raise e
-    else:
-        await anyio.to_thread.run_sync(
-            cm.__exit__, None, None, None, limiter=exit_limiter
-        )
-
-
-def is_gen_callable(call: Callable[..., Any]) -> bool:
-    if inspect.isgeneratorfunction(call):
-        return True
-    dunder_call = getattr(call, "__call__", None)  # noqa: B004
-    return inspect.isgeneratorfunction(dunder_call)
-
-
-def is_async_gen_callable(call: Callable[..., Any]) -> bool:
-    if inspect.isasyncgenfunction(call):
-        return True
-    dunder_call = getattr(call, "__call__", None)  # noqa: B004
-    return inspect.isasyncgenfunction(dunder_call)
-
-
-def is_coroutine_callable(call: Callable[..., Any]) -> bool:
-    if inspect.isclass(call):
-        return False
-
-    if asyncio.iscoroutinefunction(call):
-        return True
-
-    dunder_call = getattr(call, "__call__", None)  # noqa: B004
-    return asyncio.iscoroutinefunction(dunder_call)
-
-
-async def async_map(
-    func: Callable[..., T], async_iterable: AsyncIterable[Any]
-) -> AsyncIterable[T]:
-    async for i in async_iterable:
-        yield func(i)

@@ -46,7 +46,7 @@ class Collection:
     def __init__(
         self,
         client: Any | None = None,
-        collection_name: str = "ag2-docs",
+        collection_name: str = "memory",
         embedding_function: Callable[..., Any] | None = None,
         metadata: Any | None = None,
         get_or_create: Any | None = None,

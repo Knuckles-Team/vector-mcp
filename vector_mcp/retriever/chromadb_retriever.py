@@ -25,10 +25,11 @@ with optional_import_block():
 __all__ = ["ChromaDBRetriever"]
 
 DEFAULT_COLLECTION_NAME = "memory"
-EMPTY_RESPONSE_TEXT = (
-    "Empty Response"  # Indicates that the query did not return any results
+EMPTY_RESPONSE_TEXT = "Empty Response"
+EMPTY_RESPONSE_REPLY = (
+    "Sorry, I couldn't find any information on that. "
+    "If you haven't ingested any documents, please try that."
 )
-EMPTY_RESPONSE_REPLY = "Sorry, I couldn't find any information on that. If you haven't ingested any documents, please try that."  # Default response for queries without results
 
 
 # Set up logging
@@ -175,6 +176,8 @@ class ChromaDBRetriever(RAGRetriever):
         Args:
             document_directory: A dir of input documents to add.
             document_paths: A sequence of input documents to add.
+        Returns:
+            List: List of documents
         """
         self._validate_query_index()
         documents = self._load_doc(
