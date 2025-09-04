@@ -163,6 +163,20 @@ Install Python Package
 ```bash
 python -m pip install vector-mcp
 ```
+
+PGVector dependencies
+
+```bash
+python -m pip install vector-mcp[pgvector]
+```
+
+All
+
+```bash
+python -m pip install vector-mcp[all]
+```
+
+
 </details>
 
 <details>
