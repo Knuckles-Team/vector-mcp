@@ -188,3 +188,5 @@ python -m pip install vector-mcp[all]
 ![GitHub followers](https://img.shields.io/github/followers/Knucklessg1)
 ![GitHub User's stars](https://img.shields.io/github/stars/Knucklessg1)
 </details>
+
+Special shoutouts to Microsoft Autogen V1 ♥️
