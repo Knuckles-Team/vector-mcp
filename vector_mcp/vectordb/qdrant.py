@@ -4,10 +4,12 @@ import abc
 import logging
 from collections.abc import Sequence
 from typing import Any
-
-from ....import_utils import optional_import_block, require_optional_import
-from .base import Document, ItemID, QueryResults, VectorDB
-from .utils import get_logger
+from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
+from vector_mcp.vectordb.utils import (
+    get_logger,
+    optional_import_block,
+    require_optional_import,
+)
 
 with optional_import_block():
     from fastembed import TextEmbedding
@@ -57,10 +59,14 @@ class FastEmbedEmbeddingFunction(EmbeddingFunction):
         """
         self._batch_size = batch_size
         self._parallel = parallel
-        self._model = TextEmbedding(model_name=model_name, cache_dir=cache_dir, threads=threads, **kwargs)
+        self._model = TextEmbedding(
+            model_name=model_name, cache_dir=cache_dir, threads=threads, **kwargs
+        )
 
     def __call__(self, inputs: list[str]) -> list[Embeddings]:
-        embeddings = self._model.embed(inputs, batch_size=self._batch_size, parallel=self._parallel)
+        embeddings = self._model.embed(
+            inputs, batch_size=self._batch_size, parallel=self._parallel
+        )
 
         return [embedding.tolist() for embedding in embeddings]
 
@@ -92,7 +98,7 @@ class QdrantVectorDB(VectorDB):
             **kwargs: Additional keyword arguments.
         """
         if client:
-            self.client:QdrantClient = client
+            self.client: QdrantClient = client
         elif client_kwargs:
             self.client = QdrantClient(**client_kwargs)
         else:
@@ -103,7 +109,9 @@ class QdrantVectorDB(VectorDB):
         self.metadata_payload_key = metadata_payload_key
         self.type = "qdrant"
 
-    def create_collection(self, collection_name: str, overwrite: bool = False, get_or_create: bool = True) -> None:
+    def create_collection(
+        self, collection_name: str, overwrite: bool = False, get_or_create: bool = True
+    ) -> None:
         """Create a collection in the vector database.
         Case 1. if the collection does not exist, create the collection.
         Case 2. the collection exists, if overwrite is True, it will overwrite the collection.
@@ -126,7 +134,9 @@ class QdrantVectorDB(VectorDB):
         if not self.client.collection_exists(collection_name):
             self.client.create_collection(
                 collection_name,
-                vectors_config=models.VectorParams(size=embeddings_size, distance=models.Distance.COSINE),
+                vectors_config=models.VectorParams(
+                    size=embeddings_size, distance=models.Distance.COSINE
+                ),
                 **self.collection_options,
             )
         elif not get_or_create:
@@ -157,7 +167,9 @@ class QdrantVectorDB(VectorDB):
         """
         return self.client.delete_collection(collection_name)
 
-    def insert_docs(self, docs: list[Document], collection_name: str = None, upsert: bool = False) -> None:
+    def insert_documents(
+        self, docs: list[Document], collection_name: str = None, upsert: bool = False
+    ) -> None:
         """Insert documents into the collection of the vector database.
 
         Args:
@@ -176,12 +188,16 @@ class QdrantVectorDB(VectorDB):
         if any(doc.get("id") is None for doc in docs):
             raise ValueError("The document id is required.")
 
-        if not upsert and not self._validate_upsert_ids(collection_name, [doc["id"] for doc in docs]):
+        if not upsert and not self._validate_upsert_ids(
+            collection_name, [doc["id"] for doc in docs]
+        ):
             logger.log("Some IDs already exist. Skipping insert", level=logging.WARN)
 
         self.client.upsert(collection_name, points=self._documents_to_points(docs))
 
-    def update_docs(self, docs: list[Document], collection_name: str = None) -> None:
+    def update_documents(
+        self, docs: list[Document], collection_name: str = None
+    ) -> None:
         if not docs:
             return
         if any(doc.get("id") is None for doc in docs):
@@ -189,11 +205,15 @@ class QdrantVectorDB(VectorDB):
         if any(doc.get("content") is None for doc in docs):
             raise ValueError("The document content is required.")
         if self._validate_update_ids(collection_name, [doc["id"] for doc in docs]):
-            return self.client.upsert(collection_name, points=self._documents_to_points(docs))
+            return self.client.upsert(
+                collection_name, points=self._documents_to_points(docs)
+            )
 
         raise ValueError("Some IDs do not exist. Skipping update")
 
-    def delete_docs(self, ids: list[ItemID], collection_name: str = None, **kwargs) -> None:
+    def delete_documents(
+        self, ids: list[ItemID], collection_name: str = None, **kwargs
+    ) -> None:
         """Delete documents from the collection of the vector database.
 
         Args:
@@ -206,7 +226,7 @@ class QdrantVectorDB(VectorDB):
         """
         self.client.delete(collection_name, ids)
 
-    def retrieve_docs(
+    def retrieve_documents(
         self,
         queries: list[str],
         collection_name: str = None,
@@ -243,8 +263,12 @@ class QdrantVectorDB(VectorDB):
         batch_results = self.client.search_batch(collection_name, requests)
         return [self._scored_points_to_documents(results) for results in batch_results]
 
-    def get_docs_by_ids(
-        self, ids: list[ItemID] = None, collection_name: str = None, include=True, **kwargs
+    def get_documents_by_ids(
+        self,
+        ids: list[ItemID] = None,
+        collection_name: str = None,
+        include=True,
+        **kwargs,
     ) -> list[Document]:
         """Retrieve documents from the collection of the vector database based on the ids.
 
@@ -259,9 +283,13 @@ class QdrantVectorDB(VectorDB):
             List[Document] | The results.
         """
         if ids is None:
-            results = self.client.scroll(collection_name=collection_name, with_payload=include, with_vectors=True)[0]
+            results = self.client.scroll(
+                collection_name=collection_name, with_payload=include, with_vectors=True
+            )[0]
         else:
-            results = self.client.retrieve(collection_name, ids=ids, with_payload=include, with_vectors=True)
+            results = self.client.retrieve(
+                collection_name, ids=ids, with_payload=include, with_vectors=True
+            )
         return [self._point_to_document(result) for result in results]
 
     def _point_to_document(self, point) -> Document:
@@ -275,7 +303,9 @@ class QdrantVectorDB(VectorDB):
     def _points_to_documents(self, points) -> list[Document]:
         return [self._point_to_document(point) for point in points]
 
-    def _scored_point_to_document(self, scored_point: "models.ScoredPoint") -> tuple[Document, float]:
+    def _scored_point_to_document(
+        self, scored_point: "models.ScoredPoint"
+    ) -> tuple[Document, float]:
         return self._point_to_document(scored_point), scored_point.score
 
     def _documents_to_points(self, documents: list[Document]):
@@ -294,17 +324,27 @@ class QdrantVectorDB(VectorDB):
         ]
         return points
 
-    def _scored_points_to_documents(self, scored_points: list["models.ScoredPoint"]) -> list[tuple[Document, float]]:
-        return [self._scored_point_to_document(scored_point) for scored_point in scored_points]
+    def _scored_points_to_documents(
+        self, scored_points: list["models.ScoredPoint"]
+    ) -> list[tuple[Document, float]]:
+        return [
+            self._scored_point_to_document(scored_point)
+            for scored_point in scored_points
+        ]
 
     def _validate_update_ids(self, collection_name: str, ids: list[str]) -> bool:
         """Validates all the IDs exist in the collection"""
         retrieved_ids = [
-            point.id for point in self.client.retrieve(collection_name, ids=ids, with_payload=False, with_vectors=False)
+            point.id
+            for point in self.client.retrieve(
+                collection_name, ids=ids, with_payload=False, with_vectors=False
+            )
         ]
 
         if missing_ids := set(ids) - set(retrieved_ids):
-            logger.log(f"Missing IDs: {missing_ids}. Skipping update", level=logging.WARN)
+            logger.log(
+                f"Missing IDs: {missing_ids}. Skipping update", level=logging.WARN
+            )
             return False
 
         return True
@@ -312,7 +352,10 @@ class QdrantVectorDB(VectorDB):
     def _validate_upsert_ids(self, collection_name: str, ids: list[str]) -> bool:
         """Validate none of the IDs exist in the collection"""
         retrieved_ids = [
-            point.id for point in self.client.retrieve(collection_name, ids=ids, with_payload=False, with_vectors=False)
+            point.id
+            for point in self.client.retrieve(
+                collection_name, ids=ids, with_payload=False, with_vectors=False
+            )
         ]
 
         if existing_ids := set(ids) & set(retrieved_ids):

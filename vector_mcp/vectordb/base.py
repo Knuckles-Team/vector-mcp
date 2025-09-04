@@ -42,11 +42,11 @@ class VectorDB(Protocol):
         create_collection: Callable[[str, bool, bool], Any] | Create a collection in the vector database.
         get_collection: Callable[[str], Any] | Get the collection from the vector database.
         delete_collection: Callable[[str], Any] | Delete the collection from the vector database.
-        insert_docs: Callable[[List[Document], str, bool], None] | Insert documents into the collection of the vector database.
-        update_docs: Callable[[List[Document], str], None] | Update documents in the collection of the vector database.
-        delete_docs: Callable[[List[ItemID], str], None] | Delete documents from the collection of the vector database.
-        retrieve_docs: Callable[[List[str], str, int, float], QueryResults] | Retrieve documents from the collection of the vector database based on the queries.
-        get_docs_by_ids: Callable[[List[ItemID], str], List[Document]] | Retrieve documents from the collection of the vector database based on the ids.
+        insert_documents: Callable[[List[Document], str, bool], None] | Insert documents into the collection of the vector database.
+        update_documents: Callable[[List[Document], str], None] | Update documents in the collection of the vector database.
+        delete_documents: Callable[[List[ItemID], str], None] | Delete documents from the collection of the vector database.
+        retrieve_documents: Callable[[List[str], str, int, float], QueryResults] | Retrieve documents from the collection of the vector database based on the queries.
+        get_documents_by_ids: Callable[[List[ItemID], str], List[Document]] | Retrieve documents from the collection of the vector database based on the ids.
     """
 
     active_collection: Any = None
@@ -55,7 +55,9 @@ class VectorDB(Protocol):
         None  # embeddings = embedding_function(sentences)
     )
 
-    def create_collection(self, collection_name: str, overwrite: bool = False, get_or_create: bool = True) -> Any:
+    def create_collection(
+        self, collection_name: str, overwrite: bool = False, get_or_create: bool = True
+    ) -> Any:
         """Create a collection in the vector database.
         Case 1. if the collection does not exist, create the collection.
         Case 2. the collection exists, if overwrite is True, it will overwrite the collection.
@@ -84,6 +86,15 @@ class VectorDB(Protocol):
         """
         ...
 
+    def get_collections(self) -> Any:
+        """Get all the collections from the vector database.
+
+
+        Returns:
+            List[Any] | List of collection objects.
+        """
+        ...
+
     def delete_collection(self, collection_name: str) -> Any:
         """Delete the collection from the vector database.
 
@@ -95,7 +106,13 @@ class VectorDB(Protocol):
         """
         ...
 
-    def insert_docs(self, docs: list[Document], collection_name: str = None, upsert: bool = False, **kwargs) -> None:
+    def insert_documents(
+        self,
+        docs: list[Document],
+        collection_name: str = None,
+        upsert: bool = False,
+        **kwargs,
+    ) -> None:
         """Insert documents into the collection of the vector database.
 
         Args:
@@ -109,7 +126,9 @@ class VectorDB(Protocol):
         """
         ...
 
-    def update_docs(self, docs: list[Document], collection_name: str = None, **kwargs) -> None:
+    def update_documents(
+        self, docs: list[Document], collection_name: str = None, **kwargs
+    ) -> None:
         """Update documents in the collection of the vector database.
 
         Args:
@@ -122,7 +141,9 @@ class VectorDB(Protocol):
         """
         ...
 
-    def delete_docs(self, ids: list[ItemID], collection_name: str = None, **kwargs) -> None:
+    def delete_documents(
+        self, ids: list[ItemID], collection_name: str = None, **kwargs
+    ) -> None:
         """Delete documents from the collection of the vector database.
 
         Args:
@@ -135,7 +156,7 @@ class VectorDB(Protocol):
         """
         ...
 
-    def retrieve_docs(
+    def retrieve_documents(
         self,
         queries: list[str],
         collection_name: str = None,
@@ -159,8 +180,12 @@ class VectorDB(Protocol):
         """
         ...
 
-    def get_docs_by_ids(
-        self, ids: list[ItemID] = None, collection_name: str = None, include: list[str] | None = None, **kwargs: Any
+    def get_documents_by_ids(
+        self,
+        ids: list[ItemID] = None,
+        collection_name: str = None,
+        include: list[str] | None = None,
+        **kwargs: Any,
     ) -> list[Document]:
         """Retrieve documents from the collection of the vector database based on the ids.
 
@@ -184,7 +209,7 @@ class VectorDBFactory:
     PREDEFINED_VECTOR_DB = ["chroma", "pgvector", "mongodb", "qdrant", "couchbase"]
 
     @staticmethod
-    def create_vector_db(db_type: str, **kwargs) -> VectorDB:
+    def create_vector_database(db_type: str, **kwargs) -> VectorDB:
         """Create a vector database.
 
         Args:

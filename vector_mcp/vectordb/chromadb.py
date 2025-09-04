@@ -2,21 +2,23 @@
 # coding: utf-8
 import os
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Union, Optional
 
-from ....import_utils import optional_import_block, require_optional_import
-from .base import Document, ItemID, QueryResults, VectorDB
-from .utils import chroma_results_to_query_results, filter_results_by_distance, get_logger
+
+from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
+from vector_mcp.vectordb.utils import (
+    chroma_results_to_query_results,
+    filter_results_by_distance,
+    get_logger,
+    optional_import_block,
+    require_optional_import,
+)
 
 with optional_import_block() as result:
     import chromadb
     import chromadb.errors
     import chromadb.utils.embedding_functions as ef
     from chromadb.api.models.Collection import Collection
-
-if result.is_successful and chromadb.__version__ < "0.4.15":
-    raise ImportError("Please upgrade chromadb to version 0.4.15 or later.")
-
 
 CHROMADB_MAX_BATCH_SIZE = os.environ.get("CHROMADB_MAX_BATCH_SIZE", 40000)
 logger = get_logger(__name__)
@@ -27,7 +29,21 @@ class ChromaVectorDB(VectorDB):
     """A vector database that uses ChromaDB as the backend."""
 
     def __init__(
-        self, *, client=None, host=None, port=None, path: str = "tmp/db", embedding_function: Callable = None, metadata: dict = None, **kwargs
+        self,
+        *,
+        client: Optional[str] = None,
+        host: Optional[Union[str, int]] = None,
+        port: Optional[Union[str, int]] = None,
+        path: Optional[str] = None,
+        embedding_function: Optional[Callable] = None,
+        metadata: Optional[dict] = None,
+        **kwargs,
+        # client: Optional[str]=Field(description="ChromaDB Client", default=None),
+        # host: Optional[Union[str, int]]=Field(description="Host of ChromaDB Instance", default=None),
+        # port: Optional[Union[str, int]]=Field(description="Port of ChromaDB Instance", default=None),
+        # path: Optional[str]=Field(description="Path of local database storage location", default=None),
+        # embedding_function: Optional[Callable] = Field(description="Sentence embedding function to use", default=None),
+        # metadata: Optional[dict] = Field(description="Metadata of vector databases", default=None),
     ) -> None:
         """Initialize the vector database.
 
@@ -48,15 +64,20 @@ class ChromaVectorDB(VectorDB):
             None
         """
         self.client = client
-        if not client:
-            self.client = chromadb.HttpClient(host=host, port=int(port))
-        self.path = path
+        if path:
+            self.path = path
+        else:
+            self.path = os.path.expanduser("~/Documents/ChromaDB")
         self.embedding_function = (
             ef.SentenceTransformerEmbeddingFunction("all-MiniLM-L6-v2")
             if embedding_function is None
             else embedding_function
         )
-        self.metadata = metadata if metadata else {"hnsw:space": "ip", "hnsw:construction_ef": 30, "hnsw:M": 32}
+        self.metadata = (
+            metadata
+            if metadata
+            else {"hnsw:space": "ip", "hnsw:construction_ef": 30, "hnsw:M": 32}
+        )
         if not self.client:
             if self.path is not None:
                 self.client = chromadb.PersistentClient(path=self.path, **kwargs)
@@ -83,10 +104,15 @@ class ChromaVectorDB(VectorDB):
             Collection | The collection object.
         """
         try:
-            if self.active_collection and self.active_collection.name == collection_name:
+            if (
+                self.active_collection
+                and self.active_collection.name == collection_name
+            ):
                 collection = self.active_collection
             else:
-                collection = self.client.get_collection(collection_name, embedding_function=self.embedding_function)
+                collection = self.client.get_collection(
+                    collection_name, embedding_function=self.embedding_function
+                )
         except (ValueError, chromadb.errors.ChromaError):
             collection = None
         if collection is None:
@@ -127,7 +153,10 @@ class ChromaVectorDB(VectorDB):
                     f"No collection is specified. Using current active collection {self.active_collection.name}."
                 )
         else:
-            if not (self.active_collection and self.active_collection.name == collection_name):
+            if not (
+                self.active_collection
+                and self.active_collection.name == collection_name
+            ):
                 self.active_collection = self.client.get_collection(
                     name=collection_name, embedding_function=self.embedding_function
                 )
@@ -147,7 +176,13 @@ class ChromaVectorDB(VectorDB):
             self.active_collection = None
 
     def _batch_insert(
-        self, collection: "Collection", embeddings=None, ids=None, metadatas=None, documents=None, upsert=False
+        self,
+        collection: "Collection",
+        embeddings=None,
+        ids=None,
+        metadatas=None,
+        documents=None,
+        upsert=False,
     ) -> None:
         batch_size = int(CHROMADB_MAX_BATCH_SIZE)
         for i in range(0, len(documents), min(batch_size, len(documents))):
@@ -163,7 +198,9 @@ class ChromaVectorDB(VectorDB):
             else:
                 collection.add(**collection_kwargs)
 
-    def insert_docs(self, docs: list[Document], collection_name: str = None, upsert: bool = False) -> None:
+    def insert_documents(
+        self, docs: list[Document], collection_name: str = None, upsert: bool = False
+    ) -> None:
         """Insert documents into the collection of the vector database.
 
         Args:
@@ -191,10 +228,16 @@ class ChromaVectorDB(VectorDB):
             embeddings = None
         else:
             embeddings = [doc.get("embedding") for doc in docs]
-        metadatas = None if docs[0].get("metadata") is None else [doc.get("metadata") for doc in docs]
+        metadatas = (
+            None
+            if docs[0].get("metadata") is None
+            else [doc.get("metadata") for doc in docs]
+        )
         self._batch_insert(collection, embeddings, ids, metadatas, documents, upsert)
 
-    def update_docs(self, docs: list[Document], collection_name: str = None) -> None:
+    def update_documents(
+        self, docs: list[Document], collection_name: str = None
+    ) -> None:
         """Update documents in the collection of the vector database.
 
         Args:
@@ -204,9 +247,11 @@ class ChromaVectorDB(VectorDB):
         Returns:
             None
         """
-        self.insert_docs(docs, collection_name, upsert=True)
+        self.insert_documents(docs, collection_name, upsert=True)
 
-    def delete_docs(self, ids: list[ItemID], collection_name: str = None, **kwargs) -> None:
+    def delete_documents(
+        self, ids: list[ItemID], collection_name: str = None, **kwargs
+    ) -> None:
         """Delete documents from the collection of the vector database.
 
         Args:
@@ -220,7 +265,7 @@ class ChromaVectorDB(VectorDB):
         collection = self.get_collection(collection_name)
         collection.delete(ids, **kwargs)
 
-    def retrieve_docs(
+    def retrieve_documents(
         self,
         queries: list[str],
         collection_name: str = None,
@@ -292,8 +337,12 @@ class ChromaVectorDB(VectorDB):
             results.append(sub_dict)
         return results
 
-    def get_docs_by_ids(
-        self, ids: list[ItemID] = None, collection_name: str = None, include=None, **kwargs
+    def get_documents_by_ids(
+        self,
+        ids: list[ItemID] = None,
+        collection_name: str = None,
+        include=None,
+        **kwargs,
     ) -> list[Document]:
         """Retrieve documents from the collection of the vector database based on the ids.
 

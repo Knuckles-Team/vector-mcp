@@ -16,16 +16,27 @@ from dataclasses import dataclass
 from functools import wraps
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Generic, Optional, TypeVar
+from typing import Generic, Optional, TypeVar
 
 from packaging import version
 
 import asyncio
 import functools
-import inspect
-from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable
-from contextlib import AbstractContextManager, AsyncExitStack, ExitStack, asynccontextmanager, contextmanager
-from typing import TYPE_CHECKING, Annotated, Any, ForwardRef, TypeVar, cast, get_args, get_origin
+from collections.abc import AsyncGenerator, AsyncIterable, Awaitable
+from contextlib import (
+    AbstractContextManager,
+    AsyncExitStack,
+    ExitStack,
+    asynccontextmanager,
+)
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    ForwardRef,
+    cast,
+    get_args,
+    get_origin,
+)
 
 import anyio
 from typing_extensions import (
@@ -41,7 +52,6 @@ __all__ = [
 ]
 
 logger = getLogger(__name__)
-
 
 
 class ColoredLogger(logging.Logger):
@@ -71,7 +81,9 @@ def get_logger(name: str, level: int = logging.INFO) -> ColoredLogger:
     logger = ColoredLogger(name, level)
     console_handler = logging.StreamHandler()
     logger.addHandler(console_handler)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     logger.handlers[0].setFormatter(formatter)
     return logger
 
@@ -79,7 +91,9 @@ def get_logger(name: str, level: int = logging.INFO) -> ColoredLogger:
 logger = get_logger(__name__)
 
 
-def filter_results_by_distance(results: QueryResults, distance_threshold: float = -1) -> QueryResults:
+def filter_results_by_distance(
+    results: QueryResults, distance_threshold: float = -1
+) -> QueryResults:
     """Filters results based on a distance threshold.
 
     Args:
@@ -90,12 +104,17 @@ def filter_results_by_distance(results: QueryResults, distance_threshold: float 
         QueryResults | A filtered results containing only distances smaller than the threshold.
     """
     if distance_threshold > 0:
-        results = [[(key, value) for key, value in data if value < distance_threshold] for data in results]
+        results = [
+            [(key, value) for key, value in data if value < distance_threshold]
+            for data in results
+        ]
 
     return results
 
 
-def chroma_results_to_query_results(data_dict: dict[str, list[list[Any]]], special_key="distances") -> QueryResults:
+def chroma_results_to_query_results(
+    data_dict: dict[str, list[list[Any]]], special_key="distances"
+) -> QueryResults:
     """Converts a dictionary with list-of-list values to a list of tuples.
 
     Args:
@@ -140,7 +159,9 @@ def chroma_results_to_query_results(data_dict: dict[str, list[list[Any]]], speci
     keys = [
         key
         for key in data_dict
-        if key != special_key and data_dict[key] is not None and isinstance(data_dict[key][0], list)
+        if key != special_key
+        and data_dict[key] is not None
+        and isinstance(data_dict[key][0], list)
     ]
     result = []
     data_special_key = data_dict[special_key]
@@ -151,7 +172,9 @@ def chroma_results_to_query_results(data_dict: dict[str, list[list[Any]]], speci
             sub_dict = {}
             for key in keys:
                 if len(data_dict[key]) > i:
-                    sub_dict[key[:-1]] = data_dict[key][i][j]  # remove 's' in the end from key
+                    sub_dict[key[:-1]] = data_dict[key][i][
+                        j
+                    ]  # remove 's' in the end from key
             sub_result.append((sub_dict, distance))
         result.append(sub_result)
 
@@ -176,12 +199,17 @@ class ModuleInfo:
         if self.name not in sys.modules:
             return f"'{self.name}' is not installed."
         else:
-            if hasattr(sys.modules[self.name], "__file__") and sys.modules[self.name].__file__ is not None:
+            if (
+                hasattr(sys.modules[self.name], "__file__")
+                and sys.modules[self.name].__file__ is not None
+            ):
                 autogen_path = (Path(__file__).parent).resolve()
                 test_path = (Path(__file__).parent.parent / "test").resolve()
                 module_path = Path(sys.modules[self.name].__file__).resolve()  # type: ignore[arg-type]
 
-                if str(autogen_path) in str(module_path) or str(test_path) in str(module_path):
+                if str(autogen_path) in str(module_path) or str(test_path) in str(
+                    module_path
+                ):
                     # The module is in the autogen or test directory
                     # Aka similarly named module in the autogen or test directory
                     return f"'{self.name}' is not installed."
@@ -189,9 +217,13 @@ class ModuleInfo:
         # Ensure that the retrieved version is a string. Some packages might unexpectedly
         # have a __version__ attribute that is not a string (e.g., a module).
         raw_version_attr = (
-            sys.modules[self.name].__version__ if hasattr(sys.modules[self.name], "__version__") else None
+            sys.modules[self.name].__version__
+            if hasattr(sys.modules[self.name], "__version__")
+            else None
         )
-        installed_version = raw_version_attr if isinstance(raw_version_attr, str) else None
+        installed_version = (
+            raw_version_attr if isinstance(raw_version_attr, str) else None
+        )
         if installed_version is None and (self.min_version or self.max_version):
             return f"'{self.name}' is installed, but the version is not available."
 
@@ -220,9 +252,17 @@ class ModuleInfo:
     def __repr__(self) -> str:
         s = self.name
         if self.min_version:
-            s += f">={self.min_version}" if self.min_inclusive else f">{self.min_version}"
+            s += (
+                f">={self.min_version}"
+                if self.min_inclusive
+                else f">{self.min_version}"
+            )
         if self.max_version:
-            s += f"<={self.max_version}" if self.max_inclusive else f"<{self.max_version}"
+            s += (
+                f"<={self.max_version}"
+                if self.max_inclusive
+                else f"<{self.max_version}"
+            )
         return s
 
     @classmethod
@@ -395,11 +435,11 @@ class PatchObject(ABC, Generic[T]):
 
     @classmethod
     def create(
-            cls,
-            o: T,
-            *,
-            missing_modules: dict[str, str],
-            dep_target: str,
+        cls,
+        o: T,
+        *,
+        missing_modules: dict[str, str],
+        dep_target: str,
     ) -> Optional["PatchObject[T]"]:
         for subclass in cls._registry:
             if subclass.accept(o):
@@ -538,14 +578,16 @@ class PatchClass(PatchObject[type[Any]]):
 
 
 def patch_object(
-        o: T,
-        *,
-        missing_modules: dict[str, str],
-        dep_target: str,
-        fail_if_not_patchable: bool = True,
-        except_for: str | Iterable[str] | None = None,
+    o: T,
+    *,
+    missing_modules: dict[str, str],
+    dep_target: str,
+    fail_if_not_patchable: bool = True,
+    except_for: str | Iterable[str] | None = None,
 ) -> T:
-    patcher = PatchObject.create(o, missing_modules=missing_modules, dep_target=dep_target)
+    patcher = PatchObject.create(
+        o, missing_modules=missing_modules, dep_target=dep_target
+    )
     if fail_if_not_patchable and patcher is None:
         raise ValueError(f"Cannot patch object of type {type(o)}")
 
@@ -556,10 +598,10 @@ def patch_object(
 
 
 def require_optional_import(
-        modules: str | Iterable[str],
-        dep_target: str,
-        *,
-        except_for: str | Iterable[str] | None = None,
+    modules: str | Iterable[str],
+    dep_target: str,
+    *,
+    except_for: str | Iterable[str] | None = None,
 ) -> Callable[[T], T]:
     """Decorator to handle optional module dependencies
 
@@ -578,7 +620,12 @@ def require_optional_import(
     else:
 
         def decorator(o: T) -> T:
-            return patch_object(o, missing_modules=missing_modules, dep_target=dep_target, except_for=except_for)
+            return patch_object(
+                o,
+                missing_modules=missing_modules,
+                dep_target=dep_target,
+                except_for=except_for,
+            )
 
     return decorator
 
@@ -595,7 +642,9 @@ def _mark_object(o: T, dep_target: str) -> T:
     return pytest_mark_o  # type: ignore[no-any-return]
 
 
-def run_for_optional_imports(modules: str | Iterable[str], dep_target: str) -> Callable[[G], G]:
+def run_for_optional_imports(
+    modules: str | Iterable[str], dep_target: str
+) -> Callable[[G], G]:
     """Decorator to run a test if and only if optional modules are installed
 
     Args:
@@ -639,7 +688,9 @@ def run_for_optional_imports(modules: str | Iterable[str], dep_target: str) -> C
     return decorator
 
 
-def skip_on_missing_imports(modules: str | Iterable[str], dep_target: str) -> Callable[[T], T]:
+def skip_on_missing_imports(
+    modules: str | Iterable[str], dep_target: str
+) -> Callable[[T], T]:
     """Decorator to skip a test if an optional module is missing
 
     Args:
@@ -667,6 +718,7 @@ def skip_on_missing_imports(modules: str | Iterable[str], dep_target: str) -> Ca
 
     return decorator
 
+
 if TYPE_CHECKING:
     from types import FrameType
 
@@ -675,9 +727,9 @@ T = TypeVar("T")
 
 
 async def run_async(
-        func: Callable[P, T] | Callable[P, Awaitable[T]],
-        *args: P.args,
-        **kwargs: P.kwargs,
+    func: Callable[P, T] | Callable[P, Awaitable[T]],
+    *args: P.args,
+    **kwargs: P.kwargs,
 ) -> T:
     if is_coroutine_callable(func):
         return await cast(Callable[P, Awaitable[T]], func)(*args, **kwargs)
@@ -685,14 +737,16 @@ async def run_async(
         return await run_in_threadpool(cast(Callable[P, T], func), *args, **kwargs)
 
 
-async def run_in_threadpool(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+async def run_in_threadpool(
+    func: Callable[P, T], *args: P.args, **kwargs: P.kwargs
+) -> T:
     if kwargs:
         func = functools.partial(func, **kwargs)
     return await anyio.to_thread.run_sync(func, *args)
 
 
 async def solve_generator_async(
-        *sub_args: Any, call: Callable[..., Any], stack: AsyncExitStack, **sub_values: Any
+    *sub_args: Any, call: Callable[..., Any], stack: AsyncExitStack, **sub_values: Any
 ) -> Any:
     if is_gen_callable(call):
         cm = contextmanager_in_threadpool(contextmanager(call)(**sub_values))
@@ -701,7 +755,9 @@ async def solve_generator_async(
     return await stack.enter_async_context(cm)
 
 
-def solve_generator_sync(*sub_args: Any, call: Callable[..., Any], stack: ExitStack, **sub_values: Any) -> Any:
+def solve_generator_sync(
+    *sub_args: Any, call: Callable[..., Any], stack: ExitStack, **sub_values: Any
+) -> Any:
     cm = contextmanager(call)(*sub_args, **sub_values)
     return stack.enter_context(cm)
 
@@ -753,33 +809,41 @@ def collect_outer_stack_locals() -> dict[str, Any]:
 
 
 def get_typed_annotation(
-        annotation: Any,
-        globalns: dict[str, Any],
-        locals: dict[str, Any],
+    annotation: Any,
+    globalns: dict[str, Any],
+    locals: dict[str, Any],
 ) -> Any:
     if isinstance(annotation, str):
         annotation = ForwardRef(annotation)
 
     if get_origin(annotation) is Annotated and (args := get_args(annotation)):
         solved_args = [get_typed_annotation(x, globalns, locals) for x in args]
-        annotation.__origin__, annotation.__metadata__ = solved_args[0], tuple(solved_args[1:])
+        annotation.__origin__, annotation.__metadata__ = solved_args[0], tuple(
+            solved_args[1:]
+        )
 
     return annotation
 
 
 @asynccontextmanager
 async def contextmanager_in_threadpool(
-        cm: AbstractContextManager[T],
+    cm: AbstractContextManager[T],
 ) -> AsyncGenerator[T, None]:
     exit_limiter = anyio.CapacityLimiter(1)
     try:
         yield await run_in_threadpool(cm.__enter__)
     except Exception as e:
-        ok = bool(await anyio.to_thread.run_sync(cm.__exit__, type(e), e, None, limiter=exit_limiter))
+        ok = bool(
+            await anyio.to_thread.run_sync(
+                cm.__exit__, type(e), e, None, limiter=exit_limiter
+            )
+        )
         if not ok:  # pragma: no branch
             raise e
     else:
-        await anyio.to_thread.run_sync(cm.__exit__, None, None, None, limiter=exit_limiter)
+        await anyio.to_thread.run_sync(
+            cm.__exit__, None, None, None, limiter=exit_limiter
+        )
 
 
 def is_gen_callable(call: Callable[..., Any]) -> bool:
@@ -807,6 +871,8 @@ def is_coroutine_callable(call: Callable[..., Any]) -> bool:
     return asyncio.iscoroutinefunction(dunder_call)
 
 
-async def async_map(func: Callable[..., T], async_iterable: AsyncIterable[Any]) -> AsyncIterable[T]:
+async def async_map(
+    func: Callable[..., T], async_iterable: AsyncIterable[Any]
+) -> AsyncIterable[T]:
     async for i in async_iterable:
         yield func(i)

@@ -1,66 +1,105 @@
 # Vector Database MCP Server
 
-![PyPI - Version](https://img.shields.io/pypi/v/repository-manager)
-![PyPI - Downloads](https://img.shields.io/pypi/dd/repository-manager)
-![GitHub Repo stars](https://img.shields.io/github/stars/Knuckles-Team/repository-manager)
-![GitHub forks](https://img.shields.io/github/forks/Knuckles-Team/repository-manager)
-![GitHub contributors](https://img.shields.io/github/contributors/Knuckles-Team/repository-manager)
-![PyPI - License](https://img.shields.io/pypi/l/repository-manager)
-![GitHub](https://img.shields.io/github/license/Knuckles-Team/repository-manager)
+![PyPI - Version](https://img.shields.io/pypi/v/vector-mcp)
+![PyPI - Downloads](https://img.shields.io/pypi/dd/vector-mcp)
+![GitHub Repo stars](https://img.shields.io/github/stars/Knuckles-Team/vector-mcp)
+![GitHub forks](https://img.shields.io/github/forks/Knuckles-Team/vector-mcp)
+![GitHub contributors](https://img.shields.io/github/contributors/Knuckles-Team/vector-mcp)
+![PyPI - License](https://img.shields.io/pypi/l/vector-mcp)
+![GitHub](https://img.shields.io/github/license/Knuckles-Team/vector-mcp)
 
-![GitHub last commit (by committer)](https://img.shields.io/github/last-commit/Knuckles-Team/repository-manager)
-![GitHub pull requests](https://img.shields.io/github/issues-pr/Knuckles-Team/repository-manager)
-![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed/Knuckles-Team/repository-manager)
-![GitHub issues](https://img.shields.io/github/issues/Knuckles-Team/repository-manager)
+![GitHub last commit (by committer)](https://img.shields.io/github/last-commit/Knuckles-Team/vector-mcp)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/Knuckles-Team/vector-mcp)
+![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed/Knuckles-Team/vector-mcp)
+![GitHub issues](https://img.shields.io/github/issues/Knuckles-Team/vector-mcp)
 
-![GitHub top language](https://img.shields.io/github/languages/top/Knuckles-Team/repository-manager)
-![GitHub language count](https://img.shields.io/github/languages/count/Knuckles-Team/repository-manager)
-![GitHub repo size](https://img.shields.io/github/repo-size/Knuckles-Team/repository-manager)
-![GitHub repo file count (file type)](https://img.shields.io/github/directory-file-count/Knuckles-Team/repository-manager)
-![PyPI - Wheel](https://img.shields.io/pypi/wheel/repository-manager)
-![PyPI - Implementation](https://img.shields.io/pypi/implementation/repository-manager)
+![GitHub top language](https://img.shields.io/github/languages/top/Knuckles-Team/vector-mcp)
+![GitHub language count](https://img.shields.io/github/languages/count/Knuckles-Team/vector-mcp)
+![GitHub repo size](https://img.shields.io/github/repo-size/Knuckles-Team/vector-mcp)
+![GitHub repo file count (file type)](https://img.shields.io/github/directory-file-count/Knuckles-Team/vector-mcp)
+![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
+![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
 
-*Version: 0.0.2*
+*Version: 0.0.3*
 
-Connect to PGVector database and create collections of memory storage for AI Agents.
+This is an MCP Server implementation which allows for a standardized
+collection management system across vector database technologies.
+
+This was heavily inspired by the RAG implementation of Microsoft's Autogen V1 framework, however,
+this was changed to an MCP server model instead.
 
 AI Agents can:
 
 - Create collections with documents
-- Update existing documents in a collection
-- Delete collection
+- Add documents to a collection
 - Utilize collection for retrieval augmented generation (RAG)
-- Leverage Euclidean or Cosine search
+- Delete collection
 
-#### Using as an MCP Server:
+Supports:
 
+- ChromaDB
+- PGVector
+- Couchbase
+- Qdrant
+- MongoDB
+
+## Using as an MCP Server:
+
+### Creating Collection
 AI Prompt:
 ```text
-Clone all the git projects located in the file "/home/genius/Development/repositories-list/repositories.txt" to my "/home/genius/Development" folder.
-Afterwards, pull all the projects located in the "/home/genius/Development" repository folder.
+Create a collection called zapdos with the documents in this directory:
+/home/user/Documents/Chroma
 ```
 
 AI Response:
 ```text
-All projects in "/home/genius/Development/repositories-list/repositories.txt" have been cloned to "/home/genius/Development"
-and all projects in "/home/genius/Development" and been pulled from the repositories. Let me know if you need any further actions! 🚀.
+The collection named "zapdos" has been successfully created or retrieved from the vector database
+using the documents in the directory /home/user/Documents/Chroma.
+Let me know if you'd like to perform any further actions, such as querying the collection or adding more documents!
 ```
+
+### Retrieving from Collection
+
+AI Prompt:
+```text
+Create a collection called zapdos with the documents in this directory:
+/home/user/Documents/Chroma
+```
+
+AI Response:
+```text
+The collection named "zapdos" has been successfully created or retrieved from the vector database
+using the documents in the directory /home/user/Documents/Chroma.
+Let me know if you'd like to perform any further actions, such as querying the collection or adding more documents!
+```
+
+### Deleting Collection
+
+AI Prompt:
+```text
+Delete the collection called memory
+```
+
+AI Response:
+```text
+The collection named "memory" has been successfully deleted.
+Let me know if you'd like to create a new collection or perform any other actions!
+```
+
 
 This repository is actively maintained - Contributions are welcome!
 
 <details>
   <summary><b>Usage:</b></summary>
 
-| Short Flag | Long Flag        | Description                            |
-|------------|------------------|----------------------------------------|
-| -h         | --help           | See Usage                              |
-| -b         | --default-branch | Checkout default branch                |
-| -c         | --clone          | Clone projects specified               |
-| -d         | --directory      | Directory to clone/pull projects       |
-| -f         | --file           | File with repository links             |
-| -p         | --pull           | Pull projects in parent directory      |
-| -r         | --repositories   | Comma separated Git URLs               |
-| -t         | --threads        | Number of parallel threads - Default 4 |
+| Short Flag | Long Flag        | Description                   |
+|------------|------------------|-------------------------------|
+| -h         | --help           | See Usage                     |
+| -h         | --host           | Host of Vector Database       |
+| -p         | --port           | Port of Vector Database       |
+| -d         | --path           | Path of local Vector Database |
+| -t         | --transport      | Transport Type (https/stdio)  |
 
 </details>
 
@@ -70,48 +109,22 @@ This repository is actively maintained - Contributions are welcome!
 ### Use in CLI
 
 ```bash
-repository-manager \
-    --clone  \
-    --pull  \
-    --directory '/home/user/Downloads'  \
-    --file '/home/user/Downloads/repositories.txt'  \
-    --repositories 'https://github.com/Knucklessg1/media-downloader,https://github.com/Knucklessg1/genius-bot' \
-    --threads 8
-```
-
-### Use in Python
-
-```python
-from repository_manager import Git
-
-gitlab = Git()
-
-gitlab.set_repository_directory("<directory>")
-
-gitlab.set_threads(threads=8)
-
-gitlab.set_git_projects("<projects>")
-
-gitlab.set_default_branch(set_to_default_branch=True)
-
-gitlab.clone_projects_in_parallel()
-
-gitlab.pull_projects_in_parallel()
+vector-mcp
 ```
 
 ### Use with AI
 
 Deploy MCP Server as a Service
 ```bash
-docker pull knucklessg1/repository-manager:latest
+docker pull knucklessg1/vector-mcp:latest
 ```
 
 Modify the `compose.yml`
 
 ```compose
 services:
-  repository-manager-mcp:
-    image: knucklessg1/repository-manager:latest
+  vector-mcp-mcp:
+    image: knucklessg1/vector-mcp:latest
     volumes:
       - development:/root/Development
     environment:
@@ -127,12 +140,11 @@ Configure `mcp.json`
 {
   "mcpServers": {
     "repository_manager": {
-      "command": "repository-manager-mcp",
+      "command": "vector-mcp",
       "env": {
-        "REPOSITORY_DIRECTORY": "/home/user/Development/",            // Optional - Can be specified at prompt
-        "THREADS": "12",                                              // Optional - Can be specified at prompt
-        "DEFAULT_BRANCH": "True",                                     // Optional - Can be specified at prompt
-        "PROJECTS_FILE": "/home/user/Development/repositories.txt"    // Optional - Can be specified at prompt
+        "DATABASE_TYPE": "chromadb",                   // Optional
+        "COLLECTION_NAME": "memory",                   // Optional
+        "DOCUMENT_DIRECTORY": "/home/user/Documents/"  // Optional
       },
       "timeout": 300000
     }
@@ -149,27 +161,9 @@ Configure `mcp.json`
 Install Python Package
 
 ```bash
-python -m pip install repository-manager
+python -m pip install vector-mcp
 ```
 </details>
-
-## Geniusbot Application
-
-Use with a GUI through Geniusbot
-
-Visit our [GitHub](https://github.com/Knuckles-Team/geniusbot) for more information
-
-<details>
-  <summary><b>Installation Instructions with Geniusbot:</b></summary>
-
-Install Python Package
-
-```bash
-python -m pip install geniusbot
-```
-
-</details>
-
 
 <details>
   <summary><b>Repository Owners:</b></summary>
@@ -180,7 +174,3 @@ python -m pip install geniusbot
 ![GitHub followers](https://img.shields.io/github/followers/Knucklessg1)
 ![GitHub User's stars](https://img.shields.io/github/stars/Knucklessg1)
 </details>
-
-Notes:
-
-Additional Document and Function handling is based out of Microsoft's Autogen (v1) framework.

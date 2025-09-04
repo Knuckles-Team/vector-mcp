@@ -4,10 +4,12 @@ from collections.abc import Callable, Iterable, Mapping
 from copy import deepcopy
 from time import monotonic, sleep
 from typing import Any, Literal
-
-from ....import_utils import optional_import_block, require_optional_import
-from .base import Document, ItemID, QueryResults, VectorDB
-from .utils import get_logger
+from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
+from vector_mcp.vectordb.utils import (
+    get_logger,
+    optional_import_block,
+    require_optional_import,
+)
 
 with optional_import_block():
     import numpy as np
@@ -26,10 +28,14 @@ _DELAY = 0.5
 
 def with_id_rename(docs: Iterable) -> list[dict[str, Any]]:
     """Utility changes _id field from Collection into id for Document."""
-    return [{**{k: v for k, v in d.items() if k != "_id"}, "id": d["_id"]} for d in docs]
+    return [
+        {**{k: v for k, v in d.items() if k != "_id"}, "id": d["_id"]} for d in docs
+    ]
 
 
-@require_optional_import(["pymongo", "sentence_transformers", "numpy"], "retrievechat-mongodb")
+@require_optional_import(
+    ["pymongo", "sentence_transformers", "numpy"], "retrievechat-mongodb"
+)
 class MongoDBAtlasVectorDB(VectorDB):
     """A Collection object for MongoDB."""
 
@@ -59,7 +65,9 @@ class MongoDBAtlasVectorDB(VectorDB):
             wait_until_document_ready: Optional[float] | Blocking call to wait until the
                 database indexes are ready. None, the default, means no wait.
         """
-        self.embedding_function = embedding_function or SentenceTransformer("all-MiniLM-L6-v2").encode
+        self.embedding_function = (
+            embedding_function or SentenceTransformer("all-MiniLM-L6-v2").encode
+        )
         self.index_name = index_name
         self._wait_until_index_ready = wait_until_index_ready
         self._wait_until_document_ready = wait_until_document_ready
@@ -68,7 +76,9 @@ class MongoDBAtlasVectorDB(VectorDB):
         self.dimensions = self._get_embedding_size()
 
         try:
-            self.client = MongoClient(connection_string, driver=DriverInfo(name="autogen"))
+            self.client = MongoClient(
+                connection_string, driver=DriverInfo(name="autogen")
+            )
             self.client.admin.command("ping")
             logger.debug("Successfully created MongoClient")
         except errors.ServerSelectionTimeoutError as err:
@@ -97,7 +107,9 @@ class MongoDBAtlasVectorDB(VectorDB):
                 return True
         return False
 
-    def _wait_for_index(self, collection: "Collection", index_name: str, action: str = "create"):
+    def _wait_for_index(
+        self, collection: "Collection", index_name: str, action: str = "create"
+    ):
         """Waits for the index action to be completed. Otherwise throws a TimeoutError.
 
         Timeout set on instantiation.
@@ -106,7 +118,9 @@ class MongoDBAtlasVectorDB(VectorDB):
         assert action in ["create", "delete"], f"{action=} must be create or delete."
         start = monotonic()
         while monotonic() - start < self._wait_until_index_ready:
-            if (action == "create" and self._is_index_ready(collection, index_name)) or (
+            if (
+                action == "create" and self._is_index_ready(collection, index_name)
+            ) or (
                 action == "delete" and len(list(collection.list_search_indexes())) == 0
             ):
                 return
@@ -114,11 +128,15 @@ class MongoDBAtlasVectorDB(VectorDB):
 
         raise TimeoutError(f"Index {self.index_name} is not ready!")
 
-    def _wait_for_document(self, collection: "Collection", index_name: str, doc: Document):
+    def _wait_for_document(
+        self, collection: "Collection", index_name: str, doc: Document
+    ):
         start = monotonic()
         while monotonic() - start < self._wait_until_document_ready:
             query_result = _vector_search(
-                embedding_vector=np.array(self.embedding_function(doc["content"])).tolist(),
+                embedding_vector=np.array(
+                    self.embedding_function(doc["content"])
+                ).tolist(),
                 n_results=1,
                 collection=collection,
                 index_name=index_name,
@@ -171,7 +189,9 @@ class MongoDBAtlasVectorDB(VectorDB):
             # get_or_create is False and the collection already exists, raise an error.
             raise ValueError(f"Collection {collection_name} already exists.")
 
-    def create_index_if_not_exists(self, index_name: str = "vector_index", collection: "Collection" = None) -> None:
+    def create_index_if_not_exists(
+        self, index_name: str = "vector_index", collection: "Collection" = None
+    ) -> None:
         """Creates a vector search index on the specified collection in MongoDB.
 
         Args:
@@ -261,7 +281,7 @@ class MongoDBAtlasVectorDB(VectorDB):
             )
             raise e
 
-    def insert_docs(
+    def insert_documents(
         self,
         docs: list[Document],
         collection_name: str = None,
@@ -286,7 +306,7 @@ class MongoDBAtlasVectorDB(VectorDB):
 
         collection = self.get_collection(collection_name)
         if upsert:
-            self.update_docs(docs, collection.name, upsert=True)
+            self.update_documents(docs, collection.name, upsert=True)
         else:
             # Sanity checking the first document
             if docs[0].get("content") is None:
@@ -311,7 +331,11 @@ class MongoDBAtlasVectorDB(VectorDB):
                 id_size = 1 if isinstance(id, int) else len(id)
                 size += len(text) + len(metadata) + id_size
                 if (i + 1) % batch_size == 0 or size >= 47_000_000:
-                    result_ids.update(self._insert_batch(collection, text_batch, metadata_batch, id_batch))
+                    result_ids.update(
+                        self._insert_batch(
+                            collection, text_batch, metadata_batch, id_batch
+                        )
+                    )
                     input_ids.update(id_batch)
                     id_batch = []
                     text_batch = []
@@ -319,7 +343,9 @@ class MongoDBAtlasVectorDB(VectorDB):
                     size = 0
                 i += 1  # noqa: SIM113
             if text_batch:
-                result_ids.update(self._insert_batch(collection, text_batch, metadata_batch, id_batch))
+                result_ids.update(
+                    self._insert_batch(collection, text_batch, metadata_batch, id_batch)
+                )
                 input_ids.update(id_batch)
 
             if result_ids != input_ids:
@@ -332,7 +358,11 @@ class MongoDBAtlasVectorDB(VectorDB):
                 self._wait_for_document(collection, self.index_name, docs[-1])
 
     def _insert_batch(
-        self, collection: "Collection", texts: list[str], metadatas: list[Mapping[str, Any]], ids: list[ItemID]
+        self,
+        collection: "Collection",
+        texts: list[str],
+        metadatas: list[Mapping[str, Any]],
+        ids: list[ItemID],
     ) -> set[ItemID]:
         """Compute embeddings for and insert a batch of Documents into the Collection.
 
@@ -353,18 +383,22 @@ class MongoDBAtlasVectorDB(VectorDB):
             return []
         # Embed and create the documents
         embeddings = self.embedding_function(texts).tolist()
-        assert len(embeddings) == n_texts, (
-            f"The number of embeddings produced by self.embedding_function ({len(embeddings)} does not match the number of texts provided to it ({n_texts})."
-        )
+        assert (
+            len(embeddings) == n_texts
+        ), f"The number of embeddings produced by self.embedding_function ({len(embeddings)} does not match the number of texts provided to it ({n_texts})."
         to_insert = [
             {"_id": i, "content": t, "metadata": m, "embedding": e}
             for i, t, m, e in zip(ids, texts, metadatas, embeddings)
         ]
         # insert the documents in MongoDB Atlas
         insert_result = collection.insert_many(to_insert)  # type: ignore[union-attr]
-        return insert_result.inserted_ids  # TODO Remove this. Replace by log like update_docs
+        return (
+            insert_result.inserted_ids
+        )  # TODO Remove this. Replace by log like update_documents
 
-    def update_docs(self, docs: list[Document], collection_name: str = None, **kwargs: Any) -> None:
+    def update_documents(
+        self, docs: list[Document], collection_name: str = None, **kwargs: Any
+    ) -> None:
         """Update documents, including their embeddings, in the Collection.
 
         Optionally allow upsert as kwarg.
@@ -379,7 +413,9 @@ class MongoDBAtlasVectorDB(VectorDB):
         n_docs = len(docs)
         logger.info(f"Preparing to embed and update {n_docs=}")
         # Compute the embeddings
-        embeddings: list[list[float]] = self.embedding_function([doc["content"] for doc in docs]).tolist()
+        embeddings: list[list[float]] = self.embedding_function(
+            [doc["content"] for doc in docs]
+        ).tolist()
         # Prepare the updates
         all_updates = []
         for i in range(n_docs):
@@ -387,7 +423,13 @@ class MongoDBAtlasVectorDB(VectorDB):
             doc["embedding"] = embeddings[i]
             doc["_id"] = doc.pop("id")
 
-            all_updates.append(UpdateOne({"_id": doc["_id"]}, {"$set": doc}, upsert=kwargs.get("upsert", False)))
+            all_updates.append(
+                UpdateOne(
+                    {"_id": doc["_id"]},
+                    {"$set": doc},
+                    upsert=kwargs.get("upsert", False),
+                )
+            )
         # Perform update in bulk
         collection = self.get_collection(collection_name)
         result = collection.bulk_write(all_updates)
@@ -403,7 +445,9 @@ class MongoDBAtlasVectorDB(VectorDB):
             result.upserted_count,
         )
 
-    def delete_docs(self, ids: list[ItemID], collection_name: str = None, **kwargs):
+    def delete_documents(
+        self, ids: list[ItemID], collection_name: str = None, **kwargs
+    ):
         """Delete documents from the collection of the vector database.
 
         Args:
@@ -414,8 +458,12 @@ class MongoDBAtlasVectorDB(VectorDB):
         collection = self.get_collection(collection_name)
         return collection.delete_many({"_id": {"$in": ids}})
 
-    def get_docs_by_ids(
-        self, ids: list[ItemID] = None, collection_name: str = None, include: list[str] = None, **kwargs
+    def get_documents_by_ids(
+        self,
+        ids: list[ItemID] = None,
+        collection_name: str = None,
+        include: list[str] = None,
+        **kwargs,
     ) -> list[Document]:
         """Retrieve documents from the collection of the vector database based on the ids.
 
@@ -444,7 +492,7 @@ class MongoDBAtlasVectorDB(VectorDB):
             # Return with _id field from Collection into id for Document
             return with_id_rename(docs)
 
-    def retrieve_docs(
+    def retrieve_documents(
         self,
         queries: list[str],
         collection_name: str = None,
@@ -490,9 +538,18 @@ class MongoDBAtlasVectorDB(VectorDB):
                 oversampling_factor=kwargs.get("oversampling_factor", 10),
             )
             # Change each _id key to id. with_id_rename, but with (doc, score) tuples
-            results.append([
-                ({**{k: v for k, v in d[0].items() if k != "_id"}, "id": d[0]["_id"]}, d[1]) for d in query_result
-            ])
+            results.append(
+                [
+                    (
+                        {
+                            **{k: v for k, v in d[0].items() if k != "_id"},
+                            "id": d[0]["_id"],
+                        },
+                        d[1],
+                    )
+                    for d in query_result
+                ]
+            )
         return results
 
 
