@@ -37,11 +37,16 @@ AI Agents can:
 
 Supports:
 
-- ChromaDB
-- PGVector
-- Couchbase
-- Qdrant
-- MongoDB
+- ChromaDB - 95%
+- PGVector - 90%
+- Couchbase - 80%
+- Qdrant - 80%
+- MongoDB - 80%
+
+This repository is actively maintained - Contributions and bug reports are welcome!
+
+<details>
+  <summary><b>Usage:</b></summary>
 
 ## Using as an MCP Server:
 
@@ -87,11 +92,13 @@ The collection named "memory" has been successfully deleted.
 Let me know if you'd like to create a new collection or perform any other actions!
 ```
 
-
-This repository is actively maintained - Contributions are welcome!
+</details>
 
 <details>
-  <summary><b>Usage:</b></summary>
+  <summary><b>Example:</b></summary>
+
+### Use in CLI
+
 
 | Short Flag | Long Flag        | Description                   |
 |------------|------------------|-------------------------------|
@@ -100,13 +107,6 @@ This repository is actively maintained - Contributions are welcome!
 | -p         | --port           | Port of Vector Database       |
 | -d         | --path           | Path of local Vector Database |
 | -t         | --transport      | Transport Type (https/stdio)  |
-
-</details>
-
-<details>
-  <summary><b>Example:</b></summary>
-
-### Use in CLI
 
 ```bash
 vector-mcp
