@@ -1,1 +1,14 @@
 fastmcp>=2.11.3
+sentence_transformers>=5.1.0
+markdownify>=1.2.0
+beautifulsoup4>=4.13.5
+ebooklib>=0.19
+html2text>=2025.4.15
+ipython>=9.5.0
+pypdf>=6.0.0
+protobuf>=6.32.0
+llama-index>=0.13.3
+llama-index-llms-langchain>=0.7.0
+llama-index-embeddings-huggingface>=0.6.0
+chromadb>=1.0.20
+llama-index-vector-stores-chroma>=0.5.2
