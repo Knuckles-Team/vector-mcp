@@ -20,7 +20,7 @@
 ![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
 ![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
 
-*Version: 0.0.6*
+*Version: 0.0.7*
 
 This is an MCP Server implementation which allows for a standardized
 collection management system across vector database technologies.
@@ -141,8 +141,14 @@ Configure `mcp.json`
 ```json
 {
   "mcpServers": {
-    "repository_manager": {
-      "command": "vector-mcp",
+    "vector_mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--with",
+        "vector-mcp",
+        "vector-mcp"
+      ],
       "env": {
         "DATABASE_TYPE": "chromadb",                   // Optional
         "COLLECTION_NAME": "memory",                   // Optional

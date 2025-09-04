@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vector-mcp"
-version = "0.0.6"
+version = "0.0.7"
 description = "Integrate RAG into AI Agents via MCP Server. Supports multiple Vector database technologies."
 readme = "README.md"
 authors = [{ name = "Audel Rouhi", email = "knucklessg1@gmail.com" }]
@@ -15,7 +15,7 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3"
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "fastmcp>=2.11.3",
     "sentence_transformers>=5.1.0",
@@ -23,7 +23,7 @@ dependencies = [
     "beautifulsoup4>=4.13.5",
     "ebooklib>=0.19",
     "html2text>=2025.4.15",
-    "ipython>=9.5.0",
+    "ipython>=8.37.0",
     "pypdf>=6.0.0",
     "protobuf>=6.32.0",
     "llama-index>=0.13.3",
@@ -64,7 +64,7 @@ all = [
     "beautifulsoup4>=4.13.5",
     "ebooklib>=0.19",
     "html2text>=2025.4.15",
-    "ipython>=9.5.0",
+    "ipython>=8.37.0",
     "pypdf>=6.0.0",
     "protobuf>=6.32.0",
     "llama-index>=0.13.3",
