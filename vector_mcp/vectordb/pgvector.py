@@ -4,11 +4,16 @@ import os
 import re
 import urllib.parse
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
-from ....import_utils import optional_import_block, require_optional_import
-from .base import Document, ItemID, QueryResults, VectorDB
-from .utils import get_logger
+from pydantic import Field
+
+from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
+from vector_mcp.vectordb.utils import (
+    get_logger,
+    optional_import_block,
+    require_optional_import,
+)
 
 with optional_import_block():
     import numpy as np
@@ -21,7 +26,9 @@ PGVECTOR_MAX_BATCH_SIZE = os.environ.get("PGVECTOR_MAX_BATCH_SIZE", 40000)
 logger = get_logger(__name__)
 
 
-@require_optional_import(["psycopg", "sentence_transformers", "numpy"], "retrievechat-pgvector")
+@require_optional_import(
+    ["psycopg", "sentence_transformers", "numpy"], "retrievechat-pgvector"
+)
 class Collection:
     """A Collection object for PGVector.
 
@@ -64,7 +71,11 @@ class Collection:
             self.embedding_function = embedding_function
         else:
             self.embedding_function = SentenceTransformer("all-MiniLM-L6-v2").encode
-        self.metadata = metadata if metadata else {"hnsw:space": "ip", "hnsw:construction_ef": 32, "hnsw:M": 16}
+        self.metadata = (
+            metadata
+            if metadata
+            else {"hnsw:space": "ip", "hnsw:construction_ef": 32, "hnsw:M": 16}
+        )
         self.documents = ""
         self.get_or_create = get_or_create
         # This will get the model dimension size by computing the embeddings dimensions
@@ -100,7 +111,9 @@ class Collection:
         cursor = self.client.cursor()
         sql_values = []
         if embeddings is not None and metadatas is not None:
-            for doc_id, embedding, metadata, document in zip(ids, embeddings, metadatas, documents):
+            for doc_id, embedding, metadata, document in zip(
+                ids, embeddings, metadatas, documents
+            ):
                 metadata = re.sub("'", '"', str(metadata))
                 sql_values.append((doc_id, embedding, metadata, document))
             sql_string = f"INSERT INTO {self.name} (id, embedding, metadatas, documents)\nVALUES (%s, %s, %s, %s);\n"
@@ -144,9 +157,21 @@ class Collection:
         cursor = self.client.cursor()
         sql_values = []
         if embeddings is not None and metadatas is not None:
-            for doc_id, embedding, metadata, document in zip(ids, embeddings, metadatas, documents):
+            for doc_id, embedding, metadata, document in zip(
+                ids, embeddings, metadatas, documents
+            ):
                 metadata = re.sub("'", '"', str(metadata))
-                sql_values.append((doc_id, embedding, metadata, document, embedding, metadata, document))
+                sql_values.append(
+                    (
+                        doc_id,
+                        embedding,
+                        metadata,
+                        document,
+                        embedding,
+                        metadata,
+                        document,
+                    )
+                )
             sql_string = (
                 f"INSERT INTO {self.name} (id, embedding, metadatas, documents)\n"
                 f"VALUES (%s, %s, %s, %s)\n"
@@ -166,7 +191,17 @@ class Collection:
             for doc_id, metadata, document in zip(ids, metadatas, documents):
                 metadata = re.sub("'", '"', str(metadata))
                 embedding = self.embedding_function(document)
-                sql_values.append((doc_id, metadata, embedding, document, metadata, document, embedding))
+                sql_values.append(
+                    (
+                        doc_id,
+                        metadata,
+                        embedding,
+                        document,
+                        metadata,
+                        document,
+                        embedding,
+                    )
+                )
             sql_string = (
                 f"INSERT INTO {self.name} (id, metadatas, embedding, documents)\n"
                 f"VALUES (%s, %s, %s, %s)\n"
@@ -298,14 +333,22 @@ class Collection:
                     )
                 )
         except (psycopg.errors.UndefinedTable, psycopg.errors.UndefinedColumn) as e:
-            logger.info(f"Error executing select on non-existent table: {self.name}. Creating it instead. Error: {e}")
+            logger.info(
+                f"Error executing select on non-existent table: {self.name}. Creating it instead. Error: {e}"
+            )
             self.create_collection(collection_name=self.name, dimension=self.dimension)
             logger.info(f"Created table {self.name}")
 
         cursor.close()
         return retrieved_documents
 
-    def update(self, ids: list[str], embeddings: list[Any], metadatas: list[Any], documents: list[Document]) -> None:
+    def update(
+        self,
+        ids: list[str],
+        embeddings: list[Any],
+        metadatas: list[Any],
+        documents: list[Document],
+    ) -> None:
         """Update documents in the collection.
 
         Args:
@@ -319,8 +362,21 @@ class Collection:
         """
         cursor = self.client.cursor()
         sql_values = []
-        for doc_id, embedding, metadata, document in zip(ids, embeddings, metadatas, documents):
-            sql_values.append((doc_id, embedding, metadata, document, doc_id, embedding, metadata, document))
+        for doc_id, embedding, metadata, document in zip(
+            ids, embeddings, metadatas, documents
+        ):
+            sql_values.append(
+                (
+                    doc_id,
+                    embedding,
+                    metadata,
+                    document,
+                    doc_id,
+                    embedding,
+                    metadata,
+                    document,
+                )
+            )
         sql_string = (
             f"INSERT INTO {self.name} (id, embedding, metadata, document) "
             f"VALUES (%s, %s, %s, %s) "
@@ -409,7 +465,9 @@ class Collection:
         cursor = self.client.cursor()
         results = []
         for query_text in query_texts:
-            vector = self.embedding_function(query_text, convert_to_tensor=False).tolist()
+            vector = self.embedding_function(
+                query_text, convert_to_tensor=False
+            ).tolist()
             if distance_type.lower() == "cosine":
                 index_function = "<=>"
             elif distance_type.lower() == "euclidean":
@@ -427,18 +485,26 @@ class Collection:
             cursor.execute(query)
             result = []
             for row in cursor.fetchall():
-                fetched_document = Document(id=row[0].strip(), content=row[1], embedding=row[2], metadata=row[3])
-                fetched_document_array = self.convert_string_to_array(array_string=fetched_document.get("embedding"))
+                fetched_document = Document(
+                    id=row[0].strip(), content=row[1], embedding=row[2], metadata=row[3]
+                )
+                fetched_document_array = self.convert_string_to_array(
+                    array_string=fetched_document.get("embedding")
+                )
                 if distance_type.lower() == "cosine":
                     distance = self.cosine_distance(fetched_document_array, vector)
                 elif distance_type.lower() == "euclidean":
                     distance = self.euclidean_distance(fetched_document_array, vector)
                 elif distance_type.lower() == "inner-product":
-                    distance = self.inner_product_distance(fetched_document_array, vector)
+                    distance = self.inner_product_distance(
+                        fetched_document_array, vector
+                    )
                 else:
                     distance = self.euclidean_distance(fetched_document_array, vector)
                 if not include_embedding:
-                    fetched_document = Document(id=row[0].strip(), content=row[1], metadata=row[3])
+                    fetched_document = Document(
+                        id=row[0].strip(), content=row[1], metadata=row[3]
+                    )
                 result.append((fetched_document, distance))
             results.append(result)
         cursor.close()
@@ -475,7 +541,10 @@ class Collection:
         if collection_name:
             self.name = collection_name
         cursor = self.client.cursor()
-        cursor.execute("UPDATE collectionsSET metadata = '%s'WHERE collection_name = '%s';", (metadata, self.name))
+        cursor.execute(
+            "UPDATE collectionsSET metadata = '%s'WHERE collection_name = '%s';",
+            (metadata, self.name),
+        )
         cursor.close()
 
     def delete(self, ids: list[ItemID], collection_name: str | None = None) -> None:
@@ -510,7 +579,25 @@ class Collection:
         cursor.execute(f"DROP TABLE IF EXISTS {self.name}")
         cursor.close()
 
-    def create_collection(self, collection_name: str | None = None, dimension: str | int | None = None) -> None:
+    def list_collections(self):
+        """Retrieve a list of all table names in the PostgreSQL database's public schema.
+
+        Returns:
+            list[str]: A list of table names.
+        """
+        cursor = self.client.cursor()
+        cursor.execute(
+            """
+            SELECT table_name
+            FROM information_schema.tables
+            """
+        )
+        tables = [row[0] for row in cursor.fetchall()]
+        return tables
+
+    def create_collection(
+        self, collection_name: str | None = None, dimension: str | int | None = None
+    ) -> None:
         """Create a new collection.
 
         Args:
@@ -545,23 +632,43 @@ class Collection:
         cursor.close()
 
 
-@require_optional_import(["pgvector", "psycopg", "sentence_transformers"], "retrievechat-pgvector")
+@require_optional_import(
+    ["pgvector", "psycopg", "sentence_transformers"], "retrievechat-pgvector"
+)
 class PGVectorDB(VectorDB):
     """A vector database that uses PGVector as the backend."""
 
     def __init__(
         self,
         *,
-        conn: Optional["psycopg.Connection"] = None,
-        connection_string: str | None = None,
-        host: str | None = None,
-        port: int | str | None = None,
-        dbname: str | None = None,
-        username: str | None = None,
-        password: str | None = None,
-        connect_timeout: int | None = 10,
-        embedding_function: Callable = None,
-        metadata: dict[str, Any] | None = None,
+        conn: Optional["psycopg.Connection"] = Field(
+            description="Connection object to the PGVector instance", default=None
+        ),
+        connection_string: Optional[str] = Field(
+            description="Connection string of the PGVector instance", default=None
+        ),
+        host: Optional[Union[str, int]] = Field(
+            description="Host of PGVector Instance", default=None
+        ),
+        port: Optional[Union[str, int]] = Field(
+            description="Port of PGVector Instance", default=None
+        ),
+        dbname: Optional[str] = Field(description="Database name", default=None),
+        username: Optional[str] = Field(
+            description="Username for the PGVector instance", default=None
+        ),
+        password: Optional[str] = Field(
+            description="Password for the PGVector instance", default=None
+        ),
+        connect_timeout: Optional[int] = Field(
+            description="Connection timeout in seconds", default=10
+        ),
+        embedding_function: Optional[Callable] = Field(
+            description="Sentence embedding function to use", default=None
+        ),
+        metadata: Optional[dict[str, Any]] = Field(
+            description="Metadata of vector databases", default=None
+        ),
     ) -> None:
         """Initialize the vector database.
 
@@ -642,17 +749,25 @@ class PGVectorDB(VectorDB):
                 self.client = conn
             elif connection_string:
                 parsed_connection = urllib.parse.urlparse(connection_string)
-                encoded_username = urllib.parse.quote(parsed_connection.username, safe="")
-                encoded_password = urllib.parse.quote(parsed_connection.password, safe="")
+                encoded_username = urllib.parse.quote(
+                    parsed_connection.username, safe=""
+                )
+                encoded_password = urllib.parse.quote(
+                    parsed_connection.password, safe=""
+                )
                 encoded_password = f":{encoded_password}@"
                 encoded_host = urllib.parse.quote(parsed_connection.hostname, safe="")
                 encoded_port = f":{parsed_connection.port}"
-                encoded_database = urllib.parse.quote(parsed_connection.path[1:], safe="")
+                encoded_database = urllib.parse.quote(
+                    parsed_connection.path[1:], safe=""
+                )
                 connection_string_encoded = (
                     f"{parsed_connection.scheme}://{encoded_username}{encoded_password}"
                     f"{encoded_host}{encoded_port}/{encoded_database}"
                 )
-                self.client = psycopg.connect(conninfo=connection_string_encoded, autocommit=True)
+                self.client = psycopg.connect(
+                    conninfo=connection_string_encoded, autocommit=True
+                )
             elif host:
                 connection_string = ""
                 if host:
@@ -702,7 +817,10 @@ class PGVectorDB(VectorDB):
             Collection | The collection object.
         """
         try:
-            if self.active_collection and self.active_collection.name == collection_name:
+            if (
+                self.active_collection
+                and self.active_collection.name == collection_name
+            ):
                 collection = self.active_collection
             else:
                 collection = self.get_collection(collection_name)
@@ -765,7 +883,10 @@ class PGVectorDB(VectorDB):
                     f"No collection is specified. Using current active collection {self.active_collection.name}."
                 )
         else:
-            if not (self.active_collection and self.active_collection.name == collection_name):
+            if not (
+                self.active_collection
+                and self.active_collection.name == collection_name
+            ):
                 self.active_collection = Collection(
                     client=self.client,
                     collection_name=collection_name,
@@ -791,10 +912,20 @@ class PGVectorDB(VectorDB):
             self.active_collection = None
 
     def _batch_insert(
-        self, collection: Collection, embeddings=None, ids=None, metadatas=None, documents=None, upsert=False
+        self,
+        collection: Collection,
+        embeddings=None,
+        ids=None,
+        metadatas=None,
+        documents=None,
+        upsert=False,
     ) -> None:
         batch_size = int(PGVECTOR_MAX_BATCH_SIZE)
-        default_metadata = {"hnsw:space": "ip", "hnsw:construction_ef": 32, "hnsw:M": 16}
+        default_metadata = {
+            "hnsw:space": "ip",
+            "hnsw:construction_ef": 32,
+            "hnsw:M": 16,
+        }
         default_metadatas = [default_metadata] * min(batch_size, len(documents))
         for i in range(0, len(documents), min(batch_size, len(documents))):
             end_idx = i + min(batch_size, len(documents) - i)
@@ -809,7 +940,9 @@ class PGVectorDB(VectorDB):
             else:
                 collection.add(**collection_kwargs)
 
-    def insert_docs(self, docs: list[Document], collection_name: str = None, upsert: bool = False) -> None:
+    def insert_documents(
+        self, docs: list[Document], collection_name: str = None, upsert: bool = False
+    ) -> None:
         """Insert documents into the collection of the vector database.
 
         Args:
@@ -839,11 +972,17 @@ class PGVectorDB(VectorDB):
             embeddings = None
         else:
             embeddings = [doc.get("embedding") for doc in docs]
-        metadatas = None if docs[0].get("metadata") is None else [doc.get("metadata") for doc in docs]
+        metadatas = (
+            None
+            if docs[0].get("metadata") is None
+            else [doc.get("metadata") for doc in docs]
+        )
 
         self._batch_insert(collection, embeddings, ids, metadatas, documents, upsert)
 
-    def update_docs(self, docs: list[Document], collection_name: str = None) -> None:
+    def update_documents(
+        self, docs: list[Document], collection_name: str = None
+    ) -> None:
         """Update documents in the collection of the vector database.
 
         Args:
@@ -853,9 +992,9 @@ class PGVectorDB(VectorDB):
         Returns:
             None
         """
-        self.insert_docs(docs, collection_name, upsert=True)
+        self.insert_documents(docs, collection_name, upsert=True)
 
-    def delete_docs(self, ids: list[ItemID], collection_name: str = None) -> None:
+    def delete_documents(self, ids: list[ItemID], collection_name: str = None) -> None:
         """Delete documents from the collection of the vector database.
 
         Args:
@@ -869,7 +1008,7 @@ class PGVectorDB(VectorDB):
         collection = self.get_collection(collection_name)
         collection.delete(ids=ids, collection_name=collection_name)
 
-    def retrieve_docs(
+    def retrieve_documents(
         self,
         queries: list[str],
         collection_name: str = None,
@@ -901,8 +1040,12 @@ class PGVectorDB(VectorDB):
         logger.debug(f"Retrieve Docs Results:\n{results}")
         return results
 
-    def get_docs_by_ids(
-        self, ids: list[ItemID] = None, collection_name: str = None, include=None, **kwargs
+    def get_documents_by_ids(
+        self,
+        ids: list[ItemID] = None,
+        collection_name: str = None,
+        include=None,
+        **kwargs,
     ) -> list[Document]:
         """Retrieve documents from the collection of the vector database based on the ids.
 
