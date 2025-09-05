@@ -1,14 +1,10 @@
 #!/usr/bin/python
 # coding: utf-8
-import logging
-from typing import Any
-
-from termcolor import colored
-
-from .base import QueryResults
 import inspect
 import re
 import sys
+import logging
+from typing import Any
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager, suppress
@@ -17,59 +13,36 @@ from functools import wraps
 from logging import getLogger
 from pathlib import Path
 from typing import Generic, Optional, TypeVar
-
 from packaging import version
 from typing import (
     TYPE_CHECKING,
 )
-
 from typing_extensions import (
     ParamSpec,
 )
+from .base import QueryResults
 
 __all__ = [
     "optional_import_block",
     "require_optional_import",
 ]
 
+
 logger = getLogger(__name__)
 
 
-class ColoredLogger(logging.Logger):
-    def __init__(self, name, level=logging.NOTSET):
-        super().__init__(name, level)
-
-    def debug(self, msg, *args, color=None, **kwargs):
-        super().debug(colored(msg, color), *args, **kwargs)
-
-    def info(self, msg, *args, color=None, **kwargs):
-        super().info(colored(msg, color), *args, **kwargs)
-
-    def warning(self, msg, *args, color="yellow", **kwargs):
-        super().warning(colored(msg, color), *args, **kwargs)
-
-    def error(self, msg, *args, color="light_red", **kwargs):
-        super().error(colored(msg, color), *args, **kwargs)
-
-    def critical(self, msg, *args, color="red", **kwargs):
-        super().critical(colored(msg, color), *args, **kwargs)
-
-    def fatal(self, msg, *args, color="red", **kwargs):
-        super().fatal(colored(msg, color), *args, **kwargs)
-
-
-def get_logger(name: str, level: int = logging.INFO) -> ColoredLogger:
-    logger = ColoredLogger(name, level)
-    console_handler = logging.StreamHandler()
-    logger.addHandler(console_handler)
+def get_logger(name: str):
+    logger = getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    logger.handlers.clear()
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
-    logger.handlers[0].setFormatter(formatter)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
     return logger
-
-
-logger = get_logger(__name__)
 
 
 def filter_results_by_distance(

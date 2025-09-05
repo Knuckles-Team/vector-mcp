@@ -59,7 +59,7 @@ class ChromaDBRetriever(RAGRetriever):
         settings: Optional["Settings"] = None,
         tenant: str | None = None,
         database: str | None = None,
-        embedding_function: "EmbeddingFunction[Any] | None" = None,
+        embedding_function: "EmbeddingFunction[Any] | None" = None,  # type: ignore[type-arg]
         metadata: dict[str, Any] | None = None,
         collection_name: str | None = None,
     ) -> None:
@@ -114,7 +114,7 @@ class ChromaDBRetriever(RAGRetriever):
             collection_name if collection_name else DEFAULT_COLLECTION_NAME
         )
         self.vector_db: ChromaVectorDB | None = None
-        self.vector_search_engine: PGVectoRsStore | None = None  # type: ignore[no-any-unimported]
+        self.vector_store: ChromaVectorStore | None = None  # type: ignore[no-any-unimported]
         self.storage_context: StorageContext | None = None  # type: ignore[no-any-unimported]
         self.index: VectorStoreIndex | None = None  # type: ignore[no-any-unimported]
 

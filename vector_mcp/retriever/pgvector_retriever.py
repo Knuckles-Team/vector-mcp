@@ -14,7 +14,6 @@ from vector_mcp.vectordb.utils import optional_import_block, require_optional_im
 from vector_mcp.vectordb.base import VectorDBFactory
 
 from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
-from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.schema import Document as LlamaDocument
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
@@ -74,7 +73,7 @@ class PGVectorRetriever(RAGRetriever):
             description="Password for the PGVector instance", default=None
         ),
         database_name: str | None = None,
-        embedding_function: Union["BaseEmbedding", Callable[..., Any]] | None = None,  # type: ignore[type-arg]
+        embedding_function: "EmbeddingFunction[Any] | None" = None,  # type: ignore[type-arg]
         collection_name: str | None = None,
     ):
         """Initializes a PGVectorRetriever instance.
@@ -82,7 +81,7 @@ class PGVectorRetriever(RAGRetriever):
         Args:
             connection_string (str): Connection string used to connect to PostgreSQL with pgvector.
             database_name (Optional[str]): Name of the PostgreSQL database.
-            embedding_function (Optional[Union["BaseEmbedding", Callable[..., Any]]]): Custom embedding function. If None (default),
+            embedding_function ("EmbeddingFunction[Any] | None"): Custom embedding function. If None (default),
                 defaults to SentenceTransformer encoding.
             collection_name (Optional[str]): Name of the PostgreSQL table (collection). If None (default), `DEFAULT_COLLECTION_NAME` will be used.
 

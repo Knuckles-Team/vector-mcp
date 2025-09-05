@@ -59,7 +59,7 @@ class QdrantRetriever(RAGRetriever):
         collection_name: str = Field(
             description="Name of the Qdrant collection", default=DEFAULT_COLLECTION_NAME
         ),
-        embedding_function: callable | None = None,  # type: ignore[type-arg]
+        embedding_function: "EmbeddingFunction[Any] | None" = None,  # type: ignore[type-arg]
         content_payload_key: str = Field(
             description="Key for content payload in Qdrant", default="_content"
         ),
@@ -68,7 +68,7 @@ class QdrantRetriever(RAGRetriever):
         ),
         collection_options: dict = Field(
             description="Options for creating the Qdrant collection",
-            default_factory=dict,
+            default=None,
         ),
     ):
         """Initializes a QdrantRetriever instance.

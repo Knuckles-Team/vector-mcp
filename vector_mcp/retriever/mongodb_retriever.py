@@ -3,7 +3,7 @@
 
 import logging
 import os
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Union
 
@@ -53,7 +53,7 @@ class MongoDBRetriever(RAGRetriever):
         self,
         connection_string: str,
         database_name: str | None = None,
-        embedding_function: Union["BaseEmbedding", Callable[..., Any]] | None = None,  # type: ignore[type-arg]
+        embedding_function: "EmbeddingFunction[Any] | None" = None,  # type: ignore[type-arg]
         embedding_model: Union["BaseEmbedding", str] | None = None,
         collection_name: str | None = None,
     ):
@@ -62,7 +62,7 @@ class MongoDBRetriever(RAGRetriever):
         Args:
             connection_string (str): Connection string used to connect to MongoDB.
             database_name (Optional[str]): Name of the MongoDB database.
-            embedding_function (Optional[Union["BaseEmbedding", Callable[..., Any]]]): Custom embedding function. If None (default),
+            embedding_function (Optional[Union["BaseEmbedding", "EmbeddingFunction[Any] | None"]]): Custom embedding function. If None (default),
                 defaults to SentenceTransformer encoding.
             embedding_model (Optional[Union["BaseEmbedding", str]]): Embedding model identifier or instance. If None (default),
                 "local:all-MiniLM-L6-v2" will be used.

@@ -75,7 +75,7 @@ class CouchbaseRetriever(RAGRetriever):
         index_name: str = Field(
             description="Name of the Couchbase search index", default="vector_index"
         ),
-        embedding_function: Callable[..., Any] | None = None,  # type: ignore[type-arg]
+        embedding_function: "EmbeddingFunction[Any] | None" = None,  # type: ignore[type-arg]
     ):
         """Initializes a CouchbaseRetriever instance.
 
@@ -87,7 +87,7 @@ class CouchbaseRetriever(RAGRetriever):
             scope_name (str): Name of the Couchbase scope.
             collection_name (str): Name of the Couchbase collection (table).
             index_name (str): Name of the Couchbase search index.
-            embedding_function (Optional[Callable[..., Any]]): Custom embedding function. If None (default),
+            embedding_function (Optional["EmbeddingFunction[Any] | None"]): Custom embedding function. If None (default),
                 defaults to SentenceTransformer encoding.
 
         Raises:
