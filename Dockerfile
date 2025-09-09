@@ -7,6 +7,6 @@ ENV PORT=${PORT}
 ENV PATH="/usr/local/bin:${PATH}"
 
 RUN pip install uv \
-    && uv pip install --system vector-mcp
+    && uv pip install --system vector-mcp[all]
 
 ENTRYPOINT exec vector-mcp --transport "http" --host "${HOST}" --port "${PORT}"
