@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # coding: utf-8
-import getopt
+import argparse
 import os
 import sys
 import logging
@@ -534,46 +534,47 @@ async def delete_collection(
         raise RuntimeError(f"Failed to delete collection: {str(e)}")
 
 
-def pgvector_mcp(argv):
-    transport = "stdio"
-    host = "0.0.0.0"
-    port = 8000
-    try:
-        opts, args = getopt.getopt(
-            argv,
-            "ht:h:p:",
-            ["help", "transport=", "host=", "port="],
-        )
-    except getopt.GetoptError:
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            sys.exit()
-        elif opt in ("-t", "--transport"):
-            transport = arg
-        elif opt in ("-h", "--host"):
-            host = arg
-        elif opt in ("-p", "--port"):
-            try:
-                port = int(arg)
-                if not (0 <= port <= 65535):
-                    print(f"Error: Port {arg} is out of valid range (0-65535).")
-                    sys.exit(1)
-            except ValueError:
-                print(f"Error: Port {arg} is not a valid integer.")
-                sys.exit(1)
-    if transport == "stdio":
+def vector_mcp():
+    parser = argparse.ArgumentParser(
+        description="Create, manage, and retrieve from collections in a vector database"
+    )
+    parser.add_argument(
+        "-t",
+        "--transport",
+        default="stdio",
+        choices=["stdio", "http", "sse"],
+        help="Transport method: 'stdio', 'http', or 'sse' [legacy] (default: stdio)",
+    )
+    parser.add_argument(
+        "-s",
+        "--host",
+        default="0.0.0.0",
+        help="Host address for HTTP transport (default: 0.0.0.0)",
+    )
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=int,
+        default=8000,
+        help="Port number for HTTP transport (default: 8000)",
+    )
+
+    args = parser.parse_args()
+
+    if args.port < 0 or args.port > 65535:
+        print(f"Error: Port {args.port} is out of valid range (0-65535).")
+        sys.exit(1)
+
+    if args.transport == "stdio":
         mcp.run(transport="stdio")
-    elif transport == "http":
-        mcp.run(transport="http", host=host, port=port)
+    elif args.transport == "http":
+        mcp.run(transport="http", host=args.host, port=args.port)
+    elif args.transport == "sse":
+        mcp.run(transport="sse", host=args.host, port=args.port)
     else:
         logger.error("Transport not supported")
         sys.exit(1)
 
 
-def main():
-    pgvector_mcp(sys.argv[1:])
-
-
 if __name__ == "__main__":
-    pgvector_mcp(sys.argv[1:])
+    vector_mcp()
