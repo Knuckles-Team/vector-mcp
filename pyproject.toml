@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vector-mcp"
-version = "0.1.4"
+version = "0.1.5"
 description = "Integrate RAG into AI Agents via MCP Server. Supports multiple Vector database technologies."
 readme = "README.md"
 authors = [{ name = "Audel Rouhi", email = "knucklessg1@gmail.com" }]
@@ -85,7 +85,7 @@ all = [
 ]
 
 [project.scripts]
-vector-mcp = "vector_mcp.vector_mcp:main"
+vector-mcp = "vector_mcp.vector_mcp:vector_mcp"
 
 [tool.setuptools.packages.find]
 where = ["."]

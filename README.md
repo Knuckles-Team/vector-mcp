@@ -20,7 +20,7 @@
 ![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
 ![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
 
-*Version: 0.1.4*
+*Version: 0.1.5*
 
 This is an MCP Server implementation which allows for a standardized
 collection management system across vector database technologies.
