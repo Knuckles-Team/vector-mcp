@@ -9,6 +9,6 @@ ENV TRANSPORT=${TRANSPORT}
 ENV PATH="/usr/local/bin:${PATH}"
 
 RUN pip install uv \
-    && uv pip install --system vector-mcp[all]>=0.1.8
+    && uv pip install --system --upgrade vector-mcp[all]>=0.1.9
 
 ENTRYPOINT exec vector-mcp --transport "${TRANSPORT}" --host "${HOST}" --port "${PORT}"
