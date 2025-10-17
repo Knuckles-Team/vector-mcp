@@ -20,7 +20,7 @@
 ![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
 ![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
 
-*Version: 0.1.9*
+*Version: 0.1.10*
 
 This is an MCP Server implementation which allows for a standardized
 collection management system across vector database technologies.
@@ -50,7 +50,48 @@ Automated tests are planned
 <details>
   <summary><b>Usage:</b></summary>
 
-## Using as an MCP Server:
+
+### MCP CLI
+
+| Short Flag | Long Flag                          | Description                                                                 |
+|------------|------------------------------------|-----------------------------------------------------------------------------|
+| -h         | --help                             | Display help information                                                    |
+| -t         | --transport                        | Transport method: 'stdio', 'http', or 'sse' [legacy] (default: stdio)       |
+| -s         | --host                             | Host address for HTTP transport (default: 0.0.0.0)                          |
+| -p         | --port                             | Port number for HTTP transport (default: 8000)                              |
+|            | --auth-type                        | Authentication type: 'none', 'static', 'jwt', 'oauth-proxy', 'oidc-proxy', 'remote-oauth' (default: none) |
+|            | --token-jwks-uri                   | JWKS URI for JWT verification                                              |
+|            | --token-issuer                     | Issuer for JWT verification                                                |
+|            | --token-audience                   | Audience for JWT verification                                              |
+|            | --oauth-upstream-auth-endpoint     | Upstream authorization endpoint for OAuth Proxy                             |
+|            | --oauth-upstream-token-endpoint    | Upstream token endpoint for OAuth Proxy                                    |
+|            | --oauth-upstream-client-id         | Upstream client ID for OAuth Proxy                                         |
+|            | --oauth-upstream-client-secret     | Upstream client secret for OAuth Proxy                                     |
+|            | --oauth-base-url                   | Base URL for OAuth Proxy                                                   |
+|            | --oidc-config-url                  | OIDC configuration URL                                                     |
+|            | --oidc-client-id                   | OIDC client ID                                                             |
+|            | --oidc-client-secret               | OIDC client secret                                                         |
+|            | --oidc-base-url                    | Base URL for OIDC Proxy                                                    |
+|            | --remote-auth-servers              | Comma-separated list of authorization servers for Remote OAuth             |
+|            | --remote-base-url                  | Base URL for Remote OAuth                                                  |
+|            | --allowed-client-redirect-uris     | Comma-separated list of allowed client redirect URIs                       |
+|            | --eunomia-type                     | Eunomia authorization type: 'none', 'embedded', 'remote' (default: none)   |
+|            | --eunomia-policy-file              | Policy file for embedded Eunomia (default: mcp_policies.json)              |
+|            | --eunomia-remote-url               | URL for remote Eunomia server                                              |
+
+### Using as an MCP Server
+
+The MCP Server can be run in two modes: `stdio` (for local testing) or `http` (for networked access). To start the server, use the following commands:
+
+#### Run in stdio mode (default):
+```bash
+vector-mcp --transport "stdio"
+```
+
+#### Run in HTTP mode:
+```bash
+vector-mcp --transport "http"  --host "0.0.0.0"  --port "8000"
+```
 
 ### Creating Collection
 AI Prompt:
@@ -94,49 +135,95 @@ The collection named "memory" has been successfully deleted.
 Let me know if you'd like to create a new collection or perform any other actions!
 ```
 
-</details>
+### Deploy MCP Server as a Service
 
-<details>
-  <summary><b>Example:</b></summary>
+The MCP server can be deployed using Docker, with configurable authentication, middleware, and Eunomia authorization.
 
-### Use in CLI
+#### Using Docker Run
 
-
-| Short Flag | Long Flag        | Description                   |
-|------------|------------------|-------------------------------|
-| -h         | --help           | See Usage                     |
-| -h         | --host           | Host of Vector Database       |
-| -p         | --port           | Port of Vector Database       |
-| -d         | --path           | Path of local Vector Database |
-| -t         | --transport      | Transport Type (https/stdio)  |
-
-```bash
-vector-mcp
-```
-
-### Use with AI
-
-Deploy MCP Server as a Service
 ```bash
 docker pull knucklessg1/vector-mcp:latest
+
+docker run -d \
+  --name vector-mcp \
+  -p 8004:8004 \
+  -e HOST=0.0.0.0 \
+  -e PORT=8004 \
+  -e TRANSPORT=http \
+  -e AUTH_TYPE=none \
+  -e EUNOMIA_TYPE=none \
+  knucklessg1/vector-mcp:latest
 ```
 
-Modify the `compose.yml`
+For advanced authentication (e.g., JWT, OAuth Proxy, OIDC Proxy, Remote OAuth) or Eunomia, add the relevant environment variables:
 
-```compose
+```bash
+docker run -d \
+  --name vector-mcp \
+  -p 8004:8004 \
+  -e HOST=0.0.0.0 \
+  -e PORT=8004 \
+  -e TRANSPORT=http \
+  -e AUTH_TYPE=oidc-proxy \
+  -e OIDC_CONFIG_URL=https://provider.com/.well-known/openid-configuration \
+  -e OIDC_CLIENT_ID=your-client-id \
+  -e OIDC_CLIENT_SECRET=your-client-secret \
+  -e OIDC_BASE_URL=https://your-server.com \
+  -e ALLOWED_CLIENT_REDIRECT_URIS=http://localhost:*,https://*.example.com/* \
+  -e EUNOMIA_TYPE=embedded \
+  -e EUNOMIA_POLICY_FILE=/app/mcp_policies.json \
+  knucklessg1/vector-mcp:latest
+```
+
+#### Using Docker Compose
+
+Create a `docker-compose.yml` file:
+
+```yaml
 services:
-  vector-mcp-mcp:
+  vector-mcp:
     image: knucklessg1/vector-mcp:latest
-    volumes:
-      - development:/root/Development
     environment:
       - HOST=0.0.0.0
-      - PORT=8001
+      - PORT=8004
+      - TRANSPORT=http
+      - AUTH_TYPE=none
+      - EUNOMIA_TYPE=none
     ports:
-      - 8001:8001
+      - 8004:8004
 ```
 
-Configure `mcp.json`
+For advanced setups with authentication and Eunomia:
+
+```yaml
+services:
+  vector-mcp:
+    image: knucklessg1/vector-mcp:latest
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8004
+      - TRANSPORT=http
+      - AUTH_TYPE=oidc-proxy
+      - OIDC_CONFIG_URL=https://provider.com/.well-known/openid-configuration
+      - OIDC_CLIENT_ID=your-client-id
+      - OIDC_CLIENT_SECRET=your-client-secret
+      - OIDC_BASE_URL=https://your-server.com
+      - ALLOWED_CLIENT_REDIRECT_URIS=http://localhost:*,https://*.example.com/*
+      - EUNOMIA_TYPE=embedded
+      - EUNOMIA_POLICY_FILE=/app/mcp_policies.json
+    ports:
+      - 8004:8004
+    volumes:
+      - ./mcp_policies.json:/app/mcp_policies.json
+```
+
+Run the service:
+
+```bash
+docker-compose up -d
+```
+
+#### Configure `mcp.json` for AI Integration
 
 ```json
 {
@@ -183,6 +270,13 @@ All
 ```bash
 python -m pip install vector-mcp[all]
 ```
+
+or
+
+```bash
+uv pip install --upgrade vector-mcp[all]
+```
+
 
 
 </details>
