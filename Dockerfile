@@ -1,4 +1,4 @@
-FROM python:3-slim
+FROM python:3.13-slim
 
 ARG HOST=0.0.0.0
 ARG PORT=8000
@@ -48,7 +48,7 @@ ENV EUNOMIA_REMOTE_URL=${EUNOMIA_REMOTE_URL}
 ENV PATH="/usr/local/bin:${PATH}"
 
 RUN pip install uv \
-    && uv pip install --system --upgrade vector-mcp[all]>=0.1.11
+    && uv pip install --system --upgrade vector-mcp[all]>=0.1.12
 
 ENTRYPOINT exec vector-mcp \
     --transport "${TRANSPORT}" \
