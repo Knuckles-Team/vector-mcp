@@ -48,7 +48,7 @@ ENV EUNOMIA_REMOTE_URL=${EUNOMIA_REMOTE_URL}
 ENV PATH="/usr/local/bin:${PATH}"
 
 RUN pip install uv \
-    && uv pip install --system --upgrade vector-mcp[all]>=0.1.10
+    && uv pip install --system --upgrade vector-mcp[all]>=0.1.11
 
 ENTRYPOINT exec vector-mcp \
     --transport "${TRANSPORT}" \
