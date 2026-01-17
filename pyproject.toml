@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vector-mcp"
-version = "0.1.14"
+version = "0.1.15"
 description = "Integrate RAG into AI Agents via MCP Server. Supports multiple Vector database technologies."
 readme = "README.md"
 authors = [{ name = "Audel Rouhi", email = "knucklessg1@gmail.com" }]
@@ -31,6 +31,7 @@ dependencies = [
     "llama-index-embeddings-huggingface>=0.6.0",
     "chromadb>=1.0.20",
     "llama-index-vector-stores-chroma>=0.5.2",
+    "eunomia-mcp",
 ]
 
 [project.optional-dependencies]
@@ -57,6 +58,11 @@ mongodb = [
     "pymongo>4.12.1",
     "llama-index-vector-stores-mongodb>=0.8.0",
 ]
+
+a2a = [
+    "pydantic-ai-slim[fastmcp,openai,anthropic,google,huggingface,a2a]>=1.32.0",
+    "pydantic-ai-skills",
+]
 all = [
     "fastmcp>=2.13.0.2",
     "sentence_transformers>=5.1.0",
@@ -82,13 +88,16 @@ all = [
     "llama-index-vector-stores-couchbase>=0.5.0",
     "llama-index-vector-stores-chroma>=0.5.2",
     "llama-index-vector-stores-postgres>=0.6.4",
+    "pydantic-ai-slim[fastmcp,openai,anthropic,google,huggingface,a2a]>=1.32.0",
+    "pydantic-ai-skills",
 ]
 
 [project.scripts]
 vector-mcp = "vector_mcp.vector_mcp:vector_mcp"
+vector-a2a = "vector_mcp.vector_a2a:agent_server"
+
+[tool.setuptools.package-data]
+vector_mcp = ["mcp_config.json", "skills/**"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-
-[tool.setuptools]
-include-package-data = true

@@ -1,6 +1,7 @@
 # Vector Database MCP Server
 
 ![PyPI - Version](https://img.shields.io/pypi/v/vector-mcp)
+![MCP Server](https://badge.mcpx.dev?type=server 'MCP Server')
 ![PyPI - Downloads](https://img.shields.io/pypi/dd/vector-mcp)
 ![GitHub Repo stars](https://img.shields.io/github/stars/Knuckles-Team/vector-mcp)
 ![GitHub forks](https://img.shields.io/github/forks/Knuckles-Team/vector-mcp)
@@ -20,7 +21,7 @@
 ![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
 ![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
 
-*Version: 0.1.14*
+*Version: 0.1.15*
 
 This is an MCP Server implementation which allows for a standardized
 collection management system across vector database technologies.
@@ -50,6 +51,68 @@ Automated tests are planned
 <details>
   <summary><b>Usage:</b></summary>
 
+
+## A2A Agent
+
+### Architecture:
+
+```mermaid
+---
+config:
+  layout: dagre
+---
+flowchart TB
+ subgraph subGraph0["Agent Capabilities"]
+        C["Agent"]
+        B["A2A Server - Uvicorn/FastAPI"]
+        D["MCP Tools"]
+        F["Agent Skills"]
+  end
+    C --> D & F
+    A["User Query"] --> B
+    B --> C
+    D --> E["Platform API"]
+
+     C:::agent
+     B:::server
+     A:::server
+    classDef server fill:#f9f,stroke:#333
+    classDef agent fill:#bbf,stroke:#333,stroke-width:2px
+    style B stroke:#000000,fill:#FFD600
+    style D stroke:#000000,fill:#BBDEFB
+    style F fill:#BBDEFB
+    style A fill:#C8E6C9
+    style subGraph0 fill:#FFF9C4
+```
+
+### Component Interaction Diagram
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Server as A2A Server
+    participant Agent as Agent
+    participant Skill as Agent Skills
+    participant MCP as MCP Tools
+
+    User->>Server: Send Query
+    Server->>Agent: Invoke Agent
+    Agent->>Skill: Analyze Skills Available
+    Skill->>Agent: Provide Guidance on Next Steps
+    Agent->>MCP: Invoke Tool
+    MCP-->>Agent: Tool Response Returned
+    Agent-->>Agent: Return Results Summarized
+    Agent-->>Server: Final Response
+    Server-->>User: Output
+```
+
+## Usage
+
+### CLI
+
+| Short Flag | Long Flag        | Description                            |
+|------------|------------------|----------------------------------------|
+| -h         | --help           | See Usage                              |
 
 ### MCP CLI
 
