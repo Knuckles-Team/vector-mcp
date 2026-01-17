@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vector-mcp": {
+      "url": "${MCP_URL:-http://localhost:8000/mcp}",
+      "timeout": 300000
+    }
+  }
+}

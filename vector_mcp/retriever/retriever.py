@@ -3,7 +3,10 @@
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable, Optional
+from typing import TYPE_CHECKING, Any, Optional, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from llama_index.core.schema import Document as LlamaDocument
 
 __all__ = ["RAGRetriever"]
 

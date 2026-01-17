@@ -7,6 +7,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, Union
 
+if TYPE_CHECKING:
+    from chromadb.api.types import EmbeddingFunction
+
 from pydantic import Field
 from vector_mcp.retriever.retriever import RAGRetriever
 

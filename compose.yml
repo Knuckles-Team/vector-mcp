@@ -1,0 +1,51 @@
+---
+services:
+  vector-mcp:
+    image: docker.io/knucklessg1/vector-mcp:latest
+    # build: . # Debug
+    container_name: vector-mcp
+    hostname: vector-mcp
+    command: ["vector-mcp"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: always
+    environment:
+      - "HOST=0.0.0.0"
+      - "PORT=8003"
+      - "TRANSPORT=streamable-http"
+      - "DATABASE_TYPE=${DATABASE_TYPE:-chromadb}"
+      - "DATABASE_PATH=${DATABASE_PATH:-/data/chromadb}"
+    ports:
+      - "8003:8003"
+    volumes:
+      - ./mcp/vector_data:/data
+
+  vector-a2a:
+    image: docker.io/knucklessg1/vector-mcp:latest
+    # build: . # Debug
+    container_name: vector-a2a
+    hostname: vector-a2a
+    command: ["vector-a2a"]
+    depends_on:
+      - vector-mcp
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: always
+    environment:
+      - "HOST=0.0.0.0"
+      - "PORT=9003"
+      - "MCP_URL=http://vector-mcp:8003/mcp"
+      - "PROVIDER=openai"
+      - "OPENAI_BASE_URL=http://localhost:1234/v1"
+      - "OPENAI_API_KEY=llama"
+      - "MODEL_ID=qwen/qwen3-8b"
+      - "DEBUG=False"
+    ports:
+      - "9003:9003"
+

@@ -1,0 +1,271 @@
+#!/usr/bin/python
+# coding: utf-8
+import os
+import argparse
+import logging
+import uvicorn
+from typing import Optional, Any, List, Union
+from pathlib import Path
+import json
+import yaml
+
+from fastmcp import Client
+from pydantic_ai import Agent
+from pydantic_ai.mcp import load_mcp_servers
+from pydantic_ai.toolsets.fastmcp import FastMCPToolset
+from pydantic_ai_skills import SkillsToolset
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.models.google import GoogleModel
+from pydantic_ai.models.huggingface import HuggingFaceModel
+from fasta2a import Skill
+from vector_mcp.utils import get_mcp_config_path, get_skills_path, to_boolean, load_skills_from_directory, to_integer
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],
+)
+logging.getLogger("pydantic_ai").setLevel(logging.INFO)
+logging.getLogger("fastmcp").setLevel(logging.INFO)
+logging.getLogger("httpx").setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Default Configuration
+DEFAULT_HOST = os.getenv("HOST", "0.0.0.0")
+DEFAULT_PORT = to_integer(os.getenv("PORT", "9000"))
+DEFAULT_DEBUG = to_boolean(os.getenv("DEBUG", "False"))
+DEFAULT_PROVIDER = os.getenv("PROVIDER", "openai")
+DEFAULT_MODEL_ID = os.getenv("MODEL_ID", "qwen/qwen3-8b")
+DEFAULT_OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "http://127.0.0.1:1234/v1")
+DEFAULT_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "ollama")
+DEFAULT_MCP_URL = os.getenv("MCP_URL", None)
+DEFAULT_MCP_CONFIG = os.getenv("MCP_CONFIG", get_mcp_config_path())
+# Calculate default skills directory relative to this file
+DEFAULT_SKILLS_DIRECTORY = os.getenv(
+    "SKILLS_DIRECTORY", 
+    get_skills_path()
+)
+
+AGENT_NAME = "Vector Database Agent"
+AGENT_DESCRIPTION = (
+    "A specialist agent for managing vector databases and retrieving information via RAG."
+)
+
+def create_model(
+    provider: str = DEFAULT_PROVIDER,
+    model_id: str = DEFAULT_MODEL_ID,
+    base_url: Optional[str] = DEFAULT_OPENAI_BASE_URL,
+    api_key: Optional[str] = DEFAULT_OPENAI_API_KEY,
+):
+    if provider == "openai":
+        target_base_url = base_url or DEFAULT_OPENAI_BASE_URL
+        target_api_key = api_key or DEFAULT_OPENAI_API_KEY
+        if target_base_url:
+            os.environ["OPENAI_BASE_URL"] = target_base_url
+        if target_api_key:
+            os.environ["OPENAI_API_KEY"] = target_api_key
+        return OpenAIChatModel(model_id, provider="openai")
+
+    elif provider == "anthropic":
+        if api_key:
+            os.environ["ANTHROPIC_API_KEY"] = api_key
+        return AnthropicModel(model_id)
+
+    elif provider == "google":
+        if api_key:
+            os.environ["GEMINI_API_KEY"] = api_key
+            os.environ["GOOGLE_API_KEY"] = api_key
+        return GoogleModel(model_id)
+
+    elif provider == "huggingface":
+        if api_key:
+            os.environ["HF_TOKEN"] = api_key
+        return HuggingFaceModel(model_id)
+
+
+def create_agent(
+    provider: str = DEFAULT_PROVIDER,
+    model_id: str = DEFAULT_MODEL_ID,
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    mcp_url: str = DEFAULT_MCP_URL,
+    mcp_config: str = DEFAULT_MCP_CONFIG,
+    skills_directory: Optional[str] = DEFAULT_SKILLS_DIRECTORY,
+) -> Agent:
+    agent_toolsets = []
+
+    if mcp_config and os.path.exists(mcp_config):
+        mcp_toolset = load_mcp_servers(mcp_config)
+        agent_toolsets.extend(mcp_toolset)
+        logger.info(f"Connected to MCP Config JSON: {mcp_toolset}")
+    elif mcp_url:
+        fastmcp_toolset = FastMCPToolset(Client[Any](mcp_url, timeout=3600))
+        agent_toolsets.append(fastmcp_toolset)
+        logger.info(f"Connected to MCP Server: {mcp_url}")
+
+    if skills_directory and os.path.exists(skills_directory):
+        logger.debug(f"Loading skills {skills_directory}")
+        skills = SkillsToolset(directories=[str(skills_directory)])
+        agent_toolsets.append(skills)
+        logger.info(f"Loaded Skills at {skills_directory}")
+
+    # Create the Model
+    model = create_model(provider, model_id, base_url, api_key)
+
+    logger.info("Initializing Agent...")
+
+    return Agent(
+        model=model,
+        system_prompt=(
+            "You are a Knowledge Base Specialist Agent.\n"
+            "You manage a Vector Database and perform Retrieve-Augmented Generation (RAG) tasks.\n"
+            "Your responsibilities:\n"
+            "1. Manage Collections: Create, delete, and list collections ('collection_management').\n"
+            "2. Ingest Knowledge: Add documents to collections ('collection_management').\n"
+            "3. Retrieve Information: Query the vector database to find relevant information ('retrieve').\n"
+            "4. When answering questions, prioritize using the 'retrieve' tool to ground your answers in the stored knowledge.\n"
+            "5. If managing collections, always confirm the database type and parameters.\n"
+        ),
+        name=AGENT_NAME,
+        toolsets=agent_toolsets,
+        deps_type=Any,
+    )
+
+def create_a2a_server(
+    provider: str = DEFAULT_PROVIDER,
+    model_id: str = DEFAULT_MODEL_ID,
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    mcp_url: str = DEFAULT_MCP_URL,
+    mcp_config: str = DEFAULT_MCP_CONFIG,
+    skills_directory: Optional[str] = DEFAULT_SKILLS_DIRECTORY,
+    debug: Optional[bool] = DEFAULT_DEBUG,
+    host: Optional[str] = DEFAULT_HOST,
+    port: Optional[int] = DEFAULT_PORT,
+):
+    print(
+        f"Starting {AGENT_NAME} with provider={provider}, model={model_id}, mcp={mcp_url} | {mcp_config}"
+    )
+    agent = create_agent(
+        provider=provider,
+        model_id=model_id,
+        base_url=base_url,
+        api_key=api_key,
+        mcp_url=mcp_url,
+        mcp_config=mcp_config,
+        skills_directory=skills_directory,
+    )
+
+    # Define Skills for Agent Card
+    if skills_directory and os.path.exists(skills_directory):
+        skills = load_skills_from_directory(skills_directory)
+        logger.info(f"Loaded {len(skills)} skills from {skills_directory}")
+    else:
+        # Fallback if no skills directory
+        skills = [
+            Skill(
+                id="vector_agent",
+                name="Vector Database Agent",
+                description="General access to Vector Database tools",
+                tags=["vector", "rag"],
+                input_modes=["text"],
+                output_modes=["text"],
+            )
+        ]
+
+    # Create A2A App
+    app = agent.to_a2a(
+        name=AGENT_NAME,
+        description=AGENT_DESCRIPTION,
+        version="1.0.0",
+        skills=skills,
+        debug=debug,
+    )
+
+    logger.info(
+        "Starting A2A server with provider=%s, model=%s, mcp_url=%s, mcp_config=%s",
+        provider,
+        model_id,
+        mcp_url,
+        mcp_config,
+    )
+
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        log_level="debug" if debug else "info",
+    )
+
+def agent_server():
+    parser = argparse.ArgumentParser(description=f"Run the {AGENT_NAME} A2A Server")
+    parser.add_argument(
+        "--host", default=DEFAULT_HOST, help="Host to bind the server to"
+    )
+    parser.add_argument(
+        "--port", type=int, default=DEFAULT_PORT, help="Port to bind the server to"
+    )
+    parser.add_argument("--debug", type=bool, default=DEFAULT_DEBUG, help="Debug mode")
+    parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
+
+    parser.add_argument(
+        "--provider",
+        default=DEFAULT_PROVIDER,
+        choices=["openai", "anthropic", "google", "huggingface"],
+        help="LLM Provider",
+    )
+    parser.add_argument("--model-id", default=DEFAULT_MODEL_ID, help="LLM Model ID")
+    parser.add_argument(
+        "--base-url",
+        default=DEFAULT_OPENAI_BASE_URL,
+        help="LLM Base URL (for OpenAI compatible providers)",
+    )
+    parser.add_argument("--api-key", default=DEFAULT_OPENAI_API_KEY, help="LLM API Key")
+    parser.add_argument("--mcp-url", default=DEFAULT_MCP_URL, help="MCP Server URL")
+    parser.add_argument(
+        "--mcp-config", default=DEFAULT_MCP_CONFIG, help="MCP Server Config"
+    )
+    parser.add_argument(
+        "--skills-directory",
+        default=DEFAULT_SKILLS_DIRECTORY,
+        help="Directory containing agent skills",
+    )
+
+    args = parser.parse_args()
+
+    if args.debug:
+        # Force reconfiguration of logging
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            handlers=[logging.StreamHandler()],
+            force=True,
+        )
+        logging.getLogger("pydantic_ai").setLevel(logging.DEBUG)
+        logging.getLogger("fastmcp").setLevel(logging.DEBUG)
+        logging.getLogger("httpcore").setLevel(logging.DEBUG)
+        logging.getLogger("httpx").setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Debug mode enabled")
+
+    # Create the agent with CLI args
+    create_a2a_server(
+        provider=args.provider,
+        model_id=args.model_id,
+        base_url=args.base_url,
+        api_key=args.api_key,
+        mcp_url=args.mcp_url,
+        mcp_config=args.mcp_config,
+        skills_directory=args.skills_directory,
+        debug=args.debug,
+        host=args.host,
+        port=args.port,
+    )
+
+if __name__ == "__main__":
+    agent_server()

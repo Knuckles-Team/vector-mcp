@@ -1,4 +1,4 @@
-# Vector Database MCP Server
+# Vector Database - A2A & MCP Server
 
 ![PyPI - Version](https://img.shields.io/pypi/v/vector-mcp)
 ![MCP Server](https://badge.mcpx.dev?type=server 'MCP Server')
@@ -22,6 +22,8 @@
 ![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
 
 *Version: 0.1.15*
+
+## Overview
 
 This is an MCP Server implementation which allows for a standardized
 collection management system across vector database technologies.
@@ -48,9 +50,16 @@ This repository is actively maintained - Contributions and bug reports are welco
 
 Automated tests are planned
 
-<details>
-  <summary><b>Usage:</b></summary>
+## MCP
 
+### MCP Tools
+
+| Function Name       | Description                                                                                                                        | Tag(s)                  |
+|:--------------------|:-----------------------------------------------------------------------------------------------------------------------------------|:------------------------|
+| `create_collection` | Creates a new collection or retrieves an existing one in the vector database.                                                      | `collection_management` |
+| `retrieve`          | Retrieves and gathers related knowledge from the vector database instance using the question variable.                             | `retrieve`              |
+| `add_documents`     | Adds documents to an existing collection in the vector database. This can be used to extend collections with additional documents. | `collection_management` |
+| `delete_collection` | Deletes a collection from the vector database.                                                                                     | `collection_management` |
 
 ## A2A Agent
 
@@ -108,11 +117,6 @@ sequenceDiagram
 
 ## Usage
 
-### CLI
-
-| Short Flag | Long Flag        | Description                            |
-|------------|------------------|----------------------------------------|
-| -h         | --help           | See Usage                              |
 
 ### MCP CLI
 
@@ -197,6 +201,21 @@ AI Response:
 The collection named "memory" has been successfully deleted.
 Let me know if you'd like to create a new collection or perform any other actions!
 ```
+
+### A2A CLI
+
+| Short Flag | Long Flag         | Description                                                            |
+|------------|-------------------|------------------------------------------------------------------------|
+| -h         | --help            | Display help information                                               |
+|            | --host            | Host to bind the server to (default: 0.0.0.0)                          |
+|            | --port            | Port to bind the server to (default: 9000)                             |
+|            | --reload          | Enable auto-reload                                                     |
+|            | --provider        | LLM Provider: 'openai', 'anthropic', 'google', 'huggingface'           |
+|            | --model-id        | LLM Model ID (default: qwen3:4b)                                       |
+|            | --base-url        | LLM Base URL (for OpenAI compatible providers)                         |
+|            | --api-key         | LLM API Key                                                            |
+|            | --mcp-url         | MCP Server URL (default: http://localhost:8000/mcp)                    |
+
 
 ### Deploy MCP Server as a Service
 
@@ -311,12 +330,7 @@ docker-compose up -d
 
 ```
 
-</details>
-
-<details>
-  <summary><b>Installation Instructions:</b></summary>
-
-Install Python Package
+## Install Python Package
 
 ```bash
 python -m pip install vector-mcp
@@ -340,18 +354,12 @@ or
 uv pip install --upgrade vector-mcp[all]
 ```
 
-
-
-</details>
-
-<details>
-  <summary><b>Repository Owners:</b></summary>
+## Repository Owners
 
 
 <img width="100%" height="180em" src="https://github-readme-stats.vercel.app/api?username=Knucklessg1&show_icons=true&hide_border=true&&count_private=true&include_all_commits=true" />
 
 ![GitHub followers](https://img.shields.io/github/followers/Knucklessg1)
 ![GitHub User's stars](https://img.shields.io/github/stars/Knucklessg1)
-</details>
 
 Special shoutouts to Microsoft Autogen V1 ♥️

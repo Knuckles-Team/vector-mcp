@@ -7,6 +7,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Union
 
+if TYPE_CHECKING:
+    from chromadb.api.types import EmbeddingFunction
+
 from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.vectordb.base import VectorDBFactory
 from vector_mcp.vectordb.mongodb import MongoDBAtlasVectorDB
