@@ -52,6 +52,8 @@ config = {
 DEFAULT_TRANSPORT = os.environ.get("TRANSPORT", "stdio")
 DEFAULT_HOST = os.environ.get("HOST", "0.0.0.0")
 DEFAULT_PORT = to_integer(os.environ.get("PORT", "8000"))
+DEFAULT_DB_HOST = os.environ.get("DB_HOST", None)
+DEFAULT_DB_PORT = os.environ.get("DB_PORT", None)
 DEFAULT_DATABASE_TYPE = os.environ.get("DATABASE_TYPE", "chromadb").lower()
 DEFAULT_DATABASE_PATH = os.environ.get("DATABASE_PATH", os.path.expanduser("~"))
 DEFAULT_DBNAME = os.environ.get("DBNAME", "memory")
@@ -73,10 +75,10 @@ def initialize_retriever(
     ),
     host: Optional[str] = Field(
         description="Hostname or IP address of the database server",
-        default=DEFAULT_HOST,
+        default=DEFAULT_DB_HOST,
     ),
     port: Optional[str] = Field(
-        description="Port number of the database server", default=DEFAULT_PORT
+        description="Port number of the database server", default=DEFAULT_DB_PORT
     ),
     db_name: Optional[str] = Field(
         description="Name of the database or path (depending on DB type)",
@@ -187,10 +189,10 @@ def register_tools(mcp: FastMCP):
         ),
         host: Optional[str] = Field(
             description="Hostname or IP address of the database server",
-            default=DEFAULT_HOST,
+            default=DEFAULT_DB_HOST,
         ),
         port: Optional[str] = Field(
-            description="Port number of the database server", default=DEFAULT_PORT
+            description="Port number of the database server", default=DEFAULT_DB_PORT
         ),
         db_name: Optional[str] = Field(
             description="Name of the database or path (depending on DB type)",
@@ -298,10 +300,10 @@ def register_tools(mcp: FastMCP):
         ),
         host: Optional[str] = Field(
             description="Hostname or IP address of the database server",
-            default=DEFAULT_HOST,
+            default=DEFAULT_DB_HOST,
         ),
         port: Optional[str] = Field(
-            description="Port number of the database server", default=DEFAULT_PORT
+            description="Port number of the database server", default=DEFAULT_DB_PORT
         ),
         db_name: Optional[str] = Field(
             description="Name of the database or path (depending on DB type)",
@@ -396,10 +398,10 @@ def register_tools(mcp: FastMCP):
         ),
         host: Optional[str] = Field(
             description="Hostname or IP address of the database server",
-            default=DEFAULT_HOST,
+            default=DEFAULT_DB_HOST,
         ),
         port: Optional[str] = Field(
-            description="Port number of the database server", default=DEFAULT_PORT
+            description="Port number of the database server", default=DEFAULT_DB_PORT
         ),
         db_name: Optional[str] = Field(
             description="Name of the database or path (depending on DB type)",
@@ -497,10 +499,10 @@ def register_tools(mcp: FastMCP):
         ),
         host: Optional[str] = Field(
             description="Hostname or IP address of the database server",
-            default=DEFAULT_HOST,
+            default=DEFAULT_DB_HOST,
         ),
         port: Optional[str] = Field(
-            description="Port number of the database server", default=DEFAULT_PORT
+            description="Port number of the database server", default=DEFAULT_DB_PORT
         ),
         db_name: Optional[str] = Field(
             description="Name of the database or path (depending on DB type)",
@@ -556,6 +558,95 @@ def register_tools(mcp: FastMCP):
         except Exception as e:
             logger.error(f"Failed to delete collection: {str(e)}")
             raise RuntimeError(f"Failed to delete collection: {str(e)}")
+
+    @mcp.tool(
+        annotations={
+            "title": "List Collections",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
+        tags={"collection_management"},
+    )
+    async def list_collections(
+        db_type: str = Field(
+            description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
+            default=DEFAULT_DATABASE_TYPE,
+        ),
+        db_path: str = Field(
+            description="The path to store chromadb files",
+            default=DEFAULT_DATABASE_PATH,
+        ),
+        host: Optional[str] = Field(
+            description="Hostname or IP address of the database server",
+            default=DEFAULT_DB_HOST,
+        ),
+        port: Optional[str] = Field(
+            description="Port number of the database server", default=DEFAULT_DB_PORT
+        ),
+        db_name: Optional[str] = Field(
+            description="Name of the database or path (depending on DB type)",
+            default=DEFAULT_DBNAME,
+        ),
+        username: Optional[str] = Field(
+            description="Username for database authentication", default=DEFAULT_USERNAME
+        ),
+        password: Optional[str] = Field(
+            description="Password for database authentication", default=DEFAULT_PASSWORD
+        ),
+        ctx: Context = Field(
+            description="FastMCP context for progress reporting", default=None
+        ),
+    ) -> Dict:
+        """Lists all collections in the vector database."""
+
+        retriever = initialize_retriever(
+            db_type=db_type,
+            db_path=db_path,
+            host=host,
+            port=port,
+            db_name=db_name,
+            username=username,
+            password=password,
+            collection_name=None,
+        )
+        logger.debug(f"Listing collections for: {db_type}")
+
+        try:
+            if ctx:
+                await ctx.report_progress(progress=0, total=100)
+
+            collections = retriever.vector_db.get_collections()
+            collection_names = []
+            if isinstance(collections, list) or isinstance(collections, tuple):
+                for c in collections:
+                    if hasattr(c, "name"):
+                        collection_names.append(c.name)
+                    else:
+                        collection_names.append(str(c))
+            else:
+                collection_names = str(collections)
+
+            if ctx:
+                await ctx.report_progress(progress=100, total=100)
+            response = {
+                "collections": collection_names,
+                "message": "Collections listed successfully",
+                "data": {
+                    "Database Type": db_type,
+                    "Database": db_name,
+                    "Database Host": host,
+                },
+                "status": 200,
+            }
+            return response
+        except ValueError as e:
+            logger.error(f"Invalid input for list_collections: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Failed to list collections: {str(e)}")
+            raise RuntimeError(f"Failed to list collections: {str(e)}")
 
 
 def vector_mcp():

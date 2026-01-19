@@ -162,6 +162,15 @@ class ChromaVectorDB(VectorDB):
                 )
         return self.active_collection
 
+    def get_collections(self) -> Any:
+        """Get all the collections from the vector database.
+
+
+        Returns:
+            List[Any] | List of collection objects.
+        """
+        return self.client.list_collections()
+
     def delete_collection(self, collection_name: str) -> None:
         """Delete the collection from the vector database.
 

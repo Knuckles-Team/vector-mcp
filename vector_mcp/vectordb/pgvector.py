@@ -586,12 +586,10 @@ class Collection:
             list[str]: A list of table names.
         """
         cursor = self.client.cursor()
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT table_name
             FROM information_schema.tables
-            """
-        )
+            """)
         tables = [row[0] for row in cursor.fetchall()]
         return tables
 

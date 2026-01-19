@@ -1,4 +1,4 @@
-# Vector Database - A2A & MCP Server
+# Vector Database - A2A | AG-UI | MCP
 
 ![PyPI - Version](https://img.shields.io/pypi/v/vector-mcp)
 ![MCP Server](https://badge.mcpx.dev?type=server 'MCP Server')
@@ -60,6 +60,7 @@ Automated tests are planned
 | `retrieve`          | Retrieves and gathers related knowledge from the vector database instance using the question variable.                             | `retrieve`              |
 | `add_documents`     | Adds documents to an existing collection in the vector database. This can be used to extend collections with additional documents. | `collection_management` |
 | `delete_collection` | Deletes a collection from the vector database.                                                                                     | `collection_management` |
+| `list_collections`  | Lists all collections in the vector database.                                                                                      | `collection_management` |
 
 ## A2A Agent
 
@@ -203,6 +204,10 @@ Let me know if you'd like to create a new collection or perform any other action
 ```
 
 ### A2A CLI
+#### Endpoints
+- **Web UI**: `http://localhost:8000/` (if enabled)
+- **A2A**: `http://localhost:8000/a2a` (Discovery: `/a2a/.well-known/agent.json`)
+- **AG-UI**: `http://localhost:8000/ag-ui` (POST)
 
 | Short Flag | Long Flag         | Description                                                            |
 |------------|-------------------|------------------------------------------------------------------------|
@@ -215,6 +220,8 @@ Let me know if you'd like to create a new collection or perform any other action
 |            | --base-url        | LLM Base URL (for OpenAI compatible providers)                         |
 |            | --api-key         | LLM API Key                                                            |
 |            | --mcp-url         | MCP Server URL (default: http://localhost:8000/mcp)                    |
+|            | --web             | Enable Pydantic AI Web UI                                              | False (Env: ENABLE_WEB_UI) |
+
 
 
 ### Deploy MCP Server as a Service

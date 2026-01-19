@@ -14,7 +14,7 @@ CORE_MODULES = [
 
 # Optional modules
 OPTIONAL_MODULES = {
-    "vector_mcp.vector_a2a": "a2a",
+    "vector_mcp.vector_agent": "a2a",
     "vector_mcp.vector_mcp": "mcp",
 }
 
@@ -54,7 +54,7 @@ for module_name, extra_name in OPTIONAL_MODULES.items():
 _MCP_AVAILABLE = OPTIONAL_MODULES.get("vector_mcp.vector_mcp") in [
     m.__name__ for m in globals().values() if hasattr(m, "__name__")
 ]
-_A2A_AVAILABLE = "vector_mcp.vector_a2a" in globals()
+_A2A_AVAILABLE = "vector_mcp.vector_agent" in globals()
 
 __all__.extend(["_MCP_AVAILABLE", "_A2A_AVAILABLE"])
 

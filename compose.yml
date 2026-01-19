@@ -6,6 +6,8 @@ services:
     container_name: vector-mcp
     hostname: vector-mcp
     command: ["vector-mcp"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     logging:
       driver: json-file
       options:
@@ -23,12 +25,14 @@ services:
     volumes:
       - ./mcp/vector_data:/data
 
-  vector-a2a:
+  vector-agent:
     image: docker.io/knucklessg1/vector-mcp:latest
     # build: . # Debug
-    container_name: vector-a2a
-    hostname: vector-a2a
-    command: ["vector-a2a"]
+    container_name: vector-agent
+    hostname: vector-agent
+    command: ["vector-agent"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - vector-mcp
     logging:
@@ -46,6 +50,6 @@ services:
       - "OPENAI_API_KEY=llama"
       - "MODEL_ID=qwen/qwen3-8b"
       - "DEBUG=False"
+      - "ENABLE_WEB_UI=True"
     ports:
       - "9003:9003"
-

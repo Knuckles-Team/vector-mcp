@@ -60,7 +60,7 @@ mongodb = [
 ]
 
 a2a = [
-    "pydantic-ai-slim[fastmcp,openai,anthropic,google,huggingface,a2a]>=1.32.0",
+    "pydantic-ai-slim[fastmcp,openai,anthropic,google,huggingface,a2a,ag-ui,web]>=1.32.0",
     "pydantic-ai-skills",
 ]
 all = [
@@ -88,13 +88,13 @@ all = [
     "llama-index-vector-stores-couchbase>=0.5.0",
     "llama-index-vector-stores-chroma>=0.5.2",
     "llama-index-vector-stores-postgres>=0.6.4",
-    "pydantic-ai-slim[fastmcp,openai,anthropic,google,huggingface,a2a]>=1.32.0",
+    "pydantic-ai-slim[fastmcp,openai,anthropic,google,huggingface,a2a,ag-ui,web]>=1.32.0",
     "pydantic-ai-skills",
 ]
 
 [project.scripts]
 vector-mcp = "vector_mcp.vector_mcp:vector_mcp"
-vector-a2a = "vector_mcp.vector_a2a:agent_server"
+vector-agent = "vector_mcp.vector_agent:agent_server"
 
 [tool.setuptools.package-data]
 vector_mcp = ["mcp_config.json", "skills/**"]
