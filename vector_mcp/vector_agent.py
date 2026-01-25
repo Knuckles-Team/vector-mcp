@@ -13,10 +13,6 @@ from pydantic_ai import Agent, ModelSettings
 from pydantic_ai.mcp import load_mcp_servers
 from pydantic_ai.toolsets.fastmcp import FastMCPToolset
 from pydantic_ai_skills import SkillsToolset
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.models.anthropic import AnthropicModel
-from pydantic_ai.models.google import GoogleModel
-from pydantic_ai.models.huggingface import HuggingFaceModel
 from fasta2a import Skill
 from vector_mcp.utils import (
     get_mcp_config_path,
@@ -24,6 +20,7 @@ from vector_mcp.utils import (
     to_boolean,
     load_skills_from_directory,
     to_integer,
+    create_model,
 )
 
 from fastapi import FastAPI, Request
@@ -48,8 +45,10 @@ DEFAULT_HOST = os.getenv("HOST", "0.0.0.0")
 DEFAULT_PORT = to_integer(os.getenv("PORT", "9000"))
 DEFAULT_DEBUG = to_boolean(os.getenv("DEBUG", "False"))
 DEFAULT_PROVIDER = os.getenv("PROVIDER", "openai")
-DEFAULT_MODEL_ID = os.getenv("MODEL_ID", "qwen/qwen3-8b")
-DEFAULT_OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "http://127.0.0.1:1234/v1")
+DEFAULT_MODEL_ID = os.getenv("MODEL_ID", "qwen/qwen3-4b-2507")
+DEFAULT_OPENAI_BASE_URL = os.getenv(
+    "OPENAI_BASE_URL", "http://host.docker.internal:1234/v1"
+)
 DEFAULT_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "ollama")
 DEFAULT_MCP_URL = os.getenv("MCP_URL", None)
 DEFAULT_MCP_CONFIG = os.getenv("MCP_CONFIG", get_mcp_config_path())
@@ -66,42 +65,10 @@ AGENT_SYSTEM_PROMPT = (
     "Your responsibilities:\n"
     "1. Manage Collections: Create, delete, and list collections ('collection_management').\n"
     "2. Ingest Knowledge: Add documents to collections ('collection_management').\n"
-    "3. Retrieve Information: Query the vector database to find relevant information ('retrieve').\n"
-    "4. When answering questions, prioritize using the 'retrieve' tool to ground your answers in the stored knowledge.\n"
+    "3. Search Information: Query the vector database to find relevant information ('vector_search').\n"
+    "4. When answering questions, prioritize using the 'vector_search' tool to ground your answers in the stored knowledge.\n"
     "5. If managing collections, always confirm the database type and parameters.\n"
 )
-
-
-def create_model(
-    provider: str = DEFAULT_PROVIDER,
-    model_id: str = DEFAULT_MODEL_ID,
-    base_url: Optional[str] = DEFAULT_OPENAI_BASE_URL,
-    api_key: Optional[str] = DEFAULT_OPENAI_API_KEY,
-):
-    if provider == "openai":
-        target_base_url = base_url or DEFAULT_OPENAI_BASE_URL
-        target_api_key = api_key or DEFAULT_OPENAI_API_KEY
-        if target_base_url:
-            os.environ["OPENAI_BASE_URL"] = target_base_url
-        if target_api_key:
-            os.environ["OPENAI_API_KEY"] = target_api_key
-        return OpenAIChatModel(model_id, provider="openai")
-
-    elif provider == "anthropic":
-        if api_key:
-            os.environ["ANTHROPIC_API_KEY"] = api_key
-        return AnthropicModel(model_id)
-
-    elif provider == "google":
-        if api_key:
-            os.environ["GEMINI_API_KEY"] = api_key
-            os.environ["GOOGLE_API_KEY"] = api_key
-        return GoogleModel(model_id)
-
-    elif provider == "huggingface":
-        if api_key:
-            os.environ["HF_TOKEN"] = api_key
-        return HuggingFaceModel(model_id)
 
 
 def create_agent(
@@ -194,7 +161,7 @@ def create_agent_server(
     a2a_app = agent.to_a2a(
         name=AGENT_NAME,
         description=AGENT_DESCRIPTION,
-        version="1.0.0",
+        version="1.0.1",
         skills=skills,
         debug=debug,
     )
@@ -216,6 +183,10 @@ def create_agent_server(
         debug=debug,
         lifespan=lifespan,
     )
+
+    @app.get("/health")
+    async def health_check():
+        return {"status": "OK"}
 
     # Mount A2A as sub-app at /a2a
     app.mount("/a2a", a2a_app)

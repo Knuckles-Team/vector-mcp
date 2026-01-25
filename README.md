@@ -21,7 +21,7 @@
 ![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
 ![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
 
-*Version: 1.0.0*
+*Version: 1.0.1*
 
 ## Overview
 
@@ -41,10 +41,10 @@ AI Agents can:
 Supports:
 
 - ChromaDB
-- PGVector - 90% Tested
-- Couchbase - 80% Tested
-- Qdrant - 80% Tested
-- MongoDB - 80% Tested
+- PGVector
+- Couchbase
+- Qdrant
+- MongoDB
 
 This repository is actively maintained - Contributions and bug reports are welcome!
 
@@ -57,7 +57,7 @@ Automated tests are planned
 | Function Name       | Description                                                                                                                        | Tag(s)                  |
 |:--------------------|:-----------------------------------------------------------------------------------------------------------------------------------|:------------------------|
 | `create_collection` | Creates a new collection or retrieves an existing one in the vector database.                                                      | `collection_management` |
-| `retrieve`          | Retrieves and gathers related knowledge from the vector database instance using the question variable.                             | `retrieve`              |
+| `vector_search`           | Retrieves and gathers related knowledge from the vector database instance using the question variable.                             | `vector_search`              |
 | `add_documents`     | Adds documents to an existing collection in the vector database. This can be used to extend collections with additional documents. | `collection_management` |
 | `delete_collection` | Deletes a collection from the vector database.                                                                                     | `collection_management` |
 | `list_collections`  | Lists all collections in the vector database.                                                                                      | `collection_management` |
