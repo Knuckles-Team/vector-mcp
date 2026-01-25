@@ -139,7 +139,9 @@ class PGVectorRetriever(RAGRetriever):
         )
 
         self.embed_dim = len(
-            self.embedding_function(["The quick brown fox jumps over the lazy dog."])[0]
+            self.embedding_function.encode(
+                ["The quick brown fox jumps over the lazy dog."]
+            )[0]
         )
 
         # These will be initialized later.
@@ -199,11 +201,21 @@ class PGVectorRetriever(RAGRetriever):
                 )
                 return cur.fetchone()[0]
 
-    def connect_database(self, collection_name=None, *args: Any, **kwargs: Any) -> bool:
+    def connect_database(
+        self,
+        collection_name=None,
+        ensure_exists: bool = True,
+        *args: Any,
+        **kwargs: Any,
+    ) -> bool:
         """Connects to the PostgreSQL database and initializes the query index from the existing collection.
 
         This method verifies the existence of the collection, sets up the database connection,
         builds the vector store index, and pings the PostgreSQL server.
+
+        Args:
+            collection_name (Optional[str]): Name of the collection.
+            ensure_exists (bool): If True, checks if collection exists. Defaults to True.
 
         Returns:
             bool: True if connection is successful; False otherwise.
@@ -212,7 +224,7 @@ class PGVectorRetriever(RAGRetriever):
             self.collection_name = collection_name
         try:
             # Check if the target collection exists.
-            if not self._check_existing_collection():
+            if ensure_exists and not self._check_existing_collection():
                 raise ValueError(
                     f"Collection '{self.collection_name}' not found in database '{self.database_name}'. "
                     "Please run initialize_collection to create a new collection."

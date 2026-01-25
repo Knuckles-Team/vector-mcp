@@ -9,6 +9,8 @@ from typing import Optional, List, Dict, Union
 
 import requests
 from eunomia_mcp.middleware import EunomiaMcpMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 from pydantic import Field
 from fastmcp import FastMCP, Context
 from fastmcp.server.auth.oidc_proxy import OIDCProxy
@@ -61,43 +63,22 @@ DEFAULT_USERNAME = os.environ.get("USERNAME", None)
 DEFAULT_PASSWORD = os.environ.get("PASSWORD", None)
 DEFAULT_API_TOKEN = os.environ.get("API_TOKEN", None)
 DEFAULT_COLLECTION_NAME = os.environ.get("COLLECTION_NAME", "memory")
-DEFAULT_DOCUMENT_DIRECTORY = os.environ.get("DOCUMENT_DIRECTORY", None)
+DEFAULT_DOCUMENT_DIRECTORY = os.environ.get(
+    "DOCUMENT_DIRECTORY", os.path.normpath("/documents")
+)
 
 
 def initialize_retriever(
-    db_type: str = Field(
-        description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
-        default=DEFAULT_DATABASE_TYPE,
-    ),
-    db_path: str = Field(
-        description="The path to store chromadb files",
-        default=DEFAULT_DATABASE_PATH,
-    ),
-    host: Optional[str] = Field(
-        description="Hostname or IP address of the database server",
-        default=DEFAULT_DB_HOST,
-    ),
-    port: Optional[str] = Field(
-        description="Port number of the database server", default=DEFAULT_DB_PORT
-    ),
-    db_name: Optional[str] = Field(
-        description="Name of the database or path (depending on DB type)",
-        default=DEFAULT_DBNAME,
-    ),
-    username: Optional[str] = Field(
-        description="Username for database authentication", default=DEFAULT_USERNAME
-    ),
-    password: Optional[str] = Field(
-        description="Password for database authentication", default=DEFAULT_PASSWORD
-    ),
-    api_token: Optional[str] = Field(
-        description="API Token for database authentication",
-        default=DEFAULT_API_TOKEN,
-    ),
-    collection_name: str = Field(
-        description="The name of the collection to initialize the database with",
-        default=DEFAULT_COLLECTION_NAME,
-    ),
+    db_type: str = DEFAULT_DATABASE_TYPE,
+    db_path: str = DEFAULT_DATABASE_PATH,
+    host: Optional[str] = DEFAULT_DB_HOST,
+    port: Optional[str] = DEFAULT_DB_PORT,
+    db_name: Optional[str] = DEFAULT_DBNAME,
+    username: Optional[str] = DEFAULT_USERNAME,
+    password: Optional[str] = DEFAULT_PASSWORD,
+    api_token: Optional[str] = DEFAULT_API_TOKEN,
+    collection_name: str = DEFAULT_COLLECTION_NAME,
+    ensure_collection_exists: bool = True,
 ) -> RAGRetriever:
     try:
         db_type_lower = db_type.strip().lower()
@@ -160,7 +141,12 @@ def initialize_retriever(
             logger.error("Failed to identify vector database from supported databases")
             sys.exit(1)
         logger.info("Vector Database initialized successfully.")
-        retriever.connect_database(collection_name=collection_name)
+        if not retriever.connect_database(
+            collection_name=collection_name, ensure_exists=ensure_collection_exists
+        ):
+            raise RuntimeError(
+                f"Failed to connect to {db_type} database or initialize index."
+            )
         return retriever
     except Exception as e:
         logger.error(f"Failed to initialize Vector Database: {str(e)}")
@@ -168,6 +154,10 @@ def initialize_retriever(
 
 
 def register_tools(mcp: FastMCP):
+    @mcp.custom_route("/health", methods=["GET"])
+    async def health_check(request: Request) -> JSONResponse:
+        return JSONResponse({"status": "OK"})
+
     @mcp.tool(
         annotations={
             "title": "Create a Collection",
@@ -281,15 +271,15 @@ def register_tools(mcp: FastMCP):
 
     @mcp.tool(
         annotations={
-            "title": "Retrieve Texts from a Collection",
+            "title": "Vector Search Texts from a Collection",
             "readOnlyHint": True,
             "destructiveHint": False,
             "idempotentHint": True,
             "openWorldHint": False,
         },
-        tags={"retrieve"},
+        tags={"vector_search"},
     )
-    async def retrieve(
+    async def vector_search(
         db_type: str = Field(
             description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
             default=DEFAULT_DATABASE_TYPE,
@@ -316,7 +306,7 @@ def register_tools(mcp: FastMCP):
             description="Password for database authentication", default=DEFAULT_PASSWORD
         ),
         collection_name: str = Field(
-            description="Name of the collection to retrieve",
+            description="Name of the collection to search",
             default=DEFAULT_COLLECTION_NAME,
         ),
         question: str = Field(
@@ -324,7 +314,7 @@ def register_tools(mcp: FastMCP):
             default=None,
         ),
         number_results: int = Field(
-            description="The total number of retrieved document texts to provide",
+            description="The total number of searched document texts to provide",
             default=1,
         ),
         ctx: Context = Field(
@@ -357,8 +347,8 @@ def register_tools(mcp: FastMCP):
             if ctx:
                 await ctx.report_progress(progress=100, total=100)
             response = {
-                "retrieved_texts": texts,
-                "message": "Collection retrieved from successfully",
+                "searched_texts": texts,
+                "message": "Collection searched from successfully",
                 "data": {
                     "Database Type": db_type,
                     "Collection Name": collection_name,
@@ -459,7 +449,7 @@ def register_tools(mcp: FastMCP):
 
             response = {
                 "added_texts": texts,
-                "message": "Collection retrieved from successfully",
+                "message": "Collection created successfully",
                 "data": {
                     "Database Type": db_type,
                     "Collection Name": collection_name,
@@ -572,7 +562,6 @@ def register_tools(mcp: FastMCP):
     async def list_collections(
         db_type: str = Field(
             description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
-            default=DEFAULT_DATABASE_TYPE,
         ),
         db_path: str = Field(
             description="The path to store chromadb files",
@@ -601,19 +590,22 @@ def register_tools(mcp: FastMCP):
     ) -> Dict:
         """Lists all collections in the vector database."""
 
-        retriever = initialize_retriever(
-            db_type=db_type,
-            db_path=db_path,
-            host=host,
-            port=port,
-            db_name=db_name,
-            username=username,
-            password=password,
-            collection_name=None,
-        )
-        logger.debug(f"Listing collections for: {db_type}")
+        if db_type == "chromadb" and os.environ.get("DATABASE_TYPE"):
+            db_type = os.environ.get("DATABASE_TYPE")
 
         try:
+            retriever = initialize_retriever(
+                db_type=db_type,
+                db_path=db_path,
+                host=host,
+                port=port,
+                db_name=db_name,
+                username=username,
+                password=password,
+                ensure_collection_exists=False,
+            )
+            logger.debug(f"Listing collections for: {db_type}")
+
             if ctx:
                 await ctx.report_progress(progress=0, total=100)
 
@@ -646,6 +638,9 @@ def register_tools(mcp: FastMCP):
             raise
         except Exception as e:
             logger.error(f"Failed to list collections: {str(e)}")
+            import traceback
+
+            logger.error(traceback.format_exc())
             raise RuntimeError(f"Failed to list collections: {str(e)}")
 
 

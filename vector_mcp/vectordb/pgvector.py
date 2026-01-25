@@ -6,7 +6,6 @@ import urllib.parse
 from collections.abc import Callable
 from typing import Any, Optional, Union
 
-from pydantic import Field
 
 from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
 from vector_mcp.vectordb.utils import (
@@ -639,34 +638,16 @@ class PGVectorDB(VectorDB):
     def __init__(
         self,
         *,
-        conn: Optional["psycopg.Connection"] = Field(
-            description="Connection object to the PGVector instance", default=None
-        ),
-        connection_string: Optional[str] = Field(
-            description="Connection string of the PGVector instance", default=None
-        ),
-        host: Optional[Union[str, int]] = Field(
-            description="Host of PGVector Instance", default=None
-        ),
-        port: Optional[Union[str, int]] = Field(
-            description="Port of PGVector Instance", default=None
-        ),
-        dbname: Optional[str] = Field(description="Database name", default=None),
-        username: Optional[str] = Field(
-            description="Username for the PGVector instance", default=None
-        ),
-        password: Optional[str] = Field(
-            description="Password for the PGVector instance", default=None
-        ),
-        connect_timeout: Optional[int] = Field(
-            description="Connection timeout in seconds", default=10
-        ),
-        embedding_function: Optional[Callable] = Field(
-            description="Sentence embedding function to use", default=None
-        ),
-        metadata: Optional[dict[str, Any]] = Field(
-            description="Metadata of vector databases", default=None
-        ),
+        conn: Optional["psycopg.Connection"] = None,
+        connection_string: Optional[str] = None,
+        host: Optional[Union[str, int]] = None,
+        port: Optional[Union[str, int]] = None,
+        dbname: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        connect_timeout: Optional[int] = 10,
+        embedding_function: Optional[Callable] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> None:
         """Initialize the vector database.
 
@@ -891,6 +872,22 @@ class PGVectorDB(VectorDB):
                     embedding_function=self.embedding_function,
                 )
         return self.active_collection
+
+    def get_collections(self) -> list[str]:
+        """Get all the collections from the vector database.
+
+        Returns:
+            list[str]: A list of collection names.
+        """
+        cursor = self.client.cursor()
+        cursor.execute("""
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            """)
+        tables = [row[0] for row in cursor.fetchall()]
+        cursor.close()
+        return tables
 
     def delete_collection(self, collection_name: str) -> None:
         """Delete the collection from the vector database.
