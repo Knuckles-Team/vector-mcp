@@ -513,6 +513,15 @@ def register_tools(mcp: FastMCP):
     ) -> Dict:
         """Deletes a collection from the vector database."""
 
+        if ctx:
+            message = f"Are you sure you want to DELETE collection {collection_name} from {db_type}?"
+            result = await ctx.elicit(message, response_type=bool)
+            if result.action != "accept" or not result.data:
+                return {
+                    "status": "cancelled",
+                    "message": "Operation cancelled by user.",
+                }
+
         retriever = initialize_retriever(
             db_type=db_type,
             db_path=db_path,
