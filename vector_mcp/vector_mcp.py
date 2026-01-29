@@ -30,6 +30,8 @@ from vector_mcp.retriever.chromadb_retriever import ChromaDBRetriever
 from vector_mcp.utils import to_integer, to_boolean
 from vector_mcp.middlewares import UserTokenMiddleware, JWTClaimsLoggingMiddleware
 
+__version__ = "1.0.5"
+
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
@@ -654,6 +656,7 @@ def register_tools(mcp: FastMCP):
 
 
 def vector_mcp():
+    print(f"vector_mcp v{__version__}")
     parser = argparse.ArgumentParser(description="Vector MCP")
     parser.add_argument(
         "-t",
