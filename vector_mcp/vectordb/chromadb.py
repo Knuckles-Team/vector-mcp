@@ -1,280 +1,133 @@
 #!/usr/bin/python
 # coding: utf-8
 import os
-from collections.abc import Callable
-from typing import Any, Union, Optional
-
+from typing import Any, Optional
 
 from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
 from vector_mcp.vectordb.utils import (
-    chroma_results_to_query_results,
-    filter_results_by_distance,
     get_logger,
     optional_import_block,
     require_optional_import,
 )
 
-with optional_import_block() as result:
-    import chromadb
-    import chromadb.errors
-    import chromadb.utils.embedding_functions as ef
-    from chromadb.api.models.Collection import Collection
+from vector_mcp.utils import get_embedding_model
 
-CHROMADB_MAX_BATCH_SIZE = os.environ.get("CHROMADB_MAX_BATCH_SIZE", 40000)
+from llama_index.core import (
+    VectorStoreIndex,
+    StorageContext,
+    Document as LIDocument,
+)
+
+with optional_import_block():
+    import chromadb
+    from llama_index.vector_stores.chroma import ChromaVectorStore
+
 logger = get_logger(__name__)
 
 
-@require_optional_import("chromadb", "retrievechat")
+@require_optional_import(["chromadb", "llama_index"], "retrievechat")
 class ChromaVectorDB(VectorDB):
-    """A vector database that uses ChromaDB as the backend."""
+    """A vector database that uses ChromaDB as the backend via LlamaIndex."""
 
     def __init__(
         self,
         *,
-        client: Optional[str] = None,
-        host: Optional[Union[str, int]] = None,
-        port: Optional[Union[str, int]] = None,
+        client: Optional[Any] = None,
         path: Optional[str] = None,
-        embedding_function: Optional[Callable] = None,
+        embed_model: Any | None = None,
+        collection_name: str = "memory",
         metadata: Optional[dict] = None,
         **kwargs,
-        # client: Optional[str]=Field(description="ChromaDB Client", default=None),
-        # host: Optional[Union[str, int]]=Field(description="Host of ChromaDB Instance", default=None),
-        # port: Optional[Union[str, int]]=Field(description="Port of ChromaDB Instance", default=None),
-        # path: Optional[str]=Field(description="Path of local database storage location", default=None),
-        # embedding_function: Optional[Callable] = Field(description="Sentence embedding function to use", default=None),
-        # metadata: Optional[dict] = Field(description="Metadata of vector databases", default=None),
     ) -> None:
         """Initialize the vector database.
 
         Args:
-            client: chromadb.Client | The client object of the vector database. Default is None.
-                If provided, it will use the client object directly and ignore other arguments.
-            path: str | The path to the vector database. Default is `tmp/db`. The default was `None` for version `<=0.2.24`.
-            embedding_function: Callable | The embedding function used to generate the vector representation
-                of the documents. Default is None, SentenceTransformerEmbeddingFunction("all-MiniLM-L6-v2") will be used.
-            metadata: dict | The metadata of the vector database. Default is None. If None, it will use this
-                setting: `{"hnsw:space": "ip", "hnsw:construction_ef": 30, "hnsw:M": 32}`. For more details of
-                the metadata, please refer to [distances](https://github.com/nmslib/hnswlib#supported-distances),
-                [hnsw](https://github.com/chroma-core/chroma/blob/566bc80f6c8ee29f7d99b6322654f32183c368c4/chromadb/segment/impl/vector/local_hnsw.py#L184),
-                and [ALGO_PARAMS](https://github.com/nmslib/hnswlib/blob/master/ALGO_PARAMS.md).
-            kwargs: dict | Additional keyword arguments.
-
-        Returns:
-            None
+           client: chromadb.Client | Existing client
+           path: str | Path for persistent client
+           collection_name: str | Collection name
         """
-        self.client = client
-        if path:
-            self.path = path
-        else:
-            self.path = os.path.expanduser("~/Documents/ChromaDB")
-        self.embedding_function = (
-            ef.SentenceTransformerEmbeddingFunction("all-MiniLM-L6-v2")
-            if embedding_function is None
-            else embedding_function
-        )
-        self.metadata = (
-            metadata
-            if metadata
-            else {"hnsw:space": "ip", "hnsw:construction_ef": 30, "hnsw:M": 32}
-        )
-        if not self.client:
-            if self.path is not None:
-                self.client = chromadb.PersistentClient(path=self.path, **kwargs)
-            else:
-                self.client = chromadb.Client(**kwargs)
+        self.embed_model = embed_model or get_embedding_model()
         self.active_collection = None
+        self.type = ""
+        self.collection_name = collection_name
+        self.metadata = metadata or {}
+
+        if client:
+            self.client = client
+        else:
+            if path:
+                self.path = path
+                self.client = chromadb.PersistentClient(path=self.path)
+            else:
+                self.path = os.path.expanduser("~/Documents/ChromaDB")
+                self.client = chromadb.PersistentClient(path=self.path)
+
+        self.chroma_collection = self.client.get_or_create_collection(
+            self.collection_name
+        )
+        self.vector_store = ChromaVectorStore(chroma_collection=self.chroma_collection)
+        self.storage_context = StorageContext.from_defaults(
+            vector_store=self.vector_store
+        )
+        self.active_collection = collection_name
         self.type = "chroma"
+        self._index = None
+
+    def _get_index(self) -> VectorStoreIndex:
+        if self._index is None:
+            self._index = VectorStoreIndex.from_vector_store(
+                self.vector_store,
+                storage_context=self.storage_context,
+                embed_model=self.embed_model,
+            )
+        return self._index
 
     def create_collection(
         self, collection_name: str, overwrite: bool = False, get_or_create: bool = True
-    ) -> "Collection":
-        """Create a collection in the vector database.
-        Case 1. if the collection does not exist, create the collection.
-        Case 2. the collection exists, if overwrite is True, it will overwrite the collection.
-        Case 3. the collection exists and overwrite is False, if get_or_create is True, it will get the collection,
-            otherwise it raise a ValueError.
+    ) -> Any:
+        self.collection_name = collection_name
+        if overwrite:
+            try:
+                self.client.delete_collection(collection_name)
+            except Exception:
+                pass
 
-        Args:
-            collection_name: str | The name of the collection.
-            overwrite: bool | Whether to overwrite the collection if it exists. Default is False.
-            get_or_create: bool | Whether to get the collection if it exists. Default is True.
+        self.chroma_collection = self.client.get_or_create_collection(collection_name)
+        self.vector_store = ChromaVectorStore(chroma_collection=self.chroma_collection)
+        self.storage_context = StorageContext.from_defaults(
+            vector_store=self.vector_store
+        )
+        self.active_collection = collection_name
+        self._index = None
+        return self.chroma_collection
 
-        Returns:
-            Collection | The collection object.
-        """
-        try:
-            if (
-                self.active_collection
-                and self.active_collection.name == collection_name
-            ):
-                collection = self.active_collection
-            else:
-                collection = self.client.get_collection(
-                    collection_name, embedding_function=self.embedding_function
-                )
-        except (ValueError, chromadb.errors.ChromaError):
-            collection = None
-        if collection is None:
-            return self.client.create_collection(
-                collection_name,
-                embedding_function=self.embedding_function,
-                get_or_create=get_or_create,
-                metadata=self.metadata,
-            )
-        elif overwrite:
-            self.client.delete_collection(collection_name)
-            return self.client.create_collection(
-                collection_name,
-                embedding_function=self.embedding_function,
-                get_or_create=get_or_create,
-                metadata=self.metadata,
-            )
-        elif get_or_create:
-            return collection
-        else:
-            raise ValueError(f"Collection {collection_name} already exists.")
-
-    def get_collection(self, collection_name: str = None) -> "Collection":
-        """Get the collection from the vector database.
-
-        Args:
-            collection_name: str | The name of the collection. Default is None. If None, return the
-                current active collection.
-
-        Returns:
-            Collection | The collection object.
-        """
-        if collection_name is None:
-            if self.active_collection is None:
-                raise ValueError("No collection is specified.")
-            else:
-                logger.info(
-                    f"No collection is specified. Using current active collection {self.active_collection.name}."
-                )
-        else:
-            if not (
-                self.active_collection
-                and self.active_collection.name == collection_name
-            ):
-                self.active_collection = self.client.get_collection(
-                    name=collection_name, embedding_function=self.embedding_function
-                )
-        return self.active_collection
-
-    def get_collections(self) -> Any:
-        """Get all the collections from the vector database.
-
-
-        Returns:
-            List[Any] | List of collection objects.
-        """
-        return self.client.list_collections()
-
-    def delete_collection(self, collection_name: str) -> None:
-        """Delete the collection from the vector database.
-
-        Args:
-            collection_name: str | The name of the collection.
-
-        Returns:
-            None
-        """
-        self.client.delete_collection(collection_name)
-        if self.active_collection and self.active_collection.name == collection_name:
-            self.active_collection = None
-
-    def _batch_insert(
-        self,
-        collection: "Collection",
-        embeddings=None,
-        ids=None,
-        metadatas=None,
-        documents=None,
-        upsert=False,
-    ) -> None:
-        batch_size = int(CHROMADB_MAX_BATCH_SIZE)
-        for i in range(0, len(documents), min(batch_size, len(documents))):
-            end_idx = i + min(batch_size, len(documents) - i)
-            collection_kwargs = {
-                "documents": documents[i:end_idx],
-                "ids": ids[i:end_idx],
-                "metadatas": metadatas[i:end_idx] if metadatas else None,
-                "embeddings": embeddings[i:end_idx] if embeddings else None,
-            }
-            if upsert:
-                collection.upsert(**collection_kwargs)
-            else:
-                collection.add(**collection_kwargs)
+    def get_collection(self, collection_name: str = None) -> Any:
+        name = collection_name or self.collection_name
+        return self.client.get_collection(name)
 
     def insert_documents(
-        self, docs: list[Document], collection_name: str = None, upsert: bool = False
+        self,
+        docs: list[Document],
+        collection_name: str = None,
+        upsert: bool = False,
+        **kwargs,
     ) -> None:
-        """Insert documents into the collection of the vector database.
+        if collection_name:
+            self.create_collection(collection_name)
 
-        Args:
-            docs: List[Document] | A list of documents. Each document is a TypedDict `Document`.
-            collection_name: str | The name of the collection. Default is None.
-            upsert: bool | Whether to update the document if it exists. Default is False.
-            kwargs: Dict | Additional keyword arguments.
-
-        Returns:
-            None
-        """
-        if not docs:
-            return
-        if docs[0].get("content") is None:
-            raise ValueError("The document content is required.")
-        if docs[0].get("id") is None:
-            raise ValueError("The document id is required.")
-        documents = [doc.get("content") for doc in docs]
-        ids = [doc.get("id") for doc in docs]
-        collection = self.get_collection(collection_name)
-        if docs[0].get("embedding") is None:
-            logger.info(
-                "No content embedding is provided. Will use the VectorDB's embedding function to generate the content embedding."
+        li_docs = []
+        for doc in docs:
+            metadata = doc.get("metadata", {}) or {}
+            li_docs.append(
+                LIDocument(text=doc["content"], doc_id=doc["id"], metadata=metadata)
             )
-            embeddings = None
-        else:
-            embeddings = [doc.get("embedding") for doc in docs]
-        metadatas = (
-            None
-            if docs[0].get("metadata") is None
-            else [doc.get("metadata") for doc in docs]
-        )
-        self._batch_insert(collection, embeddings, ids, metadatas, documents, upsert)
 
-    def update_documents(
-        self, docs: list[Document], collection_name: str = None
-    ) -> None:
-        """Update documents in the collection of the vector database.
+        index = self._get_index()
+        index = self._get_index()
+        for li_doc in li_docs:
+            index.insert(li_doc)
 
-        Args:
-            docs: List[Document] | A list of documents.
-            collection_name: str | The name of the collection. Default is None.
-
-        Returns:
-            None
-        """
-        self.insert_documents(docs, collection_name, upsert=True)
-
-    def delete_documents(
-        self, ids: list[ItemID], collection_name: str = None, **kwargs
-    ) -> None:
-        """Delete documents from the collection of the vector database.
-
-        Args:
-            ids: List[ItemID] | A list of document ids. Each id is a typed `ItemID`.
-            collection_name: str | The name of the collection. Default is None.
-            kwargs: Dict | Additional keyword arguments.
-
-        Returns:
-            None
-        """
-        collection = self.get_collection(collection_name)
-        collection.delete(ids, **kwargs)
-
-    def retrieve_documents(
+    def semantic_search(
         self,
         queries: list[str],
         collection_name: str = None,
@@ -282,68 +135,28 @@ class ChromaVectorDB(VectorDB):
         distance_threshold: float = -1,
         **kwargs: Any,
     ) -> QueryResults:
-        """Retrieve documents from the collection of the vector database based on the queries.
+        if collection_name:
+            self.create_collection(collection_name)
 
-        Args:
-            queries: List[str] | A list of queries. Each query is a string.
-            collection_name: str | The name of the collection. Default is None.
-            n_results: int | The number of relevant documents to return. Default is 10.
-            distance_threshold: float | The threshold for the distance score, only distance smaller than it will be
-                returned. Don't filter with it if `< 0`. Default is -1.
-            kwargs: Dict | Additional keyword arguments.
-
-        Returns:
-            QueryResults | The query results. Each query result is a list of list of tuples containing the document and
-                the distance.
-        """
-        collection = self.get_collection(collection_name)
-        if isinstance(queries, str):
-            queries = [queries]
-        results = collection.query(
-            query_texts=queries,
-            n_results=n_results,
-            **kwargs,
-        )
-        results["contents"] = results.pop("documents")
-        results = chroma_results_to_query_results(results)
-        results = filter_results_by_distance(results, distance_threshold)
-        return results
-
-    @staticmethod
-    def _chroma_get_results_to_list_documents(data_dict) -> list[Document]:
-        """Converts a dictionary with list values to a list of Document.
-
-        Args:
-            data_dict: A dictionary where keys map to lists or None.
-
-        Returns:
-            List[Document] | The list of Document.
-
-        Example:
-            ```python
-            data_dict = {
-                "key1s": [1, 2, 3],
-                "key2s": ["a", "b", "c"],
-                "key3s": None,
-                "key4s": ["x", "y", "z"],
-            }
-
-            results = [
-                {"key1": 1, "key2": "a", "key4": "x"},
-                {"key1": 2, "key2": "b", "key4": "y"},
-                {"key1": 3, "key2": "c", "key4": "z"},
-            ]
-            ```
-        """
+        index = self._get_index()
         results = []
-        keys = [key for key in data_dict if data_dict[key] is not None]
+        retriever = index.as_retriever(similarity_top_k=n_results)
 
-        for i in range(len(data_dict[keys[0]])):
-            sub_dict = {}
-            for key in data_dict:
-                if data_dict[key] is not None and len(data_dict[key]) > i:
-                    sub_dict[key[:-1]] = data_dict[key][i]
-            results.append(sub_dict)
+        for query in queries:
+            nodes = retriever.retrieve(query)
+            query_result = []
+            for node_match in nodes:
+                if distance_threshold >= 0 and node_match.score < distance_threshold:
+                    continue
+
+                doc = Document(
+                    id=node_match.node.node_id,
+                    content=node_match.node.text,
+                    metadata=node_match.node.metadata,
+                    embedding=node_match.node.embedding,
+                )
+                query_result.append((doc, 1.0 - (node_match.score or 0.0)))
+            results.append(query_result)
         return results
 
     def get_documents_by_ids(
@@ -353,20 +166,89 @@ class ChromaVectorDB(VectorDB):
         include=None,
         **kwargs,
     ) -> list[Document]:
-        """Retrieve documents from the collection of the vector database based on the ids.
-
-        Args:
-            ids: List[ItemID] | A list of document ids. If None, will return all the documents. Default is None.
-            collection_name: str | The name of the collection. Default is None.
-            include: List[str] | The fields to include. Default is None.
-                If None, will include ["metadatas", "documents"], ids will always be included.
-            kwargs: dict | Additional keyword arguments.
-
-        Returns:
-            List[Document] | The results.
-        """
         collection = self.get_collection(collection_name)
-        include = include if include else ["metadatas", "documents"]
-        results = collection.get(ids, include=include, **kwargs)
-        results = self._chroma_get_results_to_list_documents(results)
+        # Chroma native get
+        results = collection.get(ids=ids, include=include or ["metadatas", "documents"])
+        # parse results which are dict of lists
+        docs = []
+        if results and results["ids"]:
+            for i, _id in enumerate(results["ids"]):
+                docs.append(
+                    Document(
+                        id=_id,
+                        content=results["documents"][i] if results["documents"] else "",
+                        metadata=(
+                            results["metadatas"][i] if results["metadatas"] else {}
+                        ),
+                    )
+                )
+        return docs
+
+    def update_documents(
+        self, docs: list[Document], collection_name: str = None
+    ) -> None:
+        self.insert_documents(docs, collection_name, upsert=True)
+
+    def delete_documents(
+        self, ids: list[ItemID], collection_name: str = None, **kwargs
+    ) -> None:
+        if collection_name:
+            self.create_collection(collection_name)
+        self.vector_store.delete_nodes(ids)
+
+    def delete_collection(self, collection_name: str) -> None:
+        self.client.delete_collection(collection_name)
+        if self.active_collection == collection_name:
+            self.active_collection = None
+
+    def get_collections(self) -> Any:
+        return self.client.list_collections()
+
+    def lexical_search(
+        self,
+        queries: list[str],
+        collection_name: str = None,
+        n_results: int = 10,
+        **kwargs: Any,
+    ) -> QueryResults:
+        collection = self.get_collection(collection_name)
+        results = []
+        for query in queries:
+            # ChromaDB v0.4+ supports `where_document={"$contains": "search_term"}`
+            # This is a substring match, not true BM25, but it's the closest "keyword search"
+            # we can get without managing our own index or using 3rd party tools.
+            # However, `query` method always expects embeddings or does embedding on `query_texts`.
+            # If we just want keyword match, we can use `get` with `where_document`.
+            # But `get` doesn't rank by relevance (it just returns matches).
+
+            # Try to use `query` but we need to supply embeddings or text.
+            # If we supply text, it does vector search + can filter.
+            # But user wants BM25.
+
+            # Alternative: pure "keyword" search using `get` and `where_document`.
+            query_res = collection.get(
+                where_document={"$contains": query},
+                include=["documents", "metadatas"],
+                limit=n_results,
+            )
+            # Result is dict: {'ids': [], 'documents': [], 'metadatas': []}
+
+            # If we want some "score", maybe we can't get it easily.
+            # We will just return 1.0 or attempt a simple count? No, just 1.0.
+
+            query_result = []
+            if query_res and query_res["ids"]:
+                for i, _id in enumerate(query_res["ids"]):
+                    doc = Document(
+                        id=_id,
+                        content=(
+                            query_res["documents"][i] if query_res["documents"] else ""
+                        ),
+                        metadata=(
+                            query_res["metadatas"][i] if query_res["metadatas"] else {}
+                        ),
+                        embedding=None,
+                    )
+                    query_result.append((doc, 1.0))
+            results.append(query_result)
         return results

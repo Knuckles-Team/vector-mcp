@@ -6,10 +6,14 @@ description: Vector Mcp Search capabilities for A2A Agent.
 This skill provides access to search operations.
 
 ### Capabilities
-- **vector_search**: Searches and gathers related knowledge from the vector database instance using the question variable.
+- **search**: Performs a hybrid search combining semantic (vector) and lexical (BM25) methods.
+- **semantic_search**: Searches and gathers related knowledge from the vector database instance using the question variable.
+- **lexical_search**: Performs a lexical search using BM25 algorithm.
 
 ### Common Tools
-- `vector_search`: Searches and gathers related knowledge from the vector database instance using the question variable.
+- `search`: Performs a hybrid search combining semantic (vector) and lexical (BM25) methods.
+- `semantic_search`: Searches and gathers related knowledge from the vector database instance using the question variable.
+- `lexical_search`: Performs a lexical search using BM25 algorithm.
 
 ### Usage Rules
 - Use these tools when the user requests actions related to **search** or **retrieve** and document.

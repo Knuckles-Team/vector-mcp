@@ -18,12 +18,11 @@ class RAGRetriever(Protocol):
     This interface defines the basic methods for RAG.
     """
 
-    vector_db = None
-
     def initialize_collection(
         self,
         document_directory: Path | str | None = None,
         document_paths: Sequence[Path | str] | None = None,
+        document_contents: Sequence[str] | None = None,
         overwrite: Optional[bool] | None = True,
         collection_name: Optional[str] | None = "memory",
         *args: Any,
@@ -40,6 +39,7 @@ class RAGRetriever(Protocol):
         Args:\n
             document_directory (Optional[Union[Path, str]]): A directory containing documents to be ingested.\n
             document_paths (Optional[Sequence[Union[Path, str]]]): A list of paths or URLs to documents to be ingested.\n
+            document_contents (Optional[Sequence[str]]): A list of string contents to be ingested directly.\n
             *args: Any additional arguments\n
             **kwargs: Any additional keyword arguments\n
         Returns:\n
@@ -51,6 +51,7 @@ class RAGRetriever(Protocol):
         self,
         document_directory: Path | str | None = None,
         document_paths: Sequence[Path | str] | None = None,
+        document_contents: Sequence[str] | None = None,
         *args: Any,
         **kwargs: Any,
     ) -> Sequence["LlamaDocument"]:
@@ -74,6 +75,19 @@ class RAGRetriever(Protocol):
         self, question: str, number_results: int, *args: Any, **kwargs: Any
     ) -> str:
         """Transform a string format question into database query and return the result.
+
+        Args:
+            question: a string format question
+            number_results: number of results to return
+            *args: Any additional arguments
+            **kwargs: Any additional keyword arguments
+        """
+        ...
+
+    def bm25_query(
+        self, question: str, number_results: int, *args: Any, **kwargs: Any
+    ) -> str:
+        """Transform a string format question into database query and return the result using BM25.
 
         Args:
             question: a string format question

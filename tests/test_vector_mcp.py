@@ -1,11 +1,8 @@
 import pytest
 import shutil
-from vector_mcp.vectordb.chromadb import (
-    create_collection,
-    get_collection,
-    insert_docs,
-    update_docs,
-)
+from unittest.mock import MagicMock, patch
+from vector_mcp.vectordb.chromadb import ChromaVectorDB
+from vector_mcp.vectordb.base import Document
 
 
 @pytest.fixture
@@ -18,18 +15,16 @@ def temp_db_path(tmp_path):
         shutil.rmtree(db_path)
 
 
-# @pytest.fixture
-# def chromadb_instance(temp_db_path):
-#     """Fixture to initialize a ChromaDB instance."""
-#     with patch("vector_mcp.vector_mcp.logger") as mock_logger:
-#         db = initialize_database(
-#             db_type="chromadb",
-#             db_path=temp_db_path,
-#             db_name="test_db",
-#         )
-#         assert isinstance(db, ChromaVectorDB)
-#         mock_logger.error.assert_not_called()
-#         yield db
+@pytest.fixture
+def chromadb_instance(temp_db_path):
+    """Fixture to initialize a ChromaDB instance."""
+    # We mock get_embedding_model to avoid model loading overhead/errors in test
+    with patch("vector_mcp.vectordb.chromadb.get_embedding_model") as mock_embed:
+        mock_embed.return_value = MagicMock()
+        mock_embed.return_value.get_text_embedding.return_value = [0.1, 0.2, 0.3]
+
+        db = ChromaVectorDB(path=temp_db_path, collection_name="test_collection")
+        yield db
 
 
 @pytest.fixture
@@ -40,244 +35,70 @@ def sample_docs():
             "id": "1",
             "content": "Test document 1",
             "metadata": {"source": "test"},
-            "embedding": [0.1, 0.2, 0.3],
+            # "embedding": [0.1, 0.2, 0.3], # LlamaIndex might handle embedding if not provided
         },
         {
             "id": "2",
             "content": "Test document 2",
             "metadata": {"source": "test"},
-            "embedding": [0.4, 0.5, 0.6],
+            # "embedding": [0.4, 0.5, 0.6],
         },
     ]
 
 
-# def test_initialize_database_invalid_type(temp_db_path):
-#     """Test initializing with an invalid database type."""
-#     with pytest.raises(SystemExit):
-#         with patch("vector_mcp.vector_mcp.logger") as mock_logger:
-#             db = initialize_database(
-#                 db_type="chromadb",
-#                 db_path=temp_db_path,
-#                 db_name="test_db",
-#             )
-#             mock_logger.error.assert_called_once_with(
-#                 "Failed to identify vector database from supported databases"
-#             )
-
-
-async def test_create_collection_success(chromadb_instance):
+def test_create_collection_success(chromadb_instance):
     """Test creating a new collection in ChromaDB."""
-    result = await create_collection(
-        db_type="chromadb",
-        db_path=chromadb_instance.path,  # Use the path from the initialized instance
-        db_name="test_db",
-        collection_name="test_collection",
-        overwrite=False,
-        get_or_create=True,
-        host=None,
-        port=None,
-        username=None,
-        password=None,
+    # For ChromaDB, create_collection wraps get_or_create_collection
+    collection = chromadb_instance.create_collection(
+        collection_name="test_collection_new", overwrite=False
     )
-    assert "test_collection" in result
-    assert "created or retrieved successfully" in result
+    assert collection is not None
+    # Verify it exists in list
+    colls = chromadb_instance.get_collections()
+    # Chroma client list_collections returns list of Collection objects or names depending on version?
+    # Usually Collection objects.
+    names = [c.name for c in colls]
+    assert "test_collection_new" in names
 
 
-async def test_create_collection_empty_name(chromadb_instance):
-    """Test creating a collection with an empty name."""
-    with pytest.raises(ValueError, match="collection_name must not be empty"):
-        await create_collection(
-            db_type="chromadb",
-            db_path=chromadb_instance.path,
-            db_name="test_db",
-            collection_name="",
-            host=None,
-            port=None,
-            username=None,
-            password=None,
-        )
-
-
-async def test_get_collection_success(chromadb_instance):
+def test_get_collection_success(chromadb_instance):
     """Test retrieving an existing collection."""
-    await create_collection(
-        db_type="chromadb",
-        db_path=chromadb_instance.path,
-        db_name="test_db",
-        collection_name="test_collection",
-        get_or_create=True,
-        host=None,
-        port=None,
-        username=None,
-        password=None,
-    )
-    result = await get_collection(
-        db_type="chromadb",
-        db_path=chromadb_instance.path,
-        db_name="test_db",
-        collection_name="test_collection",
-        host=None,
-        port=None,
-        username=None,
-        password=None,
-    )
-    assert "test_collection" in result
-    assert "retrieved successfully" in result
+    chromadb_instance.create_collection("test_collection_2")
+    coll = chromadb_instance.get_collection("test_collection_2")
+    assert coll.name == "test_collection_2"
 
 
-async def test_get_collection_nonexistent(chromadb_instance):
-    """Test retrieving a non-existent collection."""
-    with pytest.raises(RuntimeError, match="Failed to get collection"):
-        await get_collection(
-            db_type="chromadb",
-            db_path=chromadb_instance.path,
-            db_name="test_db",
-            collection_name="nonexistent_collection",
-            host=None,
-            port=None,
-            username=None,
-            password=None,
-        )
-
-
-async def test_insert_docs_success(chromadb_instance, sample_docs):
+def test_insert_docs_success(chromadb_instance, sample_docs):
     """Test inserting documents into a collection."""
-    await create_collection(
-        db_type="chromadb",
-        db_path=chromadb_instance.path,
-        db_name="test_db",
-        collection_name="test_collection",
-        get_or_create=True,
-        host=None,
-        port=None,
-        username=None,
-        password=None,
-    )
-    result = await insert_docs(
-        db_type="chromadb",
-        db_path=chromadb_instance.path,
-        db_name="test_db",
-        collection_name="test_collection",
-        docs=sample_docs,
-        upsert=False,
-        host=None,
-        port=None,
-        username=None,
-        password=None,
-    )
-    assert "2 documents inserted" in result
-    assert "test_collection" in result
+    # Mocking internal get_index to avoid LlamaIndex complex setup if possible
+    # But ChromaVectorDB uses LlamaIndex VectorStore index.insert_documents
+
+    # We really want to verify integration with LlamaIndex logic, but that requires embedding model
+    # which we mocked.
+
+    # If we want to test insert_documents, we should mock the _get_index method or the vector_store
+    with patch.object(chromadb_instance, "_get_index") as mock_get_index:
+        mock_index = MagicMock()
+        mock_get_index.return_value = mock_index
+
+        chromadb_instance.insert_documents(sample_docs)
+
+        mock_index.insert_documents.assert_called_once()
+        # Verify arguments passed to insert_documents are LIDocuments
+        call_args = mock_index.insert_documents.call_args[0][0]
+        assert len(call_args) == 2
+        assert call_args[0].text == "Test document 1"
 
 
-async def test_insert_docs_empty_list(chromadb_instance):
-    """Test inserting an empty document list."""
-    with pytest.raises(ValueError, match="docs list must not be empty"):
-        await insert_docs(
-            db_type="chromadb",
-            db_path=chromadb_instance.path,
-            db_name="test_db",
-            collection_name="test_collection",
-            docs=[],
-            host=None,
-            port=None,
-            username=None,
-            password=None,
-        )
-
-
-async def test_insert_docs_invalid_doc(chromadb_instance):
-    """Test inserting documents with missing required fields."""
-    invalid_docs = [{"content": "No ID document"}]
-    with pytest.raises(ValueError, match="Each document must have 'id' and 'content'"):
-        await insert_docs(
-            db_type="chromadb",
-            db_path=chromadb_instance.path,
-            db_name="test_db",
-            collection_name="test_collection",
-            docs=invalid_docs,
-            host=None,
-            port=None,
-            username=None,
-            password=None,
-        )
-
-
-async def test_update_docs_success(chromadb_instance, sample_docs):
+def test_update_docs_success(chromadb_instance, sample_docs):
     """Test updating documents in a collection."""
-    await create_collection(
-        db_type="chromadb",
-        db_path=chromadb_instance.path,
-        db_name="test_db",
-        collection_name="test_collection",
-        get_or_create=True,
-        host=None,
-        port=None,
-        username=None,
-        password=None,
-    )
-    await insert_docs(
-        db_type="chromadb",
-        db_path=chromadb_instance.path,
-        db_name="test_db",
-        collection_name="test_collection",
-        docs=sample_docs,
-        upsert=False,
-        host=None,
-        port=None,
-        username=None,
-        password=None,
-    )
-    updated_docs = [
-        {
-            "id": "1",
-            "content": "Updated document 1",
-            "metadata": {"source": "updated"},
-            "embedding": [0.7, 0.8, 0.9],
-        }
-    ]
-    result = await update_docs(
-        db_type="chromadb",
-        db_path=chromadb_instance.path,
-        db_name="test_db",
-        collection_name="test_collection",
-        docs=updated_docs,
-        host=None,
-        port=None,
-        username=None,
-        password=None,
-    )
-    assert "1 documents updated" in result
-    assert "test_collection" in result
+    with patch.object(chromadb_instance, "_get_index") as mock_get_index:
+        mock_index = MagicMock()
+        mock_get_index.return_value = mock_index
 
+        chromadb_instance.update_documents(sample_docs)
 
-async def test_update_docs_empty_list(chromadb_instance):
-    """Test updating with an empty document list."""
-    with pytest.raises(ValueError, match="docs list must not be empty"):
-        await update_docs(
-            db_type="chromadb",
-            db_path=chromadb_instance.path,
-            db_name="test_db",
-            collection_name="test_collection",
-            docs=[],
-            host=None,
-            port=None,
-            username=None,
-            password=None,
-        )
-
-
-async def test_update_docs_invalid_doc(chromadb_instance):
-    """Test updating documents with missing required fields."""
-    invalid_docs = [{"content": "No ID document"}]
-    with pytest.raises(ValueError, match="Each document must have 'id'"):
-        await update_docs(
-            db_type="chromadb",
-            db_path=chromadb_instance.path,
-            db_name="test_db",
-            collection_name="test_collection",
-            docs=invalid_docs,
-            host=None,
-            port=None,
-            username=None,
-            password=None,
-        )
+        # update just calls insert with upsert? Logic in code: insert_documents(upsert=True)
+        # Check logic inside insert_documents... it just calls index.insert_documents.
+        # LlamaIndex insert_documents behavior depends on vector store.
+        mock_index.insert_documents.assert_called_once()

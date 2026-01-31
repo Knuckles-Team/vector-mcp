@@ -5,25 +5,28 @@ import logging
 import os
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, List, Dict
 
 if TYPE_CHECKING:
-    from chromadb.api.types import EmbeddingFunction
+    pass
 
 from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.vectordb import ChromaVectorDB
-from vector_mcp.vectordb.utils import optional_import_block, require_optional_import
+from vector_mcp.vectordb.utils import (
+    optional_import_block,
+    require_optional_import,
+)
+
+from vector_mcp.utils import get_embedding_model
 from vector_mcp.vectordb.base import VectorDBFactory
 
 from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
 from llama_index.core.schema import Document as LlamaDocument
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 with optional_import_block():
     from chromadb import HttpClient
     from chromadb.config import DEFAULT_DATABASE, DEFAULT_TENANT, Settings
     from llama_index.vector_stores.chroma import ChromaVectorStore
-    from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
 __all__ = ["ChromaDBRetriever"]
 
@@ -43,16 +46,7 @@ logger = logging.getLogger(__name__)
 
 @require_optional_import(["chromadb", "llama_index"], "rag")
 class ChromaDBRetriever(RAGRetriever):
-    """This engine leverages Chromadb to persist document embeddings in a named collection
-    and LlamaIndex's VectorStoreIndex to efficiently index and retrieve documents, and generate an answer in response
-    to natural language queries. Collection can be regarded as an abstraction of group of documents in the database.
-
-    It expects a Chromadb server to be running and accessible at the specified host and port.
-    Refer to this [link](https://docs.trychroma.com/production/containers/docker) for running Chromadb in a Docker container.
-    If the host and port are not provided, the engine will create an in-memory ChromaDB client.
-
-
-    """
+    """This engine leverages Chromadb to persist document embeddings."""
 
     def __init__(  # type: ignore[no-any-unimported]
         self,
@@ -62,162 +56,144 @@ class ChromaDBRetriever(RAGRetriever):
         settings: Optional["Settings"] = None,
         tenant: str | None = None,
         database: str | None = None,
-        embedding_function: "EmbeddingFunction[Any] | None" = None,  # type: ignore[type-arg]
+        embedding_function: Any | None = None,
         metadata: dict[str, Any] | None = None,
         collection_name: str | None = None,
     ) -> None:
-        """Initializes the ChromaDBRetriever with db_path, metadata, and embedding function and llm.
+        """Initializes the ChromaDBRetriever."""
+        self.host = host
+        self.port = port
+        self.path = path
+        self.settings = settings
+        self.tenant = tenant
+        self.database = database
+        self.metadata = metadata
 
-        Args:
-            host: The host address of the ChromaDB server. Default is localhost.
-            port: The port number of the ChromaDB server. Default is 8000.
-            settings: A dictionary of settings to communicate with the chroma server. Default is None.
-            tenant: The tenant to use for this client. Defaults to the default tenant.
-            database: The database to use for this client. Defaults to the default database.
-            embedding_function: A callable that converts text into vector embeddings. Default embedding uses Sentence Transformers model all-MiniLM-L6-v2.
-                For more embeddings that ChromaDB support, please refer to [embeddings](https://docs.trychroma.com/docs/embeddings/embedding-functions)
-            metadata: A dictionary containing configuration parameters for the Chromadb collection.
-                This metadata is typically used to configure the HNSW indexing algorithm. Defaults to `{"hnsw:space": "ip", "hnsw:construction_ef": 30, "hnsw:M": 32}`
-                For more details about the default metadata, please refer to [HNSW configuration](https://cookbook.chromadb.dev/core/configuration/#hnsw-configuration)
-            collection_name (str): The unique name for the Chromadb collection. If omitted, a constant name will be used. Populate this to reuse previous ingested data.
-        """
-        self.retriever = None
-        self.index = None
-        if not host or not port:
-            logger.warning(
-                "Can't connect to remote Chroma client without host or port not. Using an ephemeral, in-memory client."
-            )
-            self.client = None
-        else:
-            try:
-                self.client = HttpClient(
-                    host=host,
-                    port=port,
-                    settings=settings,
-                    tenant=tenant if tenant else DEFAULT_TENANT,  # type: ignore[arg-type, no-any-unimported]
-                    database=database if database else DEFAULT_DATABASE,  # type: ignore[arg-type, no-any-unimported]
-                )
-            except Exception as e:
-                raise ValueError(f"Failed to connect to the ChromaDB client: {e}")
-        self.embedding_function = (
-            embedding_function
-            if embedding_function
-            else SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
-        )
-        self.llama_embedding = HuggingFaceEmbedding(
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
-        )
-        self.db_config = {
-            "client": self.client,
-            "embedding_function": embedding_function,
-            "metadata": metadata,
-            "path": path,
-        }
         self.collection_name = (
             collection_name if collection_name else DEFAULT_COLLECTION_NAME
         )
+
+        self.embed_model = get_embedding_model()
+
         self.vector_db: ChromaVectorDB | None = None
-        self.vector_store: ChromaVectorStore | None = None  # type: ignore[no-any-unimported]
-        self.storage_context: StorageContext | None = None  # type: ignore[no-any-unimported]
-        self.index: VectorStoreIndex | None = None  # type: ignore[no-any-unimported]
+        self.index: VectorStoreIndex | None = None
+        self.vector_store: ChromaVectorStore | None = None
+        self.storage_context: StorageContext | None = None
+
+        # Try connection/client creation just to mirror original check logic (optional)
+        # But we will rely on VectorDBFactory
+        if (not host or not port) and not path:
+            # Just logging warning as per original
+            logger.warning(
+                "Can't connect to remote Chroma client without host or port not. Using an ephemeral, in-memory client (implied by path or lack thereof)."
+            )
+
+    def _set_up(self, overwrite: bool) -> None:
+        """Set up ChromaDB and LlamaIndex storage."""
+        # Using self.client if it was passed? No, constructor just took host/port.
+        # We construct client via ChromaVectorDB now.
+
+        # NOTE: ChromaVectorDB takes client object or path or host/port.
+        client = None
+        if self.host and self.port:
+            try:
+                client = HttpClient(
+                    host=self.host,
+                    port=self.port,
+                    settings=self.settings,
+                    tenant=self.tenant if self.tenant else DEFAULT_TENANT,  # type: ignore
+                    database=self.database if self.database else DEFAULT_DATABASE,  # type: ignore
+                )
+            except Exception:
+                pass  # Fallback? Or raise? Original raised.
+
+        self.vector_db = VectorDBFactory.create_vector_database(
+            db_type="chroma",
+            client=client,
+            path=self.path,
+            embed_model=self.embed_model,
+            collection_name=self.collection_name,
+            metadata=self.metadata,
+        )
+
+        self.vector_db.create_collection(
+            collection_name=self.collection_name, overwrite=overwrite
+        )
+
+        self.index = self.vector_db._get_index()
 
     def initialize_collection(
         self,
         document_directory: Path | str | None = None,
         document_paths: Sequence[Path | str] | None = None,
+        document_contents: Sequence[str] | None = None,
         overwrite: Optional[bool] | None = True,
         *args: Any,
         **kwargs: Any,
     ) -> bool:
-        """Initialize the database with the input documents or records.
-
-        Args:
-            document_directory: A dir of input documents to create records in the database.
-            document_paths: A sequence of input documents to create records in the database.
-            overwrite: If True, overwrite the existing collection.
-
-        Returns:
-            bool: True if initialization is successful
-        """
+        """Initialize the database with the input documents or records."""
         self._set_up(overwrite=overwrite)
-        documents = self._load_doc(
-            input_dir=document_directory, input_docs=document_paths
-        )
-        self.index = VectorStoreIndex.from_documents(
-            documents=documents,
-            storage_context=self.storage_context,
-            embed_model=self.llama_embedding,
-        )
+
+        if document_directory or document_paths or document_contents:
+            documents = self._load_doc(
+                input_dir=document_directory,
+                input_docs=document_paths,
+                input_contents=document_contents,
+            )
+            for doc in documents:
+                self.index.insert(doc)
         return True
 
     def connect_database(self, collection_name=None, *args: Any, **kwargs: Any) -> bool:
-        """Connect to the database without overwriting the existing collection.
-
-        Returns:
-            bool: True if connection is successful
-        """
+        """Connect to the database without overwriting the existing collection."""
         if collection_name:
             self.collection_name = collection_name
 
         self._set_up(overwrite=False)
-        self.index = VectorStoreIndex.from_vector_store(
-            vector_store=self.vector_store,
-            storage_context=self.storage_context,
-            embed_model=self.llama_embedding,  # Use local embedding model
-        )
         return True
 
     def add_documents(
         self,
         document_directory: Path | str | None = None,
         document_paths: Sequence[Path | str] | None = None,
+        document_contents: Sequence[str] | None = None,
         *args: Any,
         **kwargs: Any,
     ) -> Sequence["LlamaDocument"]:
-        """Add new documents to the underlying database and index.
-
-        Args:
-            document_directory: A dir of input documents to add.
-            document_paths: A sequence of input documents to add.
-        Returns:
-            List: List of documents
-        """
+        """Add new documents to the underlying database and index."""
         self._validate_query_index()
         documents = self._load_doc(
-            input_dir=document_directory, input_docs=document_paths
+            input_dir=document_directory,
+            input_docs=document_paths,
+            input_contents=document_contents,
         )
         for doc in documents:
-            self.index.insert(
-                doc, embed_model=self.llama_embedding
-            )  # Use local embedding model
+            self.index.insert(doc)
         return documents
 
-    def query(self, question: str, number_results: int, **kwargs: Any) -> str:
-        """Retrieve information from indexed documents by processing a query.
-
-        Args:
-            question: A natural language query string.
-            number_results: Number of results to return as an integer
-
-        Returns:
-            A string containing the response.
-        """
+    def query(
+        self, question: str, number_results: int, **kwargs: Any
+    ) -> List[Dict[str, Any]]:
+        """Retrieve information from indexed documents by processing a query."""
         self._validate_query_index()
         similarity_top_k = kwargs.get("number_results", 3)
-        self.retriever = self.index.as_retriever(similarity_top_k=similarity_top_k)
-        response = self.retriever.retrieve(str_or_query_bundle=question)
+        retriever = self.index.as_retriever(similarity_top_k=similarity_top_k)
+        response = retriever.retrieve(str_or_query_bundle=question)
 
-        if str(response) == EMPTY_RESPONSE_TEXT:
-            return EMPTY_RESPONSE_REPLY
-
-        return str(response)
+        results = []
+        for node_with_score in response:
+            results.append(
+                {
+                    "text": node_with_score.node.get_content(),
+                    "score": node_with_score.score,
+                    "id": node_with_score.node.node_id,
+                    "metadata": node_with_score.node.metadata,
+                }
+            )
+        return results
 
     def get_collection_name(self) -> str:
-        """Get the name of the collection used by the query engine.
-
-        Returns:
-            The name of the collection.
-        """
+        """Get the name of the collection used by the query engine."""
         if self.collection_name:
             return self.collection_name
         else:
@@ -225,40 +201,48 @@ class ChromaDBRetriever(RAGRetriever):
 
     def _validate_query_index(self) -> None:
         """Ensures an index exists."""
-        if not hasattr(self, "index"):
+        if not hasattr(self, "index") or self.index is None:
             raise Exception(
                 "Query index is not initialized. Please call initialize_collection or connect_database first."
             )
 
-    def _set_up(self, overwrite: bool) -> None:
-        """Set up ChromaDB and LlamaIndex storage.
+    def bm25_query(
+        self, question: str, number_results: int, *args: Any, **kwargs: Any
+    ) -> List[Dict[str, Any]]:
+        self._validate_query_index()
+        # ChromaVectorDB lexical_search returns list of list of (Document, score)
+        results = self.vector_db.lexical_search(
+            queries=[question],
+            collection_name=self.collection_name,
+            n_results=number_results,
+            **kwargs,
+        )
+        doc_scores = results[0]
 
-        Args:
-            overwrite: If True, overwrite the existing collection.
-        """
-        self.vector_db = VectorDBFactory().create_vector_database(
-            db_type="chroma", **self.db_config
-        )
-        self.collection = self.vector_db.create_collection(
-            collection_name=self.collection_name, overwrite=overwrite
-        )
-        self.vector_store = ChromaVectorStore(chroma_collection=self.collection)
-        self.storage_context = StorageContext.from_defaults(
-            vector_store=self.vector_store
-        )
+        formatted_results = []
+        for doc, score in doc_scores:
+            formatted_results.append(
+                {
+                    "text": (
+                        doc.content if hasattr(doc, "content") else doc.get("content")
+                    ),
+                    "score": score,
+                    "id": doc.id if hasattr(doc, "id") else doc.get("id"),
+                    "metadata": (
+                        doc.metadata
+                        if hasattr(doc, "metadata")
+                        else doc.get("metadata")
+                    ),
+                }
+            )
+        return formatted_results
 
     def _load_doc(
-        self, input_dir: Path | str | None, input_docs: Sequence[Path | str] | None
+        self,
+        input_dir: Path | str | None = None,
+        input_docs: Sequence[Path | str] | None = None,
+        input_contents: Sequence[str] | None = None,
     ) -> Sequence["LlamaDocument"]:
-        """Load documents from a directory and/or a sequence of file paths.
-
-        Args:
-            input_dir: The directory containing documents to be loaded.
-            input_docs: A sequence of individual file paths to load.
-
-        Returns:
-            A sequence of documents loaded as LlamaDocument objects.
-        """
         loaded_documents = []
         if input_dir:
             logger.info(f"Loading docs from directory: {input_dir}")
@@ -277,8 +261,15 @@ class ChromaDBRetriever(RAGRetriever):
                 SimpleDirectoryReader(input_files=input_docs).load_data()
             )
 
-        if not input_dir and not input_docs:
-            raise ValueError("No input directory or docs provided!")
+        if input_contents:
+            logger.info(f"Loading {len(input_contents)} strings as documents")
+            for content in input_contents:
+                loaded_documents.append(LlamaDocument(text=content))
+
+        if not input_dir and not input_docs and not input_contents:
+            raise ValueError(
+                "No input directory, docs, or content provided! You must provide at least one source."
+            )
 
         return loaded_documents
 

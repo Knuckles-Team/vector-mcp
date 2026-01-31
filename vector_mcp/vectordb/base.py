@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # coding: utf-8
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, Protocol, TypedDict, runtime_checkable
 
 Metadata = Mapping[str, Any] | None
@@ -37,23 +37,8 @@ class VectorDB(Protocol):
     Attributes:
         active_collection: Any | The active collection in the vector database. Make get_collection faster. Default is None.
         type: str | The type of the vector database, chroma, pgvector, etc. Default is "".
-
-    Methods:
-        create_collection: Callable[[str, bool, bool], Any] | Create a collection in the vector database.
-        get_collection: Callable[[str], Any] | Get the collection from the vector database.
-        delete_collection: Callable[[str], Any] | Delete the collection from the vector database.
-        insert_documents: Callable[[List[Document], str, bool], None] | Insert documents into the collection of the vector database.
-        update_documents: Callable[[List[Document], str], None] | Update documents in the collection of the vector database.
-        delete_documents: Callable[[List[ItemID], str], None] | Delete documents from the collection of the vector database.
-        retrieve_documents: Callable[[List[str], str, int, float], QueryResults] | Retrieve documents from the collection of the vector database based on the queries.
-        get_documents_by_ids: Callable[[List[ItemID], str], List[Document]] | Retrieve documents from the collection of the vector database based on the ids.
+        embed_model: Any | The embedding model used for the vector database.
     """
-
-    active_collection: Any = None
-    type: str = ""
-    embedding_function: Callable[[list[str]], list[list[float]]] | None = (
-        None  # embeddings = embedding_function(sentences)
-    )
 
     def create_collection(
         self, collection_name: str, overwrite: bool = False, get_or_create: bool = True
@@ -156,7 +141,7 @@ class VectorDB(Protocol):
         """
         ...
 
-    def retrieve_documents(
+    def semantic_search(
         self,
         queries: list[str],
         collection_name: str = None,

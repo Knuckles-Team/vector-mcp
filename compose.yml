@@ -1,75 +1,87 @@
 ---
 services:
   vector-mcp-chromadb:
-    image: docker.io/knucklessg1/vector-mcp:latest
-    # build: . # Debug
-    container_name: vector-mcp-chromadb
-    hostname: vector-mcp-chromadb
-    command: [ "vector-mcp" ]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    restart: always
-    environment:
-      - "HOST=0.0.0.0"
-      - "PORT=8023"
-      - "TRANSPORT=streamable-http"
-      - "DATABASE_TYPE=${DATABASE_TYPE:-chromadb}"
-      - "DATABASE_PATH=${DATABASE_PATH:-/data/chromadb}"
-      - "DOCUMENT_DIRECTORY=${DOCUMENT_DIRECTORY:-/documents}"
-    ports:
-      - "8023:8023"
-    healthcheck:
-      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8023/health')" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    volumes:
-      - ./mcp/vector_data:/data
-      - ./mcp/documents:/documents
+   # image: docker.io/knucklessg1/vector-mcp:latest
+   build:
+     context: . # Debug
+     dockerfile: debug.Dockerfile
+   container_name: vector-mcp-chromadb
+   hostname: vector-mcp-chromadb
+   command: [ "vector-mcp" ]
+   extra_hosts:
+     - "host.docker.internal:host-gateway"
+   logging:
+     driver: json-file
+     options:
+       max-size: "10m"
+       max-file: "3"
+   restart: always
+   environment:
+     - "HOST=0.0.0.0"
+     - "PORT=8023"
+     - "TRANSPORT=streamable-http"
+     - "DATABASE_TYPE=${DATABASE_TYPE:-chromadb}"
+     - "DATABASE_PATH=${DATABASE_PATH:-/data/chromadb}"
+     - "DOCUMENT_DIRECTORY=${DOCUMENT_DIRECTORY:-/documents}"
+     - "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python"
+     - "PROVIDER=openai"
+     - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
+     - "OPENAI_API_KEY=llama"
+     - "MODEL_ID=text-embedding-nomic-embed-text-v1.5"
+   ports:
+     - "8023:8023"
+   healthcheck:
+     test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8023/health')" ]
+     interval: 30s
+     timeout: 10s
+     retries: 3
+     start_period: 10s
+   volumes:
+     - ./mcp/vector_data:/data
+     - ./mcp/documents:/documents
 
   vector-agent-chromadb:
-    image: docker.io/knucklessg1/vector-mcp:latest
-    # build: . # Debug
-    container_name: vector-agent-chromadb
-    hostname: vector-agent-chromadb
-    command: [ "vector-agent" ]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      - vector-mcp-chromadb
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    restart: always
-    environment:
-      - "HOST=0.0.0.0"
-      - "PORT=9023"
-      - "MCP_URL=http://vector-mcp-chromadb:8023/mcp"
-      - "PROVIDER=openai"
-      - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
-      - "OPENAI_API_KEY=llama"
-      - "MODEL_ID=qwen/qwen3-4b-2507"
-      - "DEBUG=False"
-      - "ENABLE_WEB_UI=True"
-    ports:
-      - "9023:9023"
-    healthcheck:
-      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9023/health')" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-  # PGVector
+   # image: docker.io/knucklessg1/vector-mcp:latest
+   build:
+     context: . # Debug
+     dockerfile: debug.Dockerfile
+   container_name: vector-agent-chromadb
+   hostname: vector-agent-chromadb
+   command: [ "vector-agent" ]
+   extra_hosts:
+     - "host.docker.internal:host-gateway"
+   depends_on:
+     vector-mcp-chromadb:
+       condition: service_healthy
+   logging:
+     driver: json-file
+     options:
+       max-size: "10m"
+       max-file: "3"
+   restart: always
+   environment:
+     - "HOST=0.0.0.0"
+     - "PORT=9023"
+     - "MCP_URL=http://vector-mcp-chromadb:8023/mcp"
+     - "PROVIDER=openai"
+     - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
+     - "OPENAI_API_KEY=llama"
+     - "MODEL_ID=qwen/qwen3-4b-2507"
+     - "DEBUG=False"
+     - "ENABLE_WEB_UI=True"
+     - "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python"
+   ports:
+     - "9023:9023"
+   healthcheck:
+     test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9023/health')" ]
+     interval: 30s
+     timeout: 10s
+     retries: 3
+     start_period: 10s
+
+  # PGVector + ParadeDB (Vector + BM25 Search)
   postgres:
-    image: pgvector/pgvector:pg16
+    image: paradedb/paradedb:latest-pg16 # Changed to ParadeDB with PG16 support
     container_name: postgres
     environment:
       POSTGRES_USER: postgres
@@ -78,9 +90,19 @@ services:
     ports:
       - "5432:5432"
     restart: always
+    volumes:
+      - ./mcp/pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   vector-mcp-pgvector:
-    image: docker.io/knucklessg1/vector-mcp:latest
+    # image: docker.io/knucklessg1/vector-mcp:latest
+    build:
+      context: . # Debug
+      dockerfile: debug.Dockerfile
     container_name: vector-mcp-pgvector
     hostname: vector-mcp-pgvector
     command: [ "vector-mcp" ]
@@ -102,6 +124,10 @@ services:
       - "DBNAME=vectordb"
       - "USERNAME=postgres"
       - "PASSWORD=password"
+      - "PROVIDER=openai"
+      - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
+      - "OPENAI_API_KEY=llama"
+      - "MODEL_ID=text-embedding-nomic-embed-text-v1.5"
     ports:
       - "8024:8024"
     healthcheck:
@@ -111,19 +137,24 @@ services:
       retries: 3
       start_period: 10s
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     volumes:
       - ./mcp/documents:/documents
 
   vector-agent-pgvector:
-    image: docker.io/knucklessg1/vector-mcp:latest
+    # image: docker.io/knucklessg1/vector-mcp:latest
+    build:
+      context: . # Debug
+      dockerfile: debug.Dockerfile
     container_name: vector-agent-pgvector
     hostname: vector-agent-pgvector
     command: [ "vector-agent" ]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      - vector-mcp-pgvector
+      vector-mcp-pgvector:
+        condition: service_healthy
     logging:
       driver: json-file
       options:
@@ -148,240 +179,251 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-
   # MongoDB
   mongodb:
-    image: mongo:latest
-    container_name: mongodb
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: mongo
-      MONGO_INITDB_ROOT_PASSWORD: password
-    ports:
-      - "27017:27017"
-    restart: always
+   image: mongo:latest
+   container_name: mongodb
+   environment:
+     MONGO_INITDB_ROOT_USERNAME: mongo
+     MONGO_INITDB_ROOT_PASSWORD: password
+   ports:
+     - "27017:27017"
+   restart: always
 
   vector-mcp-mongo:
-    image: docker.io/knucklessg1/vector-mcp:latest
-    container_name: vector-mcp-mongo
-    hostname: vector-mcp-mongo
-    command: [ "vector-mcp" ]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    restart: always
-    environment:
-      - "HOST=0.0.0.0"
-      - "PORT=8025"
-      - "TRANSPORT=streamable-http"
-      - "DATABASE_TYPE=mongodb"
-      - "DB_HOST=mongodb"
-      - "DB_PORT=27017"
-      - "DBNAME=vectordb"
-      - "USERNAME=mongo"
-      - "PASSWORD=password"
-    ports:
-      - "8025:8025"
-    healthcheck:
-      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8025/health')" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    depends_on:
-      - mongodb
-    volumes:
-      - ./mcp/documents:/documents
+   image: docker.io/knucklessg1/vector-mcp:latest
+   container_name: vector-mcp-mongo
+   hostname: vector-mcp-mongo
+   command: [ "vector-mcp" ]
+   extra_hosts:
+     - "host.docker.internal:host-gateway"
+   logging:
+     driver: json-file
+     options:
+       max-size: "10m"
+       max-file: "3"
+   restart: always
+   environment:
+     - "HOST=0.0.0.0"
+     - "PORT=8025"
+     - "TRANSPORT=streamable-http"
+     - "DATABASE_TYPE=mongodb"
+     - "DB_HOST=mongodb"
+     - "DB_PORT=27017"
+     - "DBNAME=vectordb"
+     - "USERNAME=mongo"
+     - "PASSWORD=password"
+     - "PROVIDER=openai"
+     - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
+     - "OPENAI_API_KEY=llama"
+     - "MODEL_ID=text-embedding-nomic-embed-text-v1.5"
+   ports:
+     - "8025:8025"
+   healthcheck:
+     test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8025/health')" ]
+     interval: 30s
+     timeout: 10s
+     retries: 3
+     start_period: 10s
+   depends_on:
+     - mongodb
+   volumes:
+     - ./mcp/documents:/documents
 
   vector-agent-mongo:
-    image: docker.io/knucklessg1/vector-mcp:latest
-    container_name: vector-agent-mongo
-    hostname: vector-agent-mongo
-    command: [ "vector-agent" ]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      - vector-mcp-mongo
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    restart: always
-    environment:
-      - "HOST=0.0.0.0"
-      - "PORT=9025"
-      - "MCP_URL=http://vector-mcp-mongo:8025/mcp"
-      - "PROVIDER=openai"
-      - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
-      - "OPENAI_API_KEY=llama"
-      - "MODEL_ID=qwen/qwen3-4b-2507"
-      - "DEBUG=False"
-      - "ENABLE_WEB_UI=True"
-    ports:
-      - "9025:9025"
-    healthcheck:
-      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9025/health')" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+   image: docker.io/knucklessg1/vector-mcp:latest
+   container_name: vector-agent-mongo
+   hostname: vector-agent-mongo
+   command: [ "vector-agent" ]
+   extra_hosts:
+     - "host.docker.internal:host-gateway"
+   depends_on:
+     - vector-mcp-mongo
+   logging:
+     driver: json-file
+     options:
+       max-size: "10m"
+       max-file: "3"
+   restart: always
+   environment:
+     - "HOST=0.0.0.0"
+     - "PORT=9025"
+     - "MCP_URL=http://vector-mcp-mongo:8025/mcp"
+     - "PROVIDER=openai"
+     - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
+     - "OPENAI_API_KEY=llama"
+     - "MODEL_ID=qwen/qwen3-4b-2507"
+     - "DEBUG=False"
+     - "ENABLE_WEB_UI=True"
+   ports:
+     - "9025:9025"
+   healthcheck:
+     test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9025/health')" ]
+     interval: 30s
+     timeout: 10s
+     retries: 3
+     start_period: 10s
 
   # Couchbase
   couchbase:
-    image: couchbase:latest
-    container_name: couchbase
-    ports:
-      - "8091:8091"
-      - "8092:8092"
-      - "8093:8093"
-      - "11210:11210"
-    restart: always
+   image: couchbase:latest
+   container_name: couchbase
+   ports:
+     - "8091:8091"
+     - "8092:8092"
+     - "8093:8093"
+     - "11210:11210"
+   restart: always
 
   vector-mcp-couchbase:
-    image: docker.io/knucklessg1/vector-mcp:latest
-    container_name: vector-mcp-couchbase
-    hostname: vector-mcp-couchbase
-    command: [ "vector-mcp" ]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    restart: always
-    environment:
-      - "HOST=0.0.0.0"
-      - "PORT=8026"
-      - "TRANSPORT=streamable-http"
-      - "DATABASE_TYPE=couchbase"
-      - "DB_HOST=couchbase"
-      - "DB_PORT=8091"
-      - "DBNAME=vector_db"
-      - "USERNAME=Administrator"
-      - "PASSWORD=password"
-    ports:
-      - "8026:8026"
-    healthcheck:
-      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8026/health')" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    depends_on:
-      - couchbase
-    volumes:
-      - ./mcp/documents:/documents
+   image: docker.io/knucklessg1/vector-mcp:latest
+   container_name: vector-mcp-couchbase
+   hostname: vector-mcp-couchbase
+   command: [ "vector-mcp" ]
+   extra_hosts:
+     - "host.docker.internal:host-gateway"
+   logging:
+     driver: json-file
+     options:
+       max-size: "10m"
+       max-file: "3"
+   restart: always
+   environment:
+     - "HOST=0.0.0.0"
+     - "PORT=8026"
+     - "TRANSPORT=streamable-http"
+     - "DATABASE_TYPE=couchbase"
+     - "DB_HOST=couchbase"
+     - "DB_PORT=8091"
+     - "DBNAME=vector_db"
+     - "USERNAME=Administrator"
+     - "PASSWORD=password"
+     - "PROVIDER=openai"
+     - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
+     - "OPENAI_API_KEY=llama"
+     - "MODEL_ID=text-embedding-nomic-embed-text-v1.5"
+   ports:
+     - "8026:8026"
+   healthcheck:
+     test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8026/health')" ]
+     interval: 30s
+     timeout: 10s
+     retries: 3
+     start_period: 10s
+   depends_on:
+     - couchbase
+   volumes:
+     - ./mcp/documents:/documents
 
   vector-agent-couchbase:
-    image: docker.io/knucklessg1/vector-mcp:latest
-    container_name: vector-agent-couchbase
-    hostname: vector-agent-couchbase
-    command: [ "vector-agent" ]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      - vector-mcp-couchbase
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    restart: always
-    environment:
-      - "HOST=0.0.0.0"
-      - "PORT=9026"
-      - "MCP_URL=http://vector-mcp-couchbase:8026/mcp"
-      - "PROVIDER=openai"
-      - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
-      - "OPENAI_API_KEY=llama"
-      - "MODEL_ID=qwen/qwen3-4b-2507"
-      - "DEBUG=False"
-      - "ENABLE_WEB_UI=True"
-    ports:
-      - "9026:9026"
-    healthcheck:
-      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9026/health')" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+   image: docker.io/knucklessg1/vector-mcp:latest
+   container_name: vector-agent-couchbase
+   hostname: vector-agent-couchbase
+   command: [ "vector-agent" ]
+   extra_hosts:
+     - "host.docker.internal:host-gateway"
+   depends_on:
+     - vector-mcp-couchbase
+   logging:
+     driver: json-file
+     options:
+       max-size: "10m"
+       max-file: "3"
+   restart: always
+   environment:
+     - "HOST=0.0.0.0"
+     - "PORT=9026"
+     - "MCP_URL=http://vector-mcp-couchbase:8026/mcp"
+     - "PROVIDER=openai"
+     - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
+     - "OPENAI_API_KEY=llama"
+     - "MODEL_ID=qwen/qwen3-4b-2507"
+     - "DEBUG=False"
+     - "ENABLE_WEB_UI=True"
+   ports:
+     - "9026:9026"
+   healthcheck:
+     test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9026/health')" ]
+     interval: 30s
+     timeout: 10s
+     retries: 3
+     start_period: 10s
 
   # Qdrant
   qdrant:
-    image: qdrant/qdrant:latest
-    container_name: qdrant
-    ports:
-      - "6333:6333"
-    restart: always
+   image: qdrant/qdrant:latest
+   container_name: qdrant
+   ports:
+     - "6333:6333"
+   restart: always
 
   vector-mcp-qdrant:
-    image: docker.io/knucklessg1/vector-mcp:latest
-    container_name: vector-mcp-qdrant
-    hostname: vector-mcp-qdrant
-    command: [ "vector-mcp" ]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    restart: always
-    environment:
-      - "HOST=0.0.0.0"
-      - "PORT=8027"
-      - "TRANSPORT=streamable-http"
-      - "DATABASE_TYPE=qdrant"
-      - "DB_HOST=qdrant"
-      - "DB_PORT=6333"
-    ports:
-      - "8027:8027"
-    healthcheck:
-      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8027/health')" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    depends_on:
-      - qdrant
-    volumes:
-      - ./mcp/documents:/documents
+   image: docker.io/knucklessg1/vector-mcp:latest
+   container_name: vector-mcp-qdrant
+   hostname: vector-mcp-qdrant
+   command: [ "vector-mcp" ]
+   extra_hosts:
+     - "host.docker.internal:host-gateway"
+   logging:
+     driver: json-file
+     options:
+       max-size: "10m"
+       max-file: "3"
+   restart: always
+   environment:
+     - "HOST=0.0.0.0"
+     - "PORT=8027"
+     - "TRANSPORT=streamable-http"
+     - "DATABASE_TYPE=qdrant"
+     - "DB_HOST=qdrant"
+     - "DB_PORT=6333"
+     - "PROVIDER=openai"
+     - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
+     - "OPENAI_API_KEY=llama"
+     - "MODEL_ID=text-embedding-nomic-embed-text-v1.5"
+   ports:
+     - "8027:8027"
+   healthcheck:
+     test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8027/health')" ]
+     interval: 30s
+     timeout: 10s
+     retries: 3
+     start_period: 10s
+   depends_on:
+     - qdrant
+   volumes:
+     - ./mcp/documents:/documents
 
   vector-agent-qdrant:
-    image: docker.io/knucklessg1/vector-mcp:latest
-    container_name: vector-agent-qdrant
-    hostname: vector-agent-qdrant
-    command: [ "vector-agent" ]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      - vector-mcp-qdrant
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    restart: always
-    environment:
-      - "HOST=0.0.0.0"
-      - "PORT=9027"
-      - "MCP_URL=http://vector-mcp-qdrant:8027/mcp"
-      - "PROVIDER=openai"
-      - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
-      - "OPENAI_API_KEY=llama"
-      - "MODEL_ID=qwen/qwen3-4b-2507"
-      - "DEBUG=False"
-      - "ENABLE_WEB_UI=True"
-    ports:
-      - "9027:9027"
-    healthcheck:
-      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9027/health')" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+   image: docker.io/knucklessg1/vector-mcp:latest
+   container_name: vector-agent-qdrant
+   hostname: vector-agent-qdrant
+   command: [ "vector-agent" ]
+   extra_hosts:
+     - "host.docker.internal:host-gateway"
+   depends_on:
+     - vector-mcp-qdrant
+   logging:
+     driver: json-file
+     options:
+       max-size: "10m"
+       max-file: "3"
+   restart: always
+   environment:
+     - "HOST=0.0.0.0"
+     - "PORT=9027"
+     - "MCP_URL=http://vector-mcp-qdrant:8027/mcp"
+     - "PROVIDER=openai"
+     - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
+     - "OPENAI_API_KEY=llama"
+     - "MODEL_ID=qwen/qwen3-4b-2507"
+     - "DEBUG=False"
+     - "ENABLE_WEB_UI=True"
+   ports:
+     - "9027:9027"
+   healthcheck:
+     test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9027/health')" ]
+     interval: 30s
+     timeout: 10s
+     retries: 3
+     start_period: 10s

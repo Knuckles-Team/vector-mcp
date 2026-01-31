@@ -1,365 +1,269 @@
 #!/usr/bin/python
 # coding: utf-8
-import abc
-import logging
-from collections.abc import Sequence
-from typing import Any
+from typing import Any, Optional, Union
+
 from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
+
 from vector_mcp.vectordb.utils import (
     get_logger,
     optional_import_block,
     require_optional_import,
 )
 
-with optional_import_block():
-    from fastembed import TextEmbedding
-    from qdrant_client import QdrantClient, models
+from vector_mcp.utils import get_embedding_model
 
+from llama_index.core import (
+    VectorStoreIndex,
+    StorageContext,
+    Document as LIDocument,
+)
+
+with optional_import_block():
+    import qdrant_client
+    from qdrant_client import models
+    from llama_index.vector_stores.qdrant import QdrantVectorStore
 
 logger = get_logger(__name__)
 
-Embeddings = Sequence[float] | Sequence[int]
 
-
-class EmbeddingFunction(abc.ABC):
-    @abc.abstractmethod
-    def __call__(self, inputs: list[str]) -> list[Embeddings]:
-        raise NotImplementedError
-
-
-@require_optional_import("fastembed", "retrievechat-qdrant")
-class FastEmbedEmbeddingFunction(EmbeddingFunction):
-    """Embedding function implementation using FastEmbed - https://qdrant.github.io/fastembed."""
-
-    def __init__(
-        self,
-        model_name: str = "BAAI/bge-small-en-v1.5",
-        batch_size: int = 256,
-        cache_dir: str | None = None,
-        threads: int | None = None,
-        parallel: int | None = None,
-        **kwargs: Any,
-    ):
-        """Initialize fastembed.TextEmbedding.
-
-        Args:
-            model_name (str): The name of the model to use. Defaults to `"BAAI/bge-small-en-v1.5"`.
-            batch_size (int): Batch size for encoding. Higher values will use more memory, but be faster.\
-                                        Defaults to 256.
-            cache_dir (str, optional): The path to the model cache directory.\
-                                       Can also be set using the `FASTEMBED_CACHE_PATH` env variable.
-            threads (int, optional): The number of threads single onnxruntime session can use.
-            parallel (int, optional): If `>1`, data-parallel encoding will be used, recommended for large datasets.\
-                                      If `0`, use all available cores.\
-                                      If `None`, don't use data-parallel processing, use default onnxruntime threading.\
-                                      Defaults to None.
-            **kwargs: Additional options to pass to fastembed.TextEmbedding
-        Raises:
-            ValueError: If the model_name is not in the format `<org>/<model>` e.g. BAAI/bge-small-en-v1.5.
-        """
-        self._batch_size = batch_size
-        self._parallel = parallel
-        self._model = TextEmbedding(
-            model_name=model_name, cache_dir=cache_dir, threads=threads, **kwargs
-        )
-
-    def __call__(self, inputs: list[str]) -> list[Embeddings]:
-        embeddings = self._model.embed(
-            inputs, batch_size=self._batch_size, parallel=self._parallel
-        )
-
-        return [embedding.tolist() for embedding in embeddings]
-
-
-@require_optional_import("qdrant_client", "retrievechat-qdrant")
+@require_optional_import(["qdrant_client", "llama_index"], "retrievechat-qdrant")
 class QdrantVectorDB(VectorDB):
-    """A vector database implementation that uses Qdrant as the backend."""
+    """A vector database that uses Qdrant as the backend via LlamaIndex."""
 
     def __init__(
         self,
         *,
-        client=None,
-        embedding_function: EmbeddingFunction = None,
-        content_payload_key: str = "_content",
-        metadata_payload_key: str = "_metadata",
-        collection_options: dict = {},
-        client_kwargs: Any,
-        **kwargs: Any,
+        location: Optional[str] = None,
+        url: Optional[str] = None,
+        host: Optional[Union[str, int]] = None,
+        port: Optional[Union[str, int]] = None,
+        api_key: Optional[str] = None,
+        embed_model: Any | None = None,
+        collection_name: str = "memory",
+        metadata: Optional[dict] = None,
+        **kwargs,
     ) -> None:
-        """Initialize the vector database.
+        """Initialize the vector database."""
+        self.collection_name = collection_name
+        self.embed_model = embed_model or get_embedding_model()
+        self.metadata = metadata or {}
 
-        Args:
-            client: An instance of QdrantClient.
-            embedding_function: The embedding function used to generate the vector representation
-                of the documents. Defaults to FastEmbedEmbeddingFunction.
-            content_payload_key: The key to use for the content payload. Default is "_content".
-            metadata_payload_key: The key to use for the metadata payload. Default is "_metadata".
-            collection_options: The options for creating the collection.
-            **kwargs: Additional keyword arguments.
-        """
-        if client:
-            self.client: QdrantClient = client
-        elif client_kwargs:
-            self.client = QdrantClient(**client_kwargs)
-        else:
-            self.client: QdrantClient = QdrantClient(location=":memory:")
-        self.embedding_function = embedding_function or FastEmbedEmbeddingFunction()
-        self.collection_options = collection_options
-        self.content_payload_key = content_payload_key
-        self.metadata_payload_key = metadata_payload_key
+        # Connection params
+        self.client = qdrant_client.QdrantClient(
+            location=location, url=url, host=host, port=port, api_key=api_key, **kwargs
+        )
+
+        self.vector_store = QdrantVectorStore(
+            client=self.client,
+            collection_name=self.collection_name,
+        )
+        self.storage_context = StorageContext.from_defaults(
+            vector_store=self.vector_store
+        )
+        self.active_collection = collection_name
         self.type = "qdrant"
+        self._index = None
+
+    def _get_index(self) -> "VectorStoreIndex":
+        if self._index is None:
+            self._index = VectorStoreIndex.from_vector_store(
+                self.vector_store,
+                storage_context=self.storage_context,
+                embed_model=self.embed_model,
+            )
+        return self._index
 
     def create_collection(
         self, collection_name: str, overwrite: bool = False, get_or_create: bool = True
-    ) -> None:
-        """Create a collection in the vector database.
-        Case 1. if the collection does not exist, create the collection.
-        Case 2. the collection exists, if overwrite is True, it will overwrite the collection.
-        Case 3. the collection exists and overwrite is False, if get_or_create is True, it will get the collection,
-            otherwise it raise a ValueError.
+    ) -> Any:
+        self.collection_name = collection_name
 
-        Args:
-            collection_name: str | The name of the collection.
-            overwrite: bool | Whether to overwrite the collection if it exists. Default is False.
-            get_or_create: bool | Whether to get the collection if it exists. Default is True.
-
-        Returns:
-            Any | The collection object.
-        """
-        embeddings_size = len(self.embedding_function(["test"])[0])
-
-        if self.client.collection_exists(collection_name) and overwrite:
+        if overwrite:
             self.client.delete_collection(collection_name)
 
-        if not self.client.collection_exists(collection_name):
-            self.client.create_collection(
-                collection_name,
-                vectors_config=models.VectorParams(
-                    size=embeddings_size, distance=models.Distance.COSINE
-                ),
-                **self.collection_options,
-            )
-        elif not get_or_create:
-            raise ValueError(f"Collection {collection_name} already exists.")
+        self.vector_store = QdrantVectorStore(
+            client=self.client,
+            collection_name=self.collection_name,
+        )
+        self.storage_context = StorageContext.from_defaults(
+            vector_store=self.vector_store
+        )
+        self.active_collection = collection_name
+        self._index = None
+        return self.vector_store
 
-    def get_collection(self, collection_name: str = None):
-        """Get the collection from the vector database.
-
-        Args:
-            collection_name: str | The name of the collection.
-
-        Returns:
-            Any | The collection object.
-        """
-        if collection_name is None:
-            raise ValueError("The collection name is required.")
-
-        return self.client.get_collection(collection_name)
-
-    def delete_collection(self, collection_name: str) -> None:
-        """Delete the collection from the vector database.
-
-        Args:
-            collection_name: str | The name of the collection.
-
-        Returns:
-            Any
-        """
-        return self.client.delete_collection(collection_name)
+    def get_collection(self, collection_name: str = None) -> Any:
+        return self.client.get_collection(collection_name or self.collection_name)
 
     def insert_documents(
-        self, docs: list[Document], collection_name: str = None, upsert: bool = False
+        self,
+        docs: list[Document],
+        collection_name: str = None,
+        upsert: bool = False,
+        **kwargs,
     ) -> None:
-        """Insert documents into the collection of the vector database.
+        if collection_name:
+            self.create_collection(collection_name)
 
-        Args:
-            docs: List[Document] | A list of documents. Each document is a TypedDict `Document`.
-            collection_name: str | The name of the collection. Default is None.
-            upsert: bool | Whether to update the document if it exists. Default is False.
-            kwargs: Dict | Additional keyword arguments.
-
-        Returns:
-            None
-        """
-        if not docs:
-            return
-        if any(doc.get("content") is None for doc in docs):
-            raise ValueError("The document content is required.")
-        if any(doc.get("id") is None for doc in docs):
-            raise ValueError("The document id is required.")
-
-        if not upsert and not self._validate_upsert_ids(
-            collection_name, [doc["id"] for doc in docs]
-        ):
-            logger.log("Some IDs already exist. Skipping insert", level=logging.WARN)
-
-        self.client.upsert(collection_name, points=self._documents_to_points(docs))
-
-    def update_documents(
-        self, docs: list[Document], collection_name: str = None
-    ) -> None:
-        if not docs:
-            return
-        if any(doc.get("id") is None for doc in docs):
-            raise ValueError("The document id is required.")
-        if any(doc.get("content") is None for doc in docs):
-            raise ValueError("The document content is required.")
-        if self._validate_update_ids(collection_name, [doc["id"] for doc in docs]):
-            return self.client.upsert(
-                collection_name, points=self._documents_to_points(docs)
+        li_docs = []
+        for doc in docs:
+            metadata = doc.get("metadata", {}) or {}
+            li_docs.append(
+                LIDocument(text=doc["content"], doc_id=doc["id"], metadata=metadata)
             )
 
-        raise ValueError("Some IDs do not exist. Skipping update")
+        index = self._get_index()
+        for li_doc in li_docs:
+            index.insert(li_doc)
 
-    def delete_documents(
-        self, ids: list[ItemID], collection_name: str = None, **kwargs
-    ) -> None:
-        """Delete documents from the collection of the vector database.
-
-        Args:
-            ids: List[ItemID] | A list of document ids. Each id is a typed `ItemID`.
-            collection_name: str | The name of the collection. Default is None.
-            kwargs: Dict | Additional keyword arguments.
-
-        Returns:
-            None
-        """
-        self.client.delete(collection_name, ids)
-
-    def retrieve_documents(
+    def semantic_search(
         self,
         queries: list[str],
         collection_name: str = None,
         n_results: int = 10,
-        distance_threshold: float = 0,
+        distance_threshold: float = -1,
         **kwargs: Any,
     ) -> QueryResults:
-        """Retrieve documents from the collection of the vector database based on the queries.
+        if collection_name:
+            self.create_collection(collection_name)
 
-        Args:
-            queries: List[str] | A list of queries. Each query is a string.
-            collection_name: str | The name of the collection. Default is None.
-            n_results: int | The number of relevant documents to return. Default is 10.
-            distance_threshold: float | The threshold for the distance score, only distance smaller than it will be
-                returned. Don't filter with it if `< 0`. Default is 0.
-            kwargs: Dict | Additional keyword arguments.
+        index = self._get_index()
+        results = []
+        retriever = index.as_retriever(similarity_top_k=n_results)
 
-        Returns:
-            QueryResults | The query results. Each query result is a list of list of tuples containing the document and
-                the distance.
-        """
-        embeddings = self.embedding_function(queries)
-        requests = [
-            models.SearchRequest(
-                vector=embedding,
-                limit=n_results,
-                score_threshold=distance_threshold,
-                with_payload=True,
-                with_vector=False,
-            )
-            for embedding in embeddings
-        ]
+        for query in queries:
+            nodes = retriever.retrieve(query)
+            query_result = []
+            for node_match in nodes:
+                if distance_threshold >= 0 and node_match.score < distance_threshold:
+                    continue
 
-        batch_results = self.client.search_batch(collection_name, requests)
-        return [self._scored_points_to_documents(results) for results in batch_results]
+                doc = Document(
+                    id=node_match.node.node_id,
+                    content=node_match.node.text,
+                    metadata=node_match.node.metadata,
+                    embedding=node_match.node.embedding,
+                )
+                query_result.append((doc, 1.0 - (node_match.score or 0.0)))
+            results.append(query_result)
+        return results
 
     def get_documents_by_ids(
         self,
         ids: list[ItemID] = None,
         collection_name: str = None,
-        include=True,
+        include=None,
         **kwargs,
     ) -> list[Document]:
-        """Retrieve documents from the collection of the vector database based on the ids.
-
-        Args:
-            ids: List[ItemID] | A list of document ids. If None, will return all the documents. Default is None.
-            collection_name: str | The name of the collection. Default is None.
-            include: List[str] | The fields to include. Default is True.
-                If None, will include ["metadatas", "documents"], ids will always be included.
-            kwargs: dict | Additional keyword arguments.
-
-        Returns:
-            List[Document] | The results.
-        """
-        if ids is None:
-            results = self.client.scroll(
-                collection_name=collection_name, with_payload=include, with_vectors=True
-            )[0]
-        else:
-            results = self.client.retrieve(
-                collection_name, ids=ids, with_payload=include, with_vectors=True
+        # Qdrant client retrieve
+        records = self.client.retrieve(
+            collection_name=collection_name or self.collection_name,
+            ids=ids,
+            with_vectors=True,  # Optional?
+            with_payload=True,
+        )
+        docs = []
+        for record in records:
+            docs.append(
+                Document(
+                    id=record.id,
+                    content=record.payload.get("text", ""),
+                    metadata=record.payload.get("metadata", {}),
+                )
             )
-        return [self._point_to_document(result) for result in results]
+        return docs
 
-    def _point_to_document(self, point) -> Document:
-        return {
-            "id": point.id,
-            "content": point.payload.get(self.content_payload_key, ""),
-            "metadata": point.payload.get(self.metadata_payload_key, {}),
-            "embedding": point.vector,
-        }
+    def update_documents(
+        self, docs: list[Document], collection_name: str = None
+    ) -> None:
+        self.insert_documents(docs, collection_name, upsert=True)
 
-    def _points_to_documents(self, points) -> list[Document]:
-        return [self._point_to_document(point) for point in points]
+    def delete_documents(
+        self, ids: list[ItemID], collection_name: str = None, **kwargs
+    ) -> None:
+        if collection_name:
+            self.create_collection(collection_name)
+        self.vector_store.delete_nodes(ids)
 
-    def _scored_point_to_document(
-        self, scored_point: "models.ScoredPoint"
-    ) -> tuple[Document, float]:
-        return self._point_to_document(scored_point), scored_point.score
+    def delete_collection(self, collection_name: str) -> None:
+        self.client.delete_collection(collection_name)
+        if self.active_collection == collection_name:
+            self.active_collection = None
 
-    def _documents_to_points(self, documents: list[Document]):
-        contents = [document["content"] for document in documents]
-        embeddings = self.embedding_function(contents)
-        points = [
-            models.PointStruct(
-                id=documents[i]["id"],
-                vector=embeddings[i],
-                payload={
-                    self.content_payload_key: documents[i].get("content"),
-                    self.metadata_payload_key: documents[i].get("metadata"),
-                },
-            )
-            for i in range(len(documents))
-        ]
-        return points
+    def get_collections(self) -> Any:
+        return self.client.get_collections()
 
-    def _scored_points_to_documents(
-        self, scored_points: list["models.ScoredPoint"]
-    ) -> list[tuple[Document, float]]:
-        return [
-            self._scored_point_to_document(scored_point)
-            for scored_point in scored_points
-        ]
+    def lexical_search(
+        self,
+        queries: list[str],
+        collection_name: str = None,
+        n_results: int = 10,
+        **kwargs: Any,
+    ) -> QueryResults:
+        collection_name = collection_name or self.collection_name
+        results = []
+        for query in queries:
+            # Qdrant Full Text Search (keyword match)
+            # Use Scroll with Filter
+            # Payload field 'text' (default LlamaIndex field)
+            try:
+                # We need a payload index on 'text' for fast search, but usually Qdrant does exact match without it too?
+                # Actually, Qdrant has 'Text' index type.
+                # Assuming index exists or we just match.
 
-    def _validate_update_ids(self, collection_name: str, ids: list[str]) -> bool:
-        """Validates all the IDs exist in the collection"""
-        retrieved_ids = [
-            point.id
-            for point in self.client.retrieve(
-                collection_name, ids=ids, with_payload=False, with_vectors=False
-            )
-        ]
+                # Filter for text matching
+                # Match(text="query") is token based full text match if index is text, or exact match if key.
+                # Use "text" (LlamaIndex stores content in "doc_content" or "_node_content" or "text"?
+                # Standard LlamaIndex Qdrant store:
+                # payload key "text" is usually customizable, but generic is "text" or "content".
+                # Let's check LlamaIndex source or just try "text".
+                # Actually LlamaIndex Qdrant uses "text" key in payload by default for storing node content.
 
-        if missing_ids := set(ids) - set(retrieved_ids):
-            logger.log(
-                f"Missing IDs: {missing_ids}. Skipping update", level=logging.WARN
-            )
-            return False
+                # We will perform a scroll with a filter that matches the text.
+                # This doesn't provide relevance scoring (BM25) natively in Qdrant < 1.10?
+                # Qdrant 1.10 introduced BM25 support via `query` API (Query API).
+                # But `qdrant-client` might need update.
 
-        return True
+                # Check installed version?
+                # We can try using the new Query API if available? `client.query_points(...)`
+                # If not, fallback to Scroll with Filter (boolean search).
 
-    def _validate_upsert_ids(self, collection_name: str, ids: list[str]) -> bool:
-        """Validate none of the IDs exist in the collection"""
-        retrieved_ids = [
-            point.id
-            for point in self.client.retrieve(
-                collection_name, ids=ids, with_payload=False, with_vectors=False
-            )
-        ]
+                # Let's try the new `query_points` with `qdrant_client.models.Query(text=query)` if we want hybrid/sparse?
+                # But standard BM25 support is recent.
 
-        if existing_ids := set(ids) & set(retrieved_ids):
-            logger.log(f"Existing IDs: {existing_ids}.", level=logging.WARN)
-            return False
+                # Safest "keyword search":
+                # client.scroll(collection_name, scroll_filter=Filter(must=[FieldCondition(key="text", match=Match(text=query))]), limit=n_results)
 
-        return True
+                result_points = []
+                # Try scroll first (keyword match)
+                scroll_result, _ = self.client.scroll(
+                    collection_name=collection_name,
+                    scroll_filter=models.Filter(
+                        must=[
+                            models.FieldCondition(
+                                key="text", match=models.MatchText(text=query)
+                            )
+                        ]
+                    ),
+                    limit=n_results,
+                    with_payload=True,
+                    with_vectors=False,
+                )
+                result_points = scroll_result
+            except Exception as e:
+                logger.error(f"Qdrant keyword search failed: {e}")
+                result_points = []
+
+            query_result = []
+            for point in result_points:
+                payload = point.payload or {}
+                # Qdrant point has 'id', 'payload', etc.
+                doc = Document(
+                    id=point.id,
+                    content=payload.get("text", ""),
+                    metadata=payload.get("metadata", {}),
+                    embedding=None,
+                )
+                query_result.append((doc, 1.0))  # No score from scroll
+            results.append(query_result)
+        return results

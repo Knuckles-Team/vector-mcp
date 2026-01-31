@@ -5,15 +5,20 @@ import logging
 import os
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Union, List, Dict
 
 if TYPE_CHECKING:
-    from chromadb.api.types import EmbeddingFunction
+    pass
 
 from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.vectordb.base import VectorDBFactory
 from vector_mcp.vectordb.mongodb import MongoDBAtlasVectorDB
-from vector_mcp.vectordb.utils import optional_import_block, require_optional_import
+from vector_mcp.vectordb.utils import (
+    optional_import_block,
+    require_optional_import,
+)
+
+from vector_mcp.utils import get_embedding_model
 
 with optional_import_block():
     from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
@@ -21,7 +26,6 @@ with optional_import_block():
     from llama_index.core.schema import Document as LlamaDocument
     from llama_index.vector_stores.mongodb import MongoDBAtlasVectorSearch
     from pymongo import MongoClient
-    from sentence_transformers import SentenceTransformer
 
 __all__ = ["MongoDBRetriever"]
 
@@ -38,42 +42,19 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-@require_optional_import(["pymongo", "llama_index", "sentence_transformers"], "rag")
+@require_optional_import(["pymongo", "llama_index"], "rag")
 class MongoDBRetriever(RAGRetriever):
-    """A query engine backed by MongoDB Atlas that supports document insertion and querying.
-
-    This engine initializes a vector database, builds an index from input documents,
-    and allows querying using the chat engine interface.
-
-    Attributes:
-        vector_db (MongoDBAtlasVectorDB): The MongoDB vector database instance.
-        vector_search_engine (MongoDBAtlasVectorSearch): The vector search engine.
-        storage_context (StorageContext): The storage context for the vector store.
-        index (Optional[VectorStoreIndex]): The index built from the documents.
-    """
+    """A query engine backed by MongoDB Atlas that supports document insertion and querying."""
 
     def __init__(  # type: ignore[no-any-unimported]
         self,
         connection_string: str,
         database_name: str | None = None,
-        embedding_function: "EmbeddingFunction[Any] | None" = None,  # type: ignore[type-arg]
+        embedding_function: Any | None = None,
         embedding_model: Union["BaseEmbedding", str] | None = None,
         collection_name: str | None = None,
     ):
-        """Initializes a MongoDBRetriever instance.
-
-        Args:
-            connection_string (str): Connection string used to connect to MongoDB.
-            database_name (Optional[str]): Name of the MongoDB database.
-            embedding_function (Optional[Union["BaseEmbedding", "EmbeddingFunction[Any] | None"]]): Custom embedding function. If None (default),
-                defaults to SentenceTransformer encoding.
-            embedding_model (Optional[Union["BaseEmbedding", str]]): Embedding model identifier or instance. If None (default),
-                "local:all-MiniLM-L6-v2" will be used.
-            collection_name (Optional[str]): Name of the MongoDB collection. If None (default), `DEFAULT_COLLECTION_NAME` will be used.
-
-        Raises:
-            ValueError: If no connection string is provided.
-        """
+        """Initializes a MongoDBRetriever instance."""
         if not connection_string:
             raise ValueError("Connection string is required to connect to MongoDB.")
 
@@ -81,65 +62,43 @@ class MongoDBRetriever(RAGRetriever):
         # ToDo: Is it okay if database_name is None?
         self.database_name = database_name
         self.collection_name = collection_name or DEFAULT_COLLECTION_NAME
-        self.embedding_model = embedding_model or "local:all-MiniLM-L6-v2"  # type: ignore[no-any-unimported]
 
-        # encode is a method of SentenceTransformer, so we need to use a type ignore here.
-        self.embedding_function = embedding_function or SentenceTransformer("all-MiniLM-L6-v2").encode  # type: ignore[call-overload]
+        self.embed_model = (
+            get_embedding_model()
+        )  # embedding_function ignored mostly or used if custom passed? ignoring for now to standardize.
 
         # These will be initialized later.
         self.vector_db: MongoDBAtlasVectorDB | None = None
-        self.vector_search_engine: MongoDBAtlasVectorSearch | None = None  # type: ignore[no-any-unimported]
+        self.semantic_search_engine: MongoDBAtlasVectorSearch | None = None  # type: ignore[no-any-unimported]
         self.storage_context: StorageContext | None = None  # type: ignore[no-any-unimported]
         self.index: VectorStoreIndex | None = None  # type: ignore[no-any-unimported]
 
     def _set_up(self, overwrite: bool) -> None:
-        """Sets up the MongoDB vector database, search engine, and storage context.
-
-        This method initializes the vector database using the provided connection details,
-        creates a vector search engine instance, and sets the storage context for indexing.
-
-        Args:
-            overwrite (bool): Flag indicating whether to overwrite the existing collection.
-        """
+        """Sets up the MongoDB vector database via VectorDBFactory."""
         logger.info("Setting up the database.")
         self.vector_db: MongoDBAtlasVectorDB = VectorDBFactory.create_vector_database(  # type: ignore[assignment, no-redef]
             db_type="mongodb",
             connection_string=self.connection_string,
-            database_name=self.database_name,
-            embedding_function=self.embedding_function,
+            dbname=self.database_name,  # Note: using dbname as per factory arg usually
+            embed_model=self.embed_model,
             collection_name=self.collection_name,
-            overwrite=overwrite,  # new parameter to control creation behavior
+        )
+        self.vector_db.create_collection(
+            collection_name=self.collection_name, overwrite=overwrite
         )
         logger.info("Vector database created.")
-        self.vector_search_engine = MongoDBAtlasVectorSearch(
-            mongodb_client=self.vector_db.client,  # type: ignore[union-attr]
-            db_name=self.database_name,
-            collection_name=self.collection_name,
-        )
-        logger.info("Vector search engine created.")
-        self.storage_context = StorageContext.from_defaults(
-            vector_store=self.vector_search_engine
-        )
+
+        # Access internal LlamaIndex components from VectorDB wrapper
+        self.index = self.vector_db._get_index()
 
     def _check_existing_collection(self) -> bool:
-        """Checks if the specified collection exists in the MongoDB database.
-
-        Returns:
-            bool: True if the collection exists; False otherwise.
-        """
+        """Checks if the specified collection exists in the MongoDB database."""
         client: MongoClient[Any] = MongoClient(self.connection_string)  # type: ignore[no-any-unimported]
-        db = client[self.database_name]  # type: ignore[index]
+        db = client[self.database_name or "default_db"]  # type: ignore[index]
         return self.collection_name in db.list_collection_names()
 
     def connect_database(self, *args: Any, **kwargs: Any) -> bool:
-        """Connects to the MongoDB database and initializes the query index from the existing collection.
-
-        This method verifies the existence of the collection, sets up the database connection,
-        builds the vector store index, and pings the MongoDB server.
-
-        Returns:
-            bool: True if connection is successful; False otherwise.
-        """
+        """Connects to the MongoDB database and initializes the query index from the existing collection."""
         try:
             # Check if the target collection exists.
             if not self._check_existing_collection():
@@ -150,13 +109,7 @@ class MongoDBRetriever(RAGRetriever):
             # Reinitialize without overwriting the existing collection.
             self._set_up(overwrite=False)
 
-            self.index = VectorStoreIndex.from_vector_store(
-                vector_store=self.vector_search_engine,  # type: ignore[arg-type]
-                storage_context=self.storage_context,
-                embed_model=self.embedding_model,
-            )
-
-            self.vector_db.client.admin.command("ping")  # type: ignore[union-attr]
+            self.vector_db.mongo_client.admin.command("ping")  # type: ignore[union-attr]
             logger.info("Connected to MongoDB successfully.")
             return True
         except Exception as error:
@@ -167,23 +120,11 @@ class MongoDBRetriever(RAGRetriever):
         self,
         document_directory: Path | str | None = None,
         document_paths: Sequence[Path | str] | None = None,
+        document_contents: Sequence[str] | None = None,
         *args: Any,
         **kwargs: Any,
     ) -> bool:
-        """Initializes the MongoDB database by creating or overwriting the collection and indexing documents.
-
-        This method loads documents from a directory or provided file paths, sets up the database (optionally
-        overwriting any existing collection), builds the vector store index, and inserts the documents.
-
-        Args:
-            document_directory (Optional[Union[Path, str]]): Directory containing documents to be indexed.
-            document_paths (Optional[Sequence[Union[Path, str]]]): List of file paths or URLs for documents.
-            *args (Any): Additional positional arguments.
-            **kwargs (Any): Additional keyword arguments.
-
-        Returns:
-            bool: True if the database is successfully initialized; False otherwise.
-        """
+        """Initializes the MongoDB database by creating or overwriting the collection and indexing documents."""
         try:
             # Check if the collection already exists.
             if self._check_existing_collection():
@@ -193,51 +134,37 @@ class MongoDBRetriever(RAGRetriever):
                 )
             # Set up the database with overwriting.
             self._set_up(overwrite=True)
-            self.vector_db.client.admin.command("ping")  # type: ignore[union-attr]
+            self.vector_db.mongo_client.admin.command("ping")  # type: ignore[union-attr]
             # Gather document paths.
             logger.info("Setting up the database with existing collection.")
-            documents = self._load_doc(
-                input_dir=document_directory, input_docs=document_paths
-            )
-            self.index = VectorStoreIndex.from_vector_store(
-                vector_store=self.vector_search_engine,  # type: ignore[arg-type]
-                storage_context=self.storage_context,
-                embed_model=self.embedding_model,
-            )
-            for doc in documents:
-                self.index.insert(doc)
-            logger.info("Database initialized with %d documents.", len(documents))
+
+            if document_directory or document_paths or document_contents:
+                documents = self._load_doc(
+                    input_dir=document_directory,
+                    input_docs=document_paths,
+                    input_contents=document_contents,
+                )
+                for doc in documents:
+                    self.index.insert(doc)
+                logger.info("Database initialized with %d documents.", len(documents))
             return True
         except Exception as e:
             logger.error("Failed to initialize the database: %s", e)
             return False
 
     def _validate_query_index(self) -> None:
-        """Validates that the query index is initialized.
-
-        Raises:
-            Exception: If the query index is not initialized.
-        """
-        if not hasattr(self, "index"):
+        """Validates that the query index is initialized."""
+        if not hasattr(self, "index") or self.index is None:
             raise Exception(
                 "Query index is not initialized. Please call init_db or connect_database first."
             )
 
     def _load_doc(  # type: ignore[no-any-unimported]
-        self, input_dir: Path | str | None, input_docs: Sequence[Path | str] | None
+        self,
+        input_dir: Path | str | None = None,
+        input_docs: Sequence[Path | str] | None = None,
+        input_contents: Sequence[str] | None = None,
     ) -> Sequence["LlamaDocument"]:
-        """Loads documents from a directory or a list of file paths.
-
-        Args:
-            input_dir (Optional[Union[Path, str]]): Directory from which to load documents.
-            input_docs (Optional[Sequence[Union[Path, str]]]): List of document file paths or URLs.
-
-        Returns:
-            Sequence[LlamaDocument]: A sequence of loaded LlamaDocument objects.
-
-        Raises:
-            ValueError: If the input directory or any specified document file does not exist.
-        """
         loaded_documents = []
         if input_dir:
             logger.info("Loading docs from directory: %s", input_dir)
@@ -252,9 +179,19 @@ class MongoDBRetriever(RAGRetriever):
                 logger.info("Loading input doc: %s", doc)
                 if not os.path.exists(doc):
                     raise ValueError(f"Document file not found: {doc}")
-            loaded_documents.extend(SimpleDirectoryReader(input_files=input_docs).load_data())  # type: ignore[arg-type]
-        if not input_dir and not input_docs:
-            raise ValueError("No input directory or docs provided!")
+            loaded_documents.extend(
+                SimpleDirectoryReader(input_files=input_docs).load_data()  # type: ignore[arg-type]
+            )
+
+        if input_contents:
+            logger.info("Loading %d strings as documents", len(input_contents))
+            for content in input_contents:
+                loaded_documents.append(LlamaDocument(text=content))
+
+        if not input_dir and not input_docs and not input_contents:
+            raise ValueError(
+                "No input directory, docs, or content provided! You must provide at least one source."
+            )
 
         return loaded_documents
 
@@ -262,60 +199,72 @@ class MongoDBRetriever(RAGRetriever):
         self,
         document_directory: Path | str | None = None,
         document_paths: Sequence[Path | str] | None = None,
+        document_contents: Sequence[str] | None = None,
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        """Adds new documents to the existing vector store index.
-
-        This method validates that the index exists, loads documents from the specified directory or file paths,
-        and inserts them into the vector store index.
-
-        Args:
-            document_directory (Optional[Union[Path, str]]): Directory containing new documents.
-            document_paths (Optional[Sequence[Union[Path, str]]]): List of file paths or URLs for new documents.
-            *args (Any): Additional positional arguments.
-            **kwargs (Any): Additional keyword arguments.
-        """
+        """Adds new documents to the existing vector store index."""
         self._validate_query_index()
         documents = self._load_doc(
-            input_dir=document_directory, input_docs=document_paths
+            input_dir=document_directory,
+            input_docs=document_paths,
+            input_contents=document_contents,
         )
         for doc in documents:
             self.index.insert(doc)  # type: ignore[union-attr]
 
-    def query(self, question: str, *args: Any, **kwargs: Any) -> Any:  # type: ignore[no-any-unimported, type-arg]
-        """Queries the indexed documents using the provided question.
-
-        This method validates that the query index is initialized, creates a query engine from the vector store index,
-        and executes the query. If the response is empty, a default reply is returned.
-
-        Args:
-            question (str): The query question.
-            args (Any): Additional positional arguments.
-            kwargs (Any): Additional keyword arguments.
-
-        Returns:
-            Any: The query response as a string, or a default reply if no results are found.
-        """
+    def query(self, question: str, *args: Any, **kwargs: Any) -> List[Dict[str, Any]]:
+        """Queries the indexed documents using the provided question."""
         self._validate_query_index()
         similarity_top_k = kwargs.get("n_results", 10)
-        self.retriever = self.index.as_retriever(similarity_top_k=similarity_top_k)
-        response = self.retriever.retrieve(str_or_query_bundle=question)
+        retriever = self.index.as_retriever(similarity_top_k=similarity_top_k)
+        response = retriever.retrieve(str_or_query_bundle=question)
 
-        if str(response) == EMPTY_RESPONSE_TEXT:
-            return EMPTY_RESPONSE_REPLY
+        results = []
+        for node_with_score in response:
+            results.append(
+                {
+                    "text": node_with_score.node.get_content(),
+                    "score": node_with_score.score,
+                    "id": node_with_score.node.node_id,
+                    "metadata": node_with_score.node.metadata,
+                }
+            )
+        return results
 
-        return str(response)
+    def bm25_query(
+        self, question: str, number_results: int, *args: Any, **kwargs: Any
+    ) -> List[Dict[str, Any]]:
+        self._validate_query_index()
+        # MongoDBAtlasVectorDB lexical_search returns list of list of (Document, score)
+        results = self.vector_db.lexical_search(
+            queries=[question],
+            collection_name=self.collection_name,
+            n_results=number_results,
+            **kwargs,
+        )
+        doc_scores = results[0]
+
+        formatted_results = []
+        for doc, score in doc_scores:
+            formatted_results.append(
+                {
+                    "text": (
+                        doc.content if hasattr(doc, "content") else doc.get("content")
+                    ),
+                    "score": score,
+                    "id": doc.id if hasattr(doc, "id") else doc.get("id"),
+                    "metadata": (
+                        doc.metadata
+                        if hasattr(doc, "metadata")
+                        else doc.get("metadata")
+                    ),
+                }
+            )
+        return formatted_results
 
     def get_collection_name(self) -> str:
-        """Retrieves the name of the MongoDB collection.
-
-        Returns:
-            str: The collection name.
-
-        Raises:
-            ValueError: If the collection name is not set.
-        """
+        """Retrieves the name of the MongoDB collection."""
         if self.collection_name:
             return self.collection_name
         else:

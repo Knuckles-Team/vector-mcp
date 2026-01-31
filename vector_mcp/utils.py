@@ -4,14 +4,24 @@
 import os
 import pickle
 import yaml
+from typing import Optional
+
 from pathlib import Path
-from typing import Any, Union, List, Optional
+from typing import Any, Union, List
 from importlib.resources import files, as_file
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.huggingface import HuggingFaceModel
 from fasta2a import Skill
+
+from llama_index.core.embeddings import BaseEmbedding
+from llama_index.embeddings.openai import OpenAIEmbedding
+
+try:
+    from llama_index.embeddings.ollama import OllamaEmbedding
+except ImportError:
+    OllamaEmbedding = None
 
 
 def to_integer(string: Union[str, int] = None) -> int:
@@ -174,3 +184,47 @@ def create_model(
             os.environ["HF_TOKEN"] = api_key
         return HuggingFaceModel(model_name=model_id)
     return OpenAIChatModel(model_name=model_id, provider="openai")
+
+
+def get_embedding_model() -> BaseEmbedding:
+    """
+    Get the embedding model based on environment variables.
+
+    Returns:
+        BaseEmbedding: The LlamaIndex embedding model.
+    """
+    provider = os.environ.get("EMBEDDING_PROVIDER", "openai").lower()
+
+    if provider == "openai":
+        return OpenAIEmbedding(
+            model_name=os.environ.get(
+                "EMBEDDING_MODEL", "text-embedding-nomic-embed-text-v1.5"
+            ),
+            api_key=os.environ.get("OPENAI_API_KEY"),
+            api_base=os.environ.get("OPENAI_BASE_URL", "http://localhost:1234/v1"),
+            timeout=32400.0,
+        )
+    elif provider == "huggingface":
+        from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+
+        return HuggingFaceEmbedding(
+            model_name=os.environ.get("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"),
+            cache_folder=os.environ.get("HF_HOME"),
+            request_timeout=32400.0,
+        )
+    elif provider == "ollama":
+        if OllamaEmbedding is None:
+            raise ImportError("llama-index-embeddings-ollama is not installed.")
+        return OllamaEmbedding(
+            model_name=os.environ.get("EMBEDDING_MODEL", "nomic-embed-text"),
+            base_url=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"),
+            timeout=32400.0,
+        )
+    elif provider == "local":
+        # Default to a small, efficient model for local use if not specified
+        from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+
+        model_name = os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+        return HuggingFaceEmbedding(model_name=model_name)
+    else:
+        raise ValueError(f"Unsupported embedding provider: {provider}")

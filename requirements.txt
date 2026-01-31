@@ -1,5 +1,4 @@
 fastmcp>=2.13.0.2
-sentence_transformers>=5.1.0
 markdownify>=1.2.0
 beautifulsoup4>=4.13.5
 ebooklib>=0.19

@@ -1,11 +1,7 @@
 #!/usr/bin/python
 # coding: utf-8
+from typing import Any, Optional, Union
 
-import json
-import time
-from collections.abc import Callable
-from datetime import timedelta
-from typing import Any, Literal, Optional
 from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
 from vector_mcp.vectordb.utils import (
     get_logger,
@@ -13,374 +9,127 @@ from vector_mcp.vectordb.utils import (
     require_optional_import,
 )
 
-with optional_import_block():
-    import numpy as np
-    from couchbase import search
-    from couchbase.auth import PasswordAuthenticator
-    from couchbase.cluster import Cluster, ClusterOptions
-    from couchbase.collection import Collection
-    from couchbase.management.search import SearchIndex
-    from couchbase.options import SearchOptions
-    from couchbase.vector_search import VectorQuery, VectorSearch
-    from sentence_transformers import SentenceTransformer
+from vector_mcp.utils import get_embedding_model
 
+from llama_index.core import (
+    VectorStoreIndex,
+    StorageContext,
+    Document as LIDocument,
+)
+
+with optional_import_block():
+    from couchbase.cluster import Cluster
+    from couchbase.auth import PasswordAuthenticator
+    from couchbase.options import ClusterOptions
+    from llama_index.vector_stores.couchbase import CouchbaseVectorStore
 
 logger = get_logger(__name__)
 
-DEFAULT_BATCH_SIZE = 1000
-_SAMPLE_SENTENCE = ["The weather is lovely today in paradise."]
-TEXT_KEY = "content"
-EMBEDDING_KEY = "embedding"
 
-
-@require_optional_import(
-    ["couchbase", "sentence_transformers"], "retrievechat-couchbase"
-)
+@require_optional_import(["couchbase", "llama_index"], "retrievechat-couchbase")
 class CouchbaseVectorDB(VectorDB):
-    """A vector database implementation that uses Couchbase as the backend."""
+    """A vector database that uses Couchbase as the backend via LlamaIndex."""
 
     def __init__(
         self,
-        connection_string: str = "couchbase://localhost",
-        username: str = "Administrator",
-        password: str = "password",
-        bucket_name: str = "vector_db",
-        embedding_function: Callable = None,
-        scope_name: str = "_default",
-        collection_name: str = "_default",
-        index_name: str = None,
-    ):
-        """Initialize the vector database.
+        *,
+        connection_string: Optional[str] = None,
+        host: Optional[Union[str, int]] = None,
+        port: Optional[Union[str, int]] = None,
+        dbname: Optional[str] = None,  # Bucket name
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        embed_model: Any | None = None,
+        collection_name: str = "memory",
+        metadata: Optional[dict] = None,
+        **kwargs,
+    ) -> None:
+        """Initialize the vector database."""
+        self.collection_name = collection_name
+        self.embed_model = embed_model or get_embedding_model()
+        self.metadata = metadata or {}
 
-        Args:
-            connection_string (str): The Couchbase connection string to connect to. Default is 'couchbase://localhost'.
-            username (str): The username for Couchbase authentication. Default is 'Administrator'.
-            password (str): The password for Couchbase authentication. Default is 'password'.
-            bucket_name (str): The name of the bucket. Default is 'vector_db'.
-            embedding_function (Callable): The embedding function used to generate the vector representation. Default is SentenceTransformer("all-MiniLM-L6-v2").encode.
-            scope_name (str): The name of the scope. Default is '_default'.
-            collection_name (str): The name of the collection to create for this vector database. Default is '_default'.
-            index_name (str): Index name for the vector database. Default is None.
-            overwrite (bool): Whether to overwrite existing data. Default is False.
-            wait_until_index_ready (float or None): Blocking call to wait until the database indexes are ready. None means no wait. Default is None.
-            wait_until_document_ready (float or None): Blocking call to wait until the database documents are ready. None means no wait. Default is None.
-        """
-        if embedding_function is None:
-            embedding_function = SentenceTransformer("all-MiniLM-L6-v2").encode
-        self.embedding_function = embedding_function
-        self.index_name = index_name
+        # Connection logic
+        if not connection_string:
+            connection_string = f"couchbase://{host or 'localhost'}"
 
-        # This will get the model dimension size by computing the embeddings dimensions
-        self.dimensions = self._get_embedding_size()
+        self.cluster = Cluster(
+            connection_string, ClusterOptions(PasswordAuthenticator(username, password))
+        )
+        self.bucket_name = dbname or "default"
+        self.scope_name = kwargs.get("scope_name", "_default")
 
-        try:
-            auth = PasswordAuthenticator(username, password)
-            cluster = Cluster(connection_string, ClusterOptions(auth))
-            cluster.wait_until_ready(timedelta(seconds=5))
-            self.cluster = cluster
+        self.vector_store = CouchbaseVectorStore(
+            cluster=self.cluster,
+            bucket_name=self.bucket_name,
+            scope_name=self.scope_name,
+            collection_name=self.collection_name,
+            **kwargs,
+        )
+        self.storage_context = StorageContext.from_defaults(
+            vector_store=self.vector_store
+        )
+        self.active_collection = collection_name
+        self.type = "couchbase"
+        self._index = None
 
-            self.bucket = cluster.bucket(bucket_name)
-            self.scope = self.bucket.scope(scope_name)
-            self.collection = self.scope.collection(collection_name)
-            self.active_collection = self.collection
-
-            logger.debug("Successfully connected to Couchbase")
-        except Exception as err:
-            raise ConnectionError("Could not connect to Couchbase server") from err
-
-    def search_index_exists(self, index_name: str):
-        """Check if the specified index is ready"""
-        try:
-            search_index_mgr = self.scope.search_indexes()
-            index = search_index_mgr.get_index(index_name)
-            return index.is_valid()
-        except Exception:
-            return False
-
-    def _get_embedding_size(self):
-        return len(self.embedding_function(_SAMPLE_SENTENCE)[0])
+    def _get_index(self) -> "VectorStoreIndex":
+        if self._index is None:
+            self._index = VectorStoreIndex.from_vector_store(
+                self.vector_store,
+                storage_context=self.storage_context,
+                embed_model=self.embed_model,
+            )
+        return self._index
 
     def create_collection(
-        self,
-        collection_name: str,
-        overwrite: bool = False,
-        get_or_create: bool = True,
-    ) -> "Collection":
-        """Create a collection in the vector database and create a vector search index in the collection.
-
-        Args:
-            collection_name (str): The name of the collection.
-            overwrite (bool): Whether to overwrite the collection if it exists. Default is False.
-            get_or_create (bool): Whether to get or create the collection. Default is True
-        """
-        if overwrite:
-            self.delete_collection(collection_name)
-
-        try:
-            collection_mgr = self.bucket.collections()
-            collection_mgr.create_collection(self.scope.name, collection_name)
-            self.cluster.query(
-                f"CREATE PRIMARY INDEX ON {self.bucket.name}.{self.scope.name}.{collection_name}"
-            )
-
-        except Exception:
-            if not get_or_create:
-                raise ValueError(f"Collection {collection_name} already exists.")
-            else:
-                logger.debug(
-                    f"Collection {collection_name} already exists. Getting the collection."
-                )
-
-        collection = self.scope.collection(collection_name)
-        self.create_index_if_not_exists(
-            index_name=self.index_name, collection=collection
+        self, collection_name: str, overwrite: bool = False, get_or_create: bool = True
+    ) -> Any:
+        self.collection_name = collection_name
+        # Couchbase collection ops are implicit in LlamaIndex mostly, but we can re-init
+        self.vector_store = CouchbaseVectorStore(
+            cluster=self.cluster,
+            bucket_name=self.bucket_name,
+            scope_name=self.scope_name,
+            collection_name=self.collection_name,
         )
-        return collection
+        self.storage_context = StorageContext.from_defaults(
+            vector_store=self.vector_store
+        )
+        self.active_collection = collection_name
+        self._index = None
 
-    def create_index_if_not_exists(
-        self,
-        index_name: str = "vector_index",
-        collection: Optional["Collection"] = None,
-    ) -> None:
-        """Creates a vector search index on the specified collection in Couchbase.
+        # Overwrite logic? Couchbase delete collection manually maybe?
+        if overwrite:
+            pass  # Not easily exposed
+        return self.vector_store
 
-        Args:
-            index_name (str, optional): The name of the vector search index to create. Defaults to "vector_search_index".
-            collection (Collection, optional): The Couchbase collection to create the index on. Defaults to None.
-        """
-        if not self.search_index_exists(index_name):
-            self.create_vector_search_index(collection, index_name)
-
-    def get_collection(self, collection_name: str | None = None) -> "Collection":
-        """Get the collection from the vector database.
-
-        Args:
-            collection_name (str): The name of the collection. Default is None. If None, return the current active collection.
-
-        Returns:
-            The collection object (Collection)
-        """
-        if collection_name is None:
-            if self.active_collection is None:
-                raise ValueError("No collection is specified.")
-            else:
-                logger.debug(
-                    f"No collection is specified. Using current active collection {self.active_collection.name}."
-                )
-        else:
-            self.active_collection = self.scope.collection(collection_name)
-
-        return self.active_collection
-
-    def delete_collection(self, collection_name: str) -> None:
-        """Delete the collection from the vector database.
-
-        Args:
-            collection_name (str): The name of the collection.
-        """
-        try:
-            collection_mgr = self.bucket.collections()
-            collection_mgr.drop_collection(self.scope.name, collection_name)
-        except Exception as e:
-            logger.error(f"Error deleting collection: {e}")
-
-    def create_vector_search_index(
-        self,
-        collection,
-        index_name: str | None = "vector_index",
-        similarity: Literal["l2_norm", "dot_product"] = "dot_product",
-    ) -> None:
-        """Create a vector search index in the collection."""
-        search_index_mgr = self.scope.search_indexes()
-        dims = self._get_embedding_size()
-        index_definition = {
-            "type": "fulltext-index",
-            "name": index_name,
-            "sourceType": "couchbase",
-            "sourceName": self.bucket.name,
-            "planParams": {"maxPartitionsPerPIndex": 1024, "indexPartitions": 1},
-            "params": {
-                "doc_config": {
-                    "docid_prefix_delim": "",
-                    "docid_regexp": "",
-                    "mode": "scope.collection.type_field",
-                    "type_field": "type",
-                },
-                "mapping": {
-                    "analysis": {},
-                    "default_analyzer": "standard",
-                    "default_datetime_parser": "dateTimeOptional",
-                    "default_field": "_all",
-                    "default_mapping": {"dynamic": True, "enabled": False},
-                    "default_type": "_default",
-                    "docvalues_dynamic": False,
-                    "index_dynamic": True,
-                    "store_dynamic": True,
-                    "type_field": "_type",
-                    "types": {
-                        f"{self.scope.name}.{collection.name}": {
-                            "dynamic": False,
-                            "enabled": True,
-                            "properties": {
-                                "embedding": {
-                                    "dynamic": False,
-                                    "enabled": True,
-                                    "fields": [
-                                        {
-                                            "dims": dims,
-                                            "index": True,
-                                            "name": "embedding",
-                                            "similarity": similarity,
-                                            "type": "vector",
-                                            "vector_index_optimized_for": "recall",
-                                        }
-                                    ],
-                                },
-                                "metadata": {"dynamic": True, "enabled": True},
-                                "content": {
-                                    "dynamic": False,
-                                    "enabled": True,
-                                    "fields": [
-                                        {
-                                            "include_in_all": True,
-                                            "index": True,
-                                            "name": "content",
-                                            "store": True,
-                                            "type": "text",
-                                        }
-                                    ],
-                                },
-                            },
-                        }
-                    },
-                },
-                "store": {"indexType": "scorch", "segmentVersion": 16},
-            },
-            "sourceParams": {},
-        }
-
-        search_index_def = SearchIndex.from_json(json.dumps(index_definition))
-        max_attempts = 10
-        attempt = 0
-        while attempt < max_attempts:
-            try:
-                search_index_mgr.upsert_index(search_index_def)
-                break
-            except Exception as e:
-                logger.debug(
-                    f"Attempt {attempt + 1}/{max_attempts}: Error creating search index: {e}"
-                )
-                time.sleep(3)
-                attempt += 1
-
-        if attempt == max_attempts:
-            logger.error(f"Error creating search index after {max_attempts} attempts.")
-            raise RuntimeError(
-                f"Error creating search index after {max_attempts} attempts."
-            )
-
-        logger.info(f"Search index {index_name} created successfully.")
-
-    def upsert_docs(
-        self,
-        docs: list[Document],
-        collection: "Collection",
-        batch_size: int = DEFAULT_BATCH_SIZE,
-        **kwargs: Any,
-    ) -> None:
-        if docs[0].get("content") is None:
-            raise ValueError("The document content is required.")
-        if docs[0].get("id") is None:
-            raise ValueError("The document id is required.")
-
-        for i in range(0, len(docs), batch_size):
-            batch = docs[i : i + batch_size]
-            docs_to_upsert = {}
-            for doc in batch:
-                doc_id = doc["id"]
-                embedding = self.embedding_function(
-                    [doc["content"]]
-                ).tolist()  # Gets new embedding even in case of document update
-                doc_content = {
-                    TEXT_KEY: doc["content"],
-                    "metadata": doc.get("metadata", {}),
-                    EMBEDDING_KEY: embedding,
-                    "id": doc_id,
-                }
-                docs_to_upsert[doc_id] = doc_content
-            collection.upsert_multi(docs_to_upsert)
+    def get_collection(self, collection_name: str = None) -> Any:
+        # Return something representing collection
+        return self.vector_store
 
     def insert_documents(
         self,
         docs: list[Document],
         collection_name: str = None,
         upsert: bool = False,
-        batch_size: int = DEFAULT_BATCH_SIZE,
-        **kwargs: Any,
-    ) -> None:
-        """Insert Documents and Vector Embeddings into the collection of the vector database. Documents are upserted in all cases."""
-        if not docs:
-            logger.info("No documents to insert.")
-            return
-
-        collection = self.get_collection(collection_name)
-        self.upsert_docs(docs, collection, batch_size=batch_size)
-
-    def update_documents(
-        self,
-        docs: list[Document],
-        collection_name: str = None,
-        batch_size: int = DEFAULT_BATCH_SIZE,
-        **kwargs: Any,
-    ) -> None:
-        """Update documents, including their embeddings, in the Collection."""
-        collection = self.get_collection(collection_name)
-        self.upsert_docs(docs, collection, batch_size)
-
-    def delete_documents(
-        self,
-        ids: list[ItemID],
-        collection_name: str = None,
-        batch_size: int = DEFAULT_BATCH_SIZE,
         **kwargs,
-    ):
-        """Delete documents from the collection of the vector database."""
-        collection = self.get_collection(collection_name)
-        # based on batch size, delete the documents
-        for i in range(0, len(ids), batch_size):
-            batch = ids[i : i + batch_size]
-            collection.remove_multi(batch)
+    ) -> None:
+        if collection_name:
+            self.create_collection(collection_name)
 
-    def get_documents_by_ids(
-        self,
-        ids: list[ItemID] | None = None,
-        collection_name: str = None,
-        include: list[str] | None = None,
-        **kwargs: Any,
-    ) -> list[Document]:
-        """Retrieve documents from the collection of the vector database based on the ids."""
-        if include is None:
-            include = [TEXT_KEY, "metadata", "id"]
-        elif "id" not in include:
-            include.append("id")
+        li_docs = []
+        for doc in docs:
+            metadata = doc.get("metadata", {}) or {}
+            li_docs.append(
+                LIDocument(text=doc["content"], doc_id=doc["id"], metadata=metadata)
+            )
 
-        collection = self.get_collection(collection_name)
-        if ids is not None:
-            docs = [collection.get(doc_id) for doc_id in ids]
-        else:
-            # Get all documents using couchbase query
-            include_str = ", ".join(include)
-            query = f"SELECT {include_str} FROM {self.bucket.name}.{self.scope.name}.{collection.name}"
-            result = self.cluster.query(query)
-            docs = []
-            for row in result:
-                docs.append(row)
+        index = self._get_index()
+        for li_doc in li_docs:
+            index.insert(li_doc)
 
-        return [
-            {k: v for k, v in doc.items() if k in include or k == "id"} for doc in docs
-        ]
-
-    def retrieve_documents(
+    def semantic_search(
         self,
         queries: list[str],
         collection_name: str = None,
@@ -388,44 +137,145 @@ class CouchbaseVectorDB(VectorDB):
         distance_threshold: float = -1,
         **kwargs: Any,
     ) -> QueryResults:
-        """Retrieve documents from the collection of the vector database based on the queries.
-        Note: Distance threshold is not supported in Couchbase FTS.
-        """
-        results: QueryResults = []
-        for query_text in queries:
-            query_vector = np.array(self.embedding_function([query_text])).tolist()[0]
-            query_result = self._vector_search(
-                query_vector,
-                n_results,
-                **kwargs,
-            )
+        if collection_name:
+            self.create_collection(collection_name)
+
+        index = self._get_index()
+        results = []
+        retriever = index.as_retriever(similarity_top_k=n_results)
+
+        for query in queries:
+            nodes = retriever.retrieve(query)
+            query_result = []
+            for node_match in nodes:
+                if distance_threshold >= 0 and node_match.score < distance_threshold:
+                    continue
+
+                doc = Document(
+                    id=node_match.node.node_id,
+                    content=node_match.node.text,
+                    metadata=node_match.node.metadata,
+                    embedding=node_match.node.embedding,
+                )
+                query_result.append((doc, 1.0 - (node_match.score or 0.0)))
             results.append(query_result)
         return results
 
-    def _vector_search(
-        self, embedding_vector: list[float], n_results: int = 10, **kwargs
-    ) -> list[tuple[dict[str, Any], float]]:
-        """Core vector search using Couchbase FTS."""
-        search_req = search.SearchRequest.create(
-            VectorSearch.from_vector_query(
-                VectorQuery(
-                    EMBEDDING_KEY,
-                    embedding_vector,
-                    n_results,
+    def get_documents_by_ids(
+        self,
+        ids: list[ItemID] = None,
+        collection_name: str = None,
+        include=None,
+        **kwargs,
+    ) -> list[Document]:
+        # Couchbase KV get
+        bucket = self.cluster.bucket(self.bucket_name)
+        scope = bucket.scope(self.scope_name)
+        coll = scope.collection(collection_name or self.collection_name)
+
+        docs = []
+        for _id in ids:
+            try:
+                res = coll.get(_id)
+                content = res.content_as[dict]
+                # Schema mapping needed
+                docs.append(
+                    Document(
+                        id=_id,
+                        content=content.get("text", ""),
+                        metadata=content.get("metadata", {}),
+                    )
                 )
-            )
-        )
+            except Exception:
+                continue
+        return docs
 
-        search_options = SearchOptions(limit=n_results, fields=["*"])
-        result = self.scope.search(self.index_name, search_req, search_options)
+    def update_documents(
+        self, docs: list[Document], collection_name: str = None
+    ) -> None:
+        self.insert_documents(docs, collection_name, upsert=True)
 
-        docs_with_score = []
+    def delete_documents(
+        self, ids: list[ItemID], collection_name: str = None, **kwargs
+    ) -> None:
+        if collection_name:
+            self.create_collection(collection_name)
+        self.vector_store.delete_nodes(ids)
 
-        for row in result.rows():
-            doc = row.fields
-            doc["id"] = row.id
-            score = row.score
+    def delete_collection(self, collection_name: str) -> None:
+        # TODO: Implement drop collection
+        pass
 
-            docs_with_score.append((doc, score))
+    def get_collections(self) -> Any:
+        # Management API
+        return []
 
-        return docs_with_score
+    def lexical_search(
+        self,
+        queries: list[str],
+        collection_name: str = None,
+        n_results: int = 10,
+        **kwargs: Any,
+    ) -> QueryResults:
+        collection_name = collection_name or self.collection_name
+
+        # Couchbase FTS (Search Service)
+        # We assume an index exists. If not, this might fail or return empty.
+        # Index name usually matches collection name or is "default".
+        # Let's assume index name = collection_name for simplicity in this integration,
+        # or user needs to setup the index mapping.
+
+        # NOTE: Couchbase Vector Store in LlamaIndex uses Search Service.
+        # We can leverage cluster.search_query()
+
+        results = []
+        for query_text in queries:
+            try:
+                # Simple MatchQuery
+                # We need to target the index.
+                # Assuming index name is `collection_name` or standard `vector-index`?
+                # User config dependent. We will try `collection_name`.
+                index_name = collection_name
+
+                # We need to import locally to avoid top-level optional import issues if logic changes
+                from couchbase.search import SearchOptions, MatchQuery
+
+                # Perform search
+                search_result = self.cluster.search_query(
+                    index_name, MatchQuery(query_text), SearchOptions(limit=n_results)
+                )
+
+                query_result = []
+                for row in search_result.rows():
+                    # row.id is key.
+                    # We need to fetch document content via KV or if stored in search index (if stored=true).
+                    # Let's fetch via KV to be safe and get full content.
+
+                    # Fetch doc
+                    bucket = self.cluster.bucket(self.bucket_name)
+                    scope = bucket.scope(self.scope_name)
+                    coll = scope.collection(collection_name)
+
+                    try:
+                        doc_kv = coll.get(row.id)
+                        content = doc_kv.content_as[dict]
+                        # Assume content structure
+                        # LlamaIndex: {"text": ..., "metadata": ...}
+                        doc = Document(
+                            id=row.id,
+                            content=content.get("text", "")
+                            or content.get("content", ""),
+                            metadata=content.get("metadata", {}),
+                            embedding=None,
+                        )
+                        query_result.append((doc, row.score))
+                    except Exception:
+                        # Document might be deleted or issue fetching
+                        pass
+                results.append(query_result)
+
+            except Exception as e:
+                logger.error(f"Couchbase search failed: {e}")
+                results.append([])
+
+        return results

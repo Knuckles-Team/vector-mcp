@@ -11,7 +11,6 @@ from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from functools import wraps
 from logging import getLogger
-from pathlib import Path
 from typing import Generic, Optional, TypeVar
 from packaging import version
 from typing import (
@@ -150,38 +149,28 @@ class ModuleInfo:
             None if the module is installed and satisfies the version constraints, otherwise a message indicating the issue.
 
         """
-        if self.name not in sys.modules:
+        import importlib.util
+        from importlib.metadata import version as get_version, PackageNotFoundError
+
+        # Check if module spec can be found (installed)
+        if not importlib.util.find_spec(self.name):
             return f"'{self.name}' is not installed."
-        else:
-            if (
-                hasattr(sys.modules[self.name], "__file__")
-                and sys.modules[self.name].__file__ is not None
-            ):
-                autogen_path = (Path(__file__).parent).resolve()
-                test_path = (Path(__file__).parent.parent / "test").resolve()
-                module_path = Path(sys.modules[self.name].__file__).resolve()  # type: ignore[arg-type]
 
-                if str(autogen_path) in str(module_path) or str(test_path) in str(
-                    module_path
-                ):
-                    # The module is in the autogen or test directory
-                    # Aka similarly named module in the autogen or test directory
-                    return f"'{self.name}' is not installed."
+        # Check version if constraints exist
+        if self.min_version or self.max_version:
+            try:
+                installed_version = get_version(self.name)
+            except PackageNotFoundError:
+                # Fallback: try to import and check __version__ (for some packages like older sklearn)
+                try:
+                    module = importlib.import_module(self.name)
+                    installed_version = getattr(module, "__version__", None)
+                except ImportError:
+                    return f"'{self.name}' is found but version could not be retrieved."
 
-        # Ensure that the retrieved version is a string. Some packages might unexpectedly
-        # have a __version__ attribute that is not a string (e.g., a module).
-        raw_version_attr = (
-            sys.modules[self.name].__version__
-            if hasattr(sys.modules[self.name], "__version__")
-            else None
-        )
-        installed_version = (
-            raw_version_attr if isinstance(raw_version_attr, str) else None
-        )
-        if installed_version is None and (self.min_version or self.max_version):
-            return f"'{self.name}' is installed, but the version is not available."
+            if installed_version is None:
+                return f"'{self.name}' is installed, but the version is not available."
 
-        if installed_version:
             # Convert to version object for comparison
             installed_ver = version.parse(installed_version)
 
