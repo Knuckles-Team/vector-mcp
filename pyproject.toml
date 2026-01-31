@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vector-mcp"
-version = "1.0.6"
+version = "1.0.7"
 description = "Integrate RAG into AI Agents via MCP Server. Supports multiple Vector database technologies."
 readme = "README.md"
 authors = [{ name = "Audel Rouhi", email = "knucklessg1@gmail.com" }]
@@ -18,78 +18,80 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
     "fastmcp>=3.0.0b1",
-    "sentence_transformers>=5.1.0",
-    "markdownify>=1.2.0",
-    "beautifulsoup4>=4.13.5",
+    "markdownify>=1.2.2",
+    "beautifulsoup4>=4.14.3",
     "ebooklib>=0.19",
     "html2text>=2025.4.15",
-    "ipython>=8.37.0",
-    "pypdf>=6.0.0",
-    "protobuf>=6.32.0",
-    "llama-index>=0.13.3",
-    "llama-index-llms-langchain>=0.7.0",
-    "llama-index-embeddings-huggingface>=0.6.0",
-    "chromadb>=1.0.20",
-    "llama-index-vector-stores-chroma>=0.5.2",
-    "eunomia-mcp",
+    "ipython>=9.9.0",
+    "pypdf>=6.6.2",
+    "protobuf>=6.33.4",
+    "llama-index-core>=0.14.13",
+    "llama-index-llms-langchain>=0.7.1",
+    "llama-index-vector-stores-chroma>=0.5.5",
+    "chromadb>=1.4.1",
+    "llama-index-readers-file>=0.2.0",
+    "eunomia-mcp>=0.3.10",
 ]
 
 [project.optional-dependencies]
 pgvector = [
-    "pgvector>=0.4.1",
-    "psycopg[binary]>=3.2.9",
-    "llama-index-vector-stores-postgres>=0.6.4",
+    "pgvector>=0.4.2",
+    "psycopg>=3.3.2",
+    "llama-index-vector-stores-postgres>=0.7.3",
 ]
 chromadb = [
-    "chromadb>=1.0.20",
-    "llama-index-vector-stores-chroma>=0.5.2",
+    "chromadb>=1.4.1",
+    "llama-index-vector-stores-chroma>=0.5.5",
 ]
 couchbase = [
-    "couchbase>=4.4.0",
-    "llama-index-vector-stores-couchbase>=0.5.0",
+    "couchbase>=4.5.0",
+    "llama-index-vector-stores-couchbase>=0.6.0",
 ]
 qdrant = [
-    "qdrant-client>=1.15.1",
-    "fastembed>=0.7.3",
-    "llama-index-vector-stores-qdrant>=0.8.2",
+    "qdrant-client>=1.16.2",
+    "fastembed>=0.7.4",
+    "llama-index-vector-stores-qdrant>=0.9.1",
 ]
 mongodb = [
-    "pymongo>4.12.1",
-    "llama-index-vector-stores-mongodb>=0.8.0",
+    "pymongo>=4.16.0",
+    "llama-index-vector-stores-mongodb>=0.9.1",
 ]
-
+huggingface = [
+    "llama-index-embeddings-huggingface>=0.6.1",
+    "sentence_transformers>=5.2.2",
+]
 a2a = [
-    "pydantic-ai-slim[fastmcp,openai,anthropic,google,huggingface,a2a,ag-ui,web]>=1.32.0",
-    "pydantic-ai-skills",
+    "pydantic-ai-slim[fastmcp,openai,anthropic,google,huggingface,a2a,ag-ui,web]>=1.48.0",
+    "pydantic-ai-skills>=0.4.0",
     "fastapi>=0.128.0"
 ]
 all = [
     "fastmcp>=3.0.0b1",
-    "sentence_transformers>=5.1.0",
-    "markdownify>=1.2.0",
-    "beautifulsoup4>=4.13.5",
+    "sentence_transformers>=5.2.2",
+    "markdownify>=1.2.2",
+    "beautifulsoup4>=4.14.3",
     "ebooklib>=0.19",
     "html2text>=2025.4.15",
-    "ipython>=8.37.0",
-    "pypdf>=6.0.0",
-    "protobuf>=6.32.0",
-    "llama-index>=0.13.3",
-    "llama-index-llms-langchain>=0.7.0",
-    "llama-index-embeddings-huggingface>=0.6.0",
-    "pgvector>=0.4.1",
-    "psycopg[binary]>=3.2.9",
-    "chromadb>=1.0.20",
-    "couchbase>=4.4.0",
-    "qdrant-client>=1.15.1",
-    "fastembed>=0.7.3",
-    "pymongo>4.12.1",
-    "llama-index-vector-stores-mongodb>=0.8.0",
-    "llama-index-vector-stores-qdrant>=0.8.2",
-    "llama-index-vector-stores-couchbase>=0.5.0",
-    "llama-index-vector-stores-chroma>=0.5.2",
-    "llama-index-vector-stores-postgres>=0.6.4",
-    "pydantic-ai-slim[fastmcp,openai,anthropic,google,huggingface,a2a,ag-ui,web]>=1.32.0",
-    "pydantic-ai-skills",
+    "ipython>=9.9.0",
+    "pypdf>=6.6.2",
+    "protobuf>=6.33.4",
+    "llama-index-core>=0.14.13",
+    "llama-index-llms-langchain>=0.7.1",
+    "llama-index-embeddings-huggingface>=0.6.1",
+    "llama-index-vector-stores-mongodb>=0.9.1",
+    "llama-index-vector-stores-qdrant>=0.9.1",
+    "llama-index-vector-stores-couchbase>=0.6.0",
+    "llama-index-vector-stores-chroma>=0.5.5",
+    "llama-index-vector-stores-postgres>=0.7.3",
+    "pgvector>=0.4.2",
+    "psycopg>=3.3.2",
+    "chromadb>=1.4.1",
+    "couchbase>=4.5.0",
+    "qdrant-client>=1.16.2",
+    "fastembed>=0.7.4",
+    "pymongo>=4.16.0",
+    "pydantic-ai-slim[fastmcp,openai,anthropic,google,huggingface,a2a,ag-ui,web]>=1.48.0",
+    "pydantic-ai-skills>=0.4.0",
     "fastapi>=0.128.0"
 ]
 

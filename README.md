@@ -21,7 +21,7 @@
 ![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
 ![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
 
-*Version: 1.0.6*
+*Version: 1.0.7*
 
 ## Overview
 
@@ -33,6 +33,7 @@ this was changed to an MCP server model instead.
 
 AI Agents can:
 
+- Hybrid search for document information (lexical/vector)
 - Create collections with documents stored on the local filesystem or URLs
 - Add documents to a collection
 - Utilize collection for retrieval augmented generation (RAG)
@@ -57,7 +58,7 @@ Automated tests are planned
 | Function Name       | Description                                                                                                                        | Tag(s)                  |
 |:--------------------|:-----------------------------------------------------------------------------------------------------------------------------------|:------------------------|
 | `create_collection` | Creates a new collection or retrieves an existing one in the vector database.                                                      | `collection_management` |
-| `vector_search`           | Retrieves and gathers related knowledge from the vector database instance using the question variable.                             | `vector_search`              |
+| `semantic_search`           | Retrieves and gathers related knowledge from the vector database instance using the question variable.                             | `semantic_search`              |
 | `add_documents`     | Adds documents to an existing collection in the vector database. This can be used to extend collections with additional documents. | `collection_management` |
 | `delete_collection` | Deletes a collection from the vector database.                                                                                     | `collection_management` |
 | `list_collections`  | Lists all collections in the vector database.                                                                                      | `collection_management` |

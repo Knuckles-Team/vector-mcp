@@ -4,6 +4,7 @@ import os
 import argparse
 import sys
 import logging
+import hashlib
 from pathlib import Path
 from typing import Optional, List, Dict, Union
 
@@ -22,15 +23,10 @@ from fastmcp.server.middleware.rate_limiting import RateLimitingMiddleware
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 from fastmcp.utilities.logging import get_logger
 from vector_mcp.retriever.retriever import RAGRetriever
-from vector_mcp.retriever.pgvector_retriever import PGVectorRetriever
-from vector_mcp.retriever.qdrant_retriever import QdrantRetriever
-from vector_mcp.retriever.couchbase_retriever import CouchbaseRetriever
-from vector_mcp.retriever.mongodb_retriever import MongoDBRetriever
-from vector_mcp.retriever.chromadb_retriever import ChromaDBRetriever
 from vector_mcp.utils import to_integer, to_boolean
 from vector_mcp.middlewares import UserTokenMiddleware, JWTClaimsLoggingMiddleware
 
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -68,6 +64,12 @@ DEFAULT_COLLECTION_NAME = os.environ.get("COLLECTION_NAME", "memory")
 DEFAULT_DOCUMENT_DIRECTORY = os.environ.get(
     "DOCUMENT_DIRECTORY", os.path.normpath("/documents")
 )
+DEFAULT_PROVIDER = os.getenv("PROVIDER", "openai")
+DEFAULT_MODEL_ID = os.getenv("MODEL_ID", "text-embedding-nomic-embed-text-v1.5")
+DEFAULT_OPENAI_BASE_URL = os.getenv(
+    "OPENAI_BASE_URL", "http://host.docker.internal:1234/v1"
+)
+DEFAULT_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "llama")
 
 
 def initialize_retriever(
@@ -85,6 +87,8 @@ def initialize_retriever(
     try:
         db_type_lower = db_type.strip().lower()
         if db_type_lower == "chromadb":
+            from vector_mcp.retriever.chromadb_retriever import ChromaDBRetriever
+
             if host and port:
                 retriever: RAGRetriever = ChromaDBRetriever(
                     host=host, port=int(port), collection_name=collection_name
@@ -94,6 +98,8 @@ def initialize_retriever(
                     path=os.path.join(db_path, db_name), collection_name=collection_name
                 )
         elif db_type_lower == "pgvector":
+            from vector_mcp.retriever.pgvector_retriever import PGVectorRetriever
+
             retriever: RAGRetriever = PGVectorRetriever(
                 host=host,
                 port=port,
@@ -103,17 +109,30 @@ def initialize_retriever(
                 collection_name=collection_name,
             )
         elif db_type_lower == "qdrant":
-            client_kwargs = {}
+            from vector_mcp.retriever.qdrant_retriever import QdrantRetriever
+
+            # Construct location string
+            location = ":memory:"
             if host:
-                client_kwargs = {"host": host} if host else {"location": ":memory:"}
-            if port:
-                client_kwargs["port"] = str(port)
-            if password:
-                client_kwargs["api_key"] = api_token
+                if host == ":memory:":
+                    location = ":memory:"
+                elif host.startswith("http"):
+                    # If host is already a URL, use it
+                    location = f"{host}:{port}" if port else host
+                else:
+                    # Assume http if not specified
+                    location = (
+                        f"http://{host}:{port}" if port else f"http://{host}:6333"
+                    )
+
+            # Note: QdrantRetriever currently accepts location.
+            # API token handling would need updates to QdrantRetriever if required.
             retriever: RAGRetriever = QdrantRetriever(
-                client_kwargs=client_kwargs, collection_name=collection_name
+                location=location, collection_name=collection_name
             )
         elif db_type_lower == "couchbase":
+            from vector_mcp.retriever.couchbase_retriever import CouchbaseRetriever
+
             connection_string = (
                 f"couchbase://{host}" if host else "couchbase://localhost"
             )
@@ -127,6 +146,8 @@ def initialize_retriever(
                 collection_name=collection_name,
             )
         elif db_type_lower == "mongodb":
+            from vector_mcp.retriever.mongodb_retriever import MongoDBRetriever
+
             connection_string = ""
             if host:
                 connection_string = (
@@ -212,6 +233,9 @@ def register_tools(mcp: FastMCP):
             description="Document paths on the file system or URLs to read from",
             default=None,
         ),
+        document_contents: Optional[List[str]] = Field(
+            description="List of string contents to ingest directly", default=None
+        ),
         ctx: Context = Field(
             description="FastMCP context for progress reporting", default=None
         ),
@@ -243,6 +267,7 @@ def register_tools(mcp: FastMCP):
                 "Overwrite": overwrite,
                 "Document Directory": document_directory,
                 "Document Paths": document_paths,
+                "Document Contents": "Yes" if document_contents else "No",
                 "Database": db_name,
                 "Database Host": host,
             },
@@ -256,6 +281,7 @@ def register_tools(mcp: FastMCP):
                 overwrite=overwrite,
                 document_directory=document_directory,
                 document_paths=document_paths,
+                document_contents=document_contents,
             )
             if ctx:
                 await ctx.report_progress(progress=100, total=100)
@@ -279,9 +305,9 @@ def register_tools(mcp: FastMCP):
             "idempotentHint": True,
             "openWorldHint": False,
         },
-        tags={"vector_search"},
+        tags={"search"},
     )
-    async def vector_search(
+    async def semantic_search(
         db_type: str = Field(
             description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
             default=DEFAULT_DATABASE_TYPE,
@@ -345,7 +371,8 @@ def register_tools(mcp: FastMCP):
             if ctx:
                 await ctx.report_progress(progress=0, total=100)
             logger.debug(f"Querying collection: {question}")
-            texts = retriever.query(question=question, number_results=number_results)
+            results = retriever.query(question=question, number_results=number_results)
+            texts = "\n\n".join([r["text"] for r in results])
             if ctx:
                 await ctx.report_progress(progress=100, total=100)
             response = {
@@ -368,6 +395,251 @@ def register_tools(mcp: FastMCP):
         except Exception as e:
             logger.error(f"Failed to get collection: {str(e)}")
             raise RuntimeError(f"Failed to get collection: {str(e)}")
+
+    @mcp.tool(
+        annotations={
+            "title": "BM25 Search / Keyword Search",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
+        tags={"search"},
+    )
+    async def lexical_search(
+        db_type: str = Field(
+            description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
+            default=DEFAULT_DATABASE_TYPE,
+        ),
+        db_path: str = Field(
+            description="The path to store chromadb files",
+            default=DEFAULT_DATABASE_PATH,
+        ),
+        host: Optional[str] = Field(
+            description="Hostname or IP address of the database server",
+            default=DEFAULT_DB_HOST,
+        ),
+        port: Optional[str] = Field(
+            description="Port number of the database server", default=DEFAULT_DB_PORT
+        ),
+        db_name: Optional[str] = Field(
+            description="Name of the database or path (depending on DB type)",
+            default=DEFAULT_DBNAME,
+        ),
+        username: Optional[str] = Field(
+            description="Username for database authentication", default=DEFAULT_USERNAME
+        ),
+        password: Optional[str] = Field(
+            description="Password for database authentication", default=DEFAULT_PASSWORD
+        ),
+        collection_name: str = Field(
+            description="Name of the collection to search",
+            default=DEFAULT_COLLECTION_NAME,
+        ),
+        question: str = Field(
+            description="The question or keyword to search in the vector database using BM25 or keyword matching",
+            default=None,
+        ),
+        number_results: int = Field(
+            description="The total number of searched document texts to provide",
+            default=1,
+        ),
+        ctx: Context = Field(
+            description="FastMCP context for progress reporting", default=None
+        ),
+    ) -> Dict:
+        """This is a lexical or term based search that retrieves and gathers related knowledge from the database instance using the question variable via BM25.
+        This provides a complementary search method to vector search, useful for exact keyword matching.
+        """
+        logger.debug(f"Initializing collection for BM25: {collection_name}")
+
+        retriever = initialize_retriever(
+            db_type=db_type,
+            db_path=db_path,
+            host=host,
+            port=port,
+            db_name=db_name,
+            username=username,
+            password=password,
+            collection_name=collection_name,
+        )
+
+        try:
+            if ctx:
+                await ctx.report_progress(progress=0, total=100)
+            logger.debug(f"BM25 Querying collection: {question}")
+            results = retriever.bm25_query(
+                question=question, number_results=number_results
+            )
+            texts = "\n\n".join([r["text"] for r in results])
+            if ctx:
+                await ctx.report_progress(progress=100, total=100)
+            response = {
+                "searched_texts": texts,
+                "message": "Collection searched successfully via BM25",
+                "data": {
+                    "Database Type": db_type,
+                    "Collection Name": collection_name,
+                    "Question": question,
+                    "Number of Results": number_results,
+                    "Database": db_name,
+                    "Database Host": host,
+                },
+                "status": 200,
+            }
+            return response
+        except ValueError as e:
+            logger.error(f"Invalid input for lexical_search: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Failed to lexical_search: {str(e)}")
+            raise RuntimeError(f"Failed to lexical_search: {str(e)}")
+
+    @mcp.tool(
+        annotations={
+            "title": "Hybrid Search (Semantic + BM25)",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
+        tags={"search"},
+    )
+    async def search(
+        db_type: str = Field(
+            description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
+            default=DEFAULT_DATABASE_TYPE,
+        ),
+        db_path: str = Field(
+            description="The path to store chromadb files",
+            default=DEFAULT_DATABASE_PATH,
+        ),
+        host: Optional[str] = Field(
+            description="Hostname or IP address of the database server",
+            default=DEFAULT_DB_HOST,
+        ),
+        port: Optional[str] = Field(
+            description="Port number of the database server", default=DEFAULT_DB_PORT
+        ),
+        db_name: Optional[str] = Field(
+            description="Name of the database or path (depending on DB type)",
+            default=DEFAULT_DBNAME,
+        ),
+        username: Optional[str] = Field(
+            description="Username for database authentication", default=DEFAULT_USERNAME
+        ),
+        password: Optional[str] = Field(
+            description="Password for database authentication", default=DEFAULT_PASSWORD
+        ),
+        collection_name: str = Field(
+            description="Name of the collection to search",
+            default=DEFAULT_COLLECTION_NAME,
+        ),
+        question: str = Field(
+            description="The question or phrase to hybrid search in the vector database",
+            default=None,
+        ),
+        number_results: int = Field(
+            description="The total number of hybrid searched document texts to provide",
+            default=1,
+        ),
+        semantic_weight: float = Field(
+            description="Weight for semantic results in fusion (0-1)",
+            default=0.5,
+        ),
+        bm25_weight: float = Field(
+            description="Weight for BM25 results in fusion (0-1)",
+            default=0.5,
+        ),
+        rrf_k: int = Field(
+            description="RRF constant (higher reduces bias toward top ranks)",
+            default=60,
+        ),
+        ctx: Context = Field(
+            description="FastMCP context for progress reporting", default=None
+        ),
+    ) -> Dict:
+        """Performs a hybrid search combining semantic (vector) and lexical (BM25) methods.
+        Retrieves results from both, merges them using weighted Reciprocal Rank Fusion (RRF),
+        and returns the top combined results.
+        """
+        logger.debug(f"Initializing collection for hybrid: {collection_name}")
+
+        retriever = initialize_retriever(
+            db_type=db_type,
+            db_path=db_path,
+            host=host,
+            port=port,
+            db_name=db_name,
+            username=username,
+            password=password,
+            collection_name=collection_name,
+        )
+
+        try:
+            if ctx:
+                await ctx.report_progress(progress=0, total=100)
+
+            # Fetch semantic results (assume returns list of dicts with 'text', 'score', 'id')
+            semantic_results: List[Dict] = retriever.query(
+                question=question,
+                number_results=number_results * 2,  # Fetch extra for merging
+            )
+
+            # Fetch BM25 results
+            bm25_results: List[Dict] = retriever.bm25_query(
+                question=question, number_results=number_results * 2
+            )
+
+            if ctx:
+                await ctx.report_progress(progress=50, total=100)
+
+            # Merge and rerank with weighted RRF
+            combined = {}
+            for rank, res in enumerate(semantic_results, 1):
+                # Fallback to hash if id not present
+                doc_id = res.get("id") or hashlib.md5(res["text"].encode()).hexdigest()
+                if doc_id not in combined:
+                    combined[doc_id] = {"text": res["text"], "rrf_score": 0}
+                combined[doc_id]["rrf_score"] += semantic_weight / (rank + rrf_k)
+
+            for rank, res in enumerate(bm25_results, 1):
+                doc_id = res.get("id") or hashlib.md5(res["text"].encode()).hexdigest()
+                if doc_id not in combined:
+                    combined[doc_id] = {"text": res["text"], "rrf_score": 0}
+                combined[doc_id]["rrf_score"] += bm25_weight / (rank + rrf_k)
+
+            # Sort by RRF score descending and take top N
+            sorted_results = sorted(
+                combined.values(), key=lambda x: x["rrf_score"], reverse=True
+            )[:number_results]
+            texts = [
+                res["text"] for res in sorted_results
+            ]  # Extract texts for consistency
+
+            if ctx:
+                await ctx.report_progress(progress=100, total=100)
+
+            response = {
+                "searched_texts": texts,
+                "message": "Collection searched successfully via hybrid method",
+                "data": {
+                    "Database Type": db_type,
+                    "Collection Name": collection_name,
+                    "Question": question,
+                    "Number of Results": number_results,
+                    "Database": db_name,
+                    "Database Host": host,
+                },
+                "status": 200,
+            }
+            return response
+        except ValueError as e:
+            logger.error(f"Invalid input for search: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Failed to search: {str(e)}")
+            raise RuntimeError(f"Failed to search: {str(e)}")
 
     @mcp.tool(
         annotations={
@@ -416,14 +688,19 @@ def register_tools(mcp: FastMCP):
             description="Document paths on the file system or URLs to read from",
             default=None,
         ),
+        document_contents: Optional[List[str]] = Field(
+            description="List of string contents to ingest directly", default=None
+        ),
         ctx: Context = Field(
             description="FastMCP context for progress reporting", default=None
         ),
     ) -> Dict:
         """Adds documents to an existing collection in the vector database.
         This can be used to extend collections with additional documents"""
-        if not document_directory and document_paths:
-            raise ValueError("docs list must not be empty")
+        if not document_directory and not document_paths and not document_contents:
+            raise ValueError(
+                "At least one of document_directory, document_paths, or document_contents must be provided."
+            )
 
         retriever = initialize_retriever(
             db_type=db_type,
@@ -436,7 +713,8 @@ def register_tools(mcp: FastMCP):
             collection_name=collection_name,
         )
         logger.debug(
-            f"Inserting {document_paths} documents into collection: {collection_name}, document_directory: {document_directory}"
+            f"Inserting documents into collection: {collection_name}. "
+            f"Directory: {document_directory}, Paths: {document_paths}, Contents: {'Yes' if document_contents else 'No'}"
         )
 
         try:
@@ -445,6 +723,7 @@ def register_tools(mcp: FastMCP):
             texts = retriever.add_documents(
                 document_directory=document_directory,
                 document_paths=document_paths,
+                document_contents=document_contents,
             )
             if ctx:
                 await ctx.report_progress(progress=100, total=100)
@@ -457,6 +736,7 @@ def register_tools(mcp: FastMCP):
                     "Collection Name": collection_name,
                     "Document Directory": document_directory,
                     "Document Paths": document_paths,
+                    "Document Contents": "Yes" if document_contents else "No",
                     "Database": db_name,
                     "Database Host": host,
                 },
@@ -509,19 +789,36 @@ def register_tools(mcp: FastMCP):
         collection_name: str = Field(
             description="Name of the target collection.", default=None
         ),
+        confirm: bool = Field(
+            description="Explicitly confirm deletion without interactive prompt",
+            default=False,
+        ),
         ctx: Context = Field(
             description="FastMCP context for progress reporting", default=None
         ),
     ) -> Dict:
         """Deletes a collection from the vector database."""
 
-        if ctx:
-            message = f"Are you sure you want to DELETE collection {collection_name} from {db_type}?"
-            result = await ctx.elicit(message, response_type=bool)
-            if result.action != "accept" or not result.data:
+        if not confirm:
+            if ctx:
+                message = f"Are you sure you want to DELETE collection {collection_name} from {db_type}?"
+                try:
+                    result = await ctx.elicit(message, response_type=bool)
+                    if result.action != "accept" or not result.data:
+                        return {
+                            "status": "cancelled",
+                            "message": "Operation cancelled by user.",
+                        }
+                except Exception as e:
+                    logger.warning(f"Elicitation failed: {str(e)}")
+                    return {
+                        "status": "error",
+                        "message": "Elicitation not supported by client. Please set 'confirm=True' to force deletion.",
+                    }
+            else:
                 return {
-                    "status": "cancelled",
-                    "message": "Operation cancelled by user.",
+                    "status": "error",
+                    "message": "Context missing and confirm=False. Please set 'confirm=True' to force deletion.",
                 }
 
         retriever = initialize_retriever(

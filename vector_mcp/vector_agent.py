@@ -14,6 +14,13 @@ from pydantic_ai.mcp import load_mcp_servers
 from pydantic_ai.toolsets.fastmcp import FastMCPToolset
 from pydantic_ai_skills import SkillsToolset
 from fasta2a import Skill
+from pydantic import BaseModel, Field
+
+
+class AgentState(BaseModel):
+    large_tool_outputs: dict[str, Any] = Field(default_factory=dict)
+
+
 from vector_mcp.utils import (
     get_mcp_config_path,
     get_skills_path,
@@ -29,7 +36,7 @@ from pydantic import ValidationError
 from pydantic_ai.ui import SSE_CONTENT_TYPE
 from pydantic_ai.ui.ag_ui import AGUIAdapter
 
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 
 # Configure logging
 logging.basicConfig(
@@ -51,7 +58,7 @@ DEFAULT_MODEL_ID = os.getenv("MODEL_ID", "qwen/qwen3-4b-2507")
 DEFAULT_OPENAI_BASE_URL = os.getenv(
     "OPENAI_BASE_URL", "http://host.docker.internal:1234/v1"
 )
-DEFAULT_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "ollama")
+DEFAULT_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "llama")
 DEFAULT_MCP_URL = os.getenv("MCP_URL", None)
 DEFAULT_MCP_CONFIG = os.getenv("MCP_CONFIG", get_mcp_config_path())
 # Calculate default skills directory relative to this file
@@ -59,18 +66,74 @@ DEFAULT_SKILLS_DIRECTORY = os.getenv("SKILLS_DIRECTORY", get_skills_path())
 DEFAULT_ENABLE_WEB_UI = to_boolean(os.getenv("ENABLE_WEB_UI", "False"))
 
 AGENT_NAME = "Vector Database Agent"
-AGENT_DESCRIPTION = "A specialist agent for managing vector databases and retrieving information via RAG."
+AGENT_DESCRIPTION = "A specialist agent for managing vector databases and retrieving information via Retrieval Augmented Generation (RAG). This agent uses a hybrid semantic (vector) search and lexical (bm25) search to retrieve relevant information."
 
 AGENT_SYSTEM_PROMPT = (
-    "You are a Knowledge Base Specialist Agent.\n"
-    "You manage a Vector Database and perform Retrieve-Augmented Generation (RAG) tasks.\n"
-    "Your responsibilities:\n"
-    "1. Manage Collections: Create, delete, and list collections ('collection_management').\n"
-    "2. Ingest Knowledge: Add documents to collections ('collection_management').\n"
-    "3. Search Information: Query the vector database to find relevant information ('vector_search').\n"
-    "4. When answering questions, prioritize using the 'vector_search' tool to ground your answers in the stored knowledge.\n"
-    "5. If managing collections, always confirm the database type and parameters.\n"
+    "You are a Vector Database Agent.\n"
+    "Your primary responsibility is to answer questions as a knowledge expert using the search tools provided.\n"
+    "CRITICAL RULE: \n"
+    "1. List all available collections using`list_collections` to discover which knowledge base collections exist.\n"
+    "2. Select the most relevant collection (or collections) from the list.\n"
+    "- If no specific collection is mentioned in the question, default to the memory collection.\n"
+    '- If the question implies a domain (e.g., "ag-ui", "pydantic", "debug"), infer the most relevant collection from the context.\n'
+    "3. Perform a hybrid search using the `search` tool with the selected collection(s) to retrieve relevant information.\n"
+    "- Use the `search` tool with the question to retrieve results via semantic + lexical search.\n"
+    "- The search must be performed before any conclusion or answer is formed.\n"
+    "4. Synthesize the results into a clear, accurate, and complete answer.\n"
+    '5. If no relevant information is found, explicitly state: "I do not have an answer based on the available knowledge. Please provide more context or verify the query."\n'
+    "You are not allowed to answer any question without first using the search tool.\n"
+    "You are not allowed to make up answers from assumptions.\n"
+    "You are not allowed to skip steps or rely on prior knowledge.\n"
+    "Default Behavior:\n"
+    "- Always begin with list_collections.\n"
+    '- If the question involves a specific topic (e.g., "ag-ui"), try to infer the relevant collection (e.g., pydantic).\n'
+    "- If no collection is specified, default to memory.\n"
+    "**Never skip the search step. Never answer without evidence from the vector database.**\n"
 )
+
+
+def prune_large_messages(messages: list[Any], max_length: int = 5000) -> list[Any]:
+    """
+    Summarize large tool outputs in the message history to save context window.
+    Keeps the most recent tool outputs intact if they are the very last message,
+    but generally we want to prune history.
+    """
+    pruned_messages = []
+    for i, msg in enumerate(messages):
+        content = getattr(msg, "content", None)
+        if content is None and isinstance(msg, dict):
+            content = msg.get("content")
+
+        if isinstance(content, str) and len(content) > max_length:
+            summary = (
+                f"{content[:200]} ... "
+                f"[Output truncated, original length {len(content)} characters] "
+                f"... {content[-200:]}"
+            )
+
+            # Replace content
+            if isinstance(msg, dict):
+                msg["content"] = summary
+                pruned_messages.append(msg)
+            elif hasattr(msg, "content"):
+                # Try to create a copy or modify in place if mutable
+                # If it's a Pydantic model it might be immutable or require copy
+                try:
+                    # Attempt shallow copy with update
+                    from copy import copy
+
+                    new_msg = copy(msg)
+                    new_msg.content = summary
+                    pruned_messages.append(new_msg)
+                except Exception:
+                    # Fallback: keep original if we can't modify
+                    pruned_messages.append(msg)
+            else:
+                pruned_messages.append(msg)
+        else:
+            pruned_messages.append(msg)
+
+    return pruned_messages
 
 
 def create_agent(
@@ -89,7 +152,7 @@ def create_agent(
         agent_toolsets.extend(mcp_toolset)
         logger.info(f"Connected to MCP Config JSON: {mcp_toolset}")
     elif mcp_url:
-        fastmcp_toolset = FastMCPToolset(Client[Any](mcp_url, timeout=3600))
+        fastmcp_toolset = FastMCPToolset(Client[Any](mcp_url, timeout=32400.0))
         agent_toolsets.append(fastmcp_toolset)
         logger.info(f"Connected to MCP Server: {mcp_url}")
 
@@ -101,18 +164,17 @@ def create_agent(
 
     # Create the Model
     model = create_model(provider, model_id, base_url, api_key)
+    settings = ModelSettings(timeout=32400.0)
 
     logger.info("Initializing Agent...")
-
-    settings = ModelSettings(timeout=3600.0)
-
     return Agent(
-        model=model,
-        system_prompt=AGENT_SYSTEM_PROMPT,
         name=AGENT_NAME,
-        toolsets=agent_toolsets,
-        deps_type=Any,
+        system_prompt=AGENT_SYSTEM_PROMPT,
+        model=model,
         model_settings=settings,
+        toolsets=agent_toolsets,
+        tool_timeout=32400.0,
+        deps_type=AgentState,
     )
 
 
@@ -208,8 +270,16 @@ def create_agent_server(
             )
 
         # Create adapter and run the agent → stream AG-UI events
+
+        # Init state
+        deps = AgentState()
+
+        # Prune large messages from history
+        if hasattr(run_input, "messages"):
+            run_input.messages = prune_large_messages(run_input.messages)
+
         adapter = AGUIAdapter(agent=agent, run_input=run_input, accept=accept)
-        event_stream = adapter.run_stream()  # Runs agent, yields events
+        event_stream = adapter.run_stream(deps=deps)  # Runs agent, yields events
         sse_stream = adapter.encode_stream(event_stream)  # Encodes to SSE
 
         return StreamingResponse(
@@ -232,7 +302,7 @@ def create_agent_server(
         app,
         host=host,
         port=port,
-        timeout_keep_alive=1800,  # 30 minute timeout
+        timeout_keep_alive=32400,  # 9 hour timeout
         timeout_graceful_shutdown=60,
         log_level="debug" if debug else "info",
     )
