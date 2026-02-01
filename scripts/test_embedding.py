@@ -12,15 +12,16 @@ sys.path.append(os.getcwd())
 
 from vector_mcp.retriever.chromadb_retriever import ChromaDBRetriever
 
+
 def test_embedding():
     # Set environment variables for local testing
     os.environ["EMBEDDING_PROVIDER"] = "openai"
     # Assuming running locally on the host, so localhost is appropriate.
     # If running in a container, this might need to be host.docker.internal or correct IP
-    os.environ["OPENAI_BASE_URL"] = "http://localhost:1234/v1" 
+    os.environ["OPENAI_BASE_URL"] = "http://localhost:1234/v1"
     os.environ["OPENAI_API_KEY"] = "llama"
     os.environ["EMBEDDING_MODEL"] = "text-embedding-nomic-embed-text-v1.5"
-    
+
     # Check if documents directory exists
     docs_path = Path("./mcp/documents")
     if not docs_path.exists():
@@ -33,19 +34,15 @@ def test_embedding():
     print("Initializing ChromaDBRetriever...")
     # Use a local path for the database to avoid connection issues during test
     db_path = "./test_chroma_db"
-    
-    retriever = ChromaDBRetriever(
-        path=db_path,
-        collection_name="test_validation"
-    )
+
+    retriever = ChromaDBRetriever(path=db_path, collection_name="test_validation")
 
     print(f"Ingesting documents from {docs_path}...")
     try:
         success = retriever.initialize_collection(
-            document_directory=str(docs_path),
-            overwrite=True
+            document_directory=str(docs_path), overwrite=True
         )
-        
+
         if success:
             print("Verifying embeddings by querying...")
             # Simple query to verify
@@ -58,7 +55,9 @@ def test_embedding():
     except Exception as e:
         print(f"\nFAILURE: Exception during embedding: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     test_embedding()

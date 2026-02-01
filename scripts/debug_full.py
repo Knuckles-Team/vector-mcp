@@ -1,4 +1,3 @@
-
 import sys
 import os
 import logging
@@ -12,6 +11,7 @@ print(f"Python: {sys.version}")
 try:
     from vector_mcp.vectordb.pgvector import PGVectorDB
     from vector_mcp.utils import get_embedding_model
+
     print("SUCCESS: Imported PGVectorDB")
 except ImportError as e:
     print(f"FAILURE: Could not import PGVectorDB: {e}")
@@ -38,10 +38,10 @@ try:
         dbname="vectordb",
         username="postgres",
         password="password",
-        collection_name="memory"
+        collection_name="memory",
     )
     print("SUCCESS: PGVectorDB initialized")
-    
+
     print("Creating collection...")
     db.create_collection("memory", overwrite=False)
     print("SUCCESS: Collection created")
@@ -53,4 +53,5 @@ try:
 except Exception as e:
     print(f"FAILURE: PGVectorDB init failed: {e}")
     import traceback
+
     traceback.print_exc()

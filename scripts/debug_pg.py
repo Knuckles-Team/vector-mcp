@@ -1,4 +1,3 @@
-
 import sys
 import os
 
@@ -6,18 +5,21 @@ print(f"Python: {sys.version}")
 
 try:
     import psycopg2
+
     print("SUCCESS: psycopg2 imported")
 except ImportError as e:
     print(f"FAILURE: psycopg2 not found: {e}")
 
 try:
     import psycopg
+
     print("SUCCESS: psycopg (v3) imported")
 except ImportError as e:
     print(f"FAILURE: psycopg not found: {e}")
 
 try:
     from llama_index.vector_stores.postgres import PGVectorStore
+
     print("SUCCESS: PGVectorStore imported")
 except ImportError as e:
     print(f"FAILURE: PGVectorStore import failed: {e}")
@@ -32,7 +34,7 @@ if "psycopg" in sys.modules:
             user="postgres",
             password="password",
             dbname="vectordb",
-            connect_timeout=5
+            connect_timeout=5,
         )
         print("SUCCESS: Raw psycopg connection established")
         conn.close()
@@ -50,7 +52,7 @@ try:
         password="password",
         database="vectordb",
         table_name="test_collection",
-        embed_dim=1536
+        embed_dim=1536,
     )
     print("SUCCESS: PGVectorStore initialized")
 except Exception as e:

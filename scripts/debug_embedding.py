@@ -1,4 +1,3 @@
-
 import os
 import sys
 from openai import OpenAI
@@ -22,7 +21,7 @@ try:
     print("\nAttempting to generate embedding...")
     resp = client.embeddings.create(
         input="test",
-        model="text-embedding-nomic-embed-text-v1.5" # Default in vector_mcp.py
+        model="text-embedding-nomic-embed-text-v1.5",  # Default in vector_mcp.py
     )
     print("SUCCESS: Generated embedding")
     print(f"Dimension: {len(resp.data[0].embedding)}")
