@@ -22,12 +22,16 @@ class AgentState(BaseModel):
 
 
 from vector_mcp.utils import (
+    to_integer,
+    to_float,
+    to_boolean,
+    to_list,
+    to_dict,
+    create_model,
+    prune_large_messages,
     get_mcp_config_path,
     get_skills_path,
-    to_boolean,
     load_skills_from_directory,
-    to_integer,
-    create_model,
 )
 
 from fastapi import FastAPI, Request
@@ -36,7 +40,7 @@ from pydantic import ValidationError
 from pydantic_ai.ui import SSE_CONTENT_TYPE
 from pydantic_ai.ui.ag_ui import AGUIAdapter
 
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 
 # Configure logging
 logging.basicConfig(
@@ -65,6 +69,21 @@ DEFAULT_MCP_CONFIG = os.getenv("MCP_CONFIG", get_mcp_config_path())
 DEFAULT_SKILLS_DIRECTORY = os.getenv("SKILLS_DIRECTORY", get_skills_path())
 DEFAULT_ENABLE_WEB_UI = to_boolean(os.getenv("ENABLE_WEB_UI", "False"))
 
+# Model Settings
+DEFAULT_MAX_TOKENS = to_integer(os.getenv("MAX_TOKENS", "8192"))
+DEFAULT_TEMPERATURE = to_float(os.getenv("TEMPERATURE", "0.7"))
+DEFAULT_TOP_P = to_float(os.getenv("TOP_P", "1.0"))
+DEFAULT_TIMEOUT = to_float(os.getenv("TIMEOUT", "32400.0"))
+DEFAULT_TOOL_TIMEOUT = to_float(os.getenv("TOOL_TIMEOUT", "32400.0"))
+DEFAULT_PARALLEL_TOOL_CALLS = to_boolean(os.getenv("PARALLEL_TOOL_CALLS", "True"))
+DEFAULT_SEED = to_integer(os.getenv("SEED", None))
+DEFAULT_PRESENCE_PENALTY = to_float(os.getenv("PRESENCE_PENALTY", "0.0"))
+DEFAULT_FREQUENCY_PENALTY = to_float(os.getenv("FREQUENCY_PENALTY", "0.0"))
+DEFAULT_LOGIT_BIAS = to_dict(os.getenv("LOGIT_BIAS", None))
+DEFAULT_STOP_SEQUENCES = to_list(os.getenv("STOP_SEQUENCES", None))
+DEFAULT_EXTRA_HEADERS = to_dict(os.getenv("EXTRA_HEADERS", None))
+DEFAULT_EXTRA_BODY = to_dict(os.getenv("EXTRA_BODY", None))
+
 AGENT_NAME = "Vector Database Agent"
 AGENT_DESCRIPTION = "A specialist agent for managing vector databases and retrieving information via Retrieval Augmented Generation (RAG). This agent uses a hybrid semantic (vector) search and lexical (bm25) search to retrieve relevant information."
 
@@ -90,50 +109,6 @@ AGENT_SYSTEM_PROMPT = (
     "- If no collection is specified, default to memory.\n"
     "**Never skip the search step. Never answer without evidence from the vector database.**\n"
 )
-
-
-def prune_large_messages(messages: list[Any], max_length: int = 5000) -> list[Any]:
-    """
-    Summarize large tool outputs in the message history to save context window.
-    Keeps the most recent tool outputs intact if they are the very last message,
-    but generally we want to prune history.
-    """
-    pruned_messages = []
-    for i, msg in enumerate(messages):
-        content = getattr(msg, "content", None)
-        if content is None and isinstance(msg, dict):
-            content = msg.get("content")
-
-        if isinstance(content, str) and len(content) > max_length:
-            summary = (
-                f"{content[:200]} ... "
-                f"[Output truncated, original length {len(content)} characters] "
-                f"... {content[-200:]}"
-            )
-
-            # Replace content
-            if isinstance(msg, dict):
-                msg["content"] = summary
-                pruned_messages.append(msg)
-            elif hasattr(msg, "content"):
-                # Try to create a copy or modify in place if mutable
-                # If it's a Pydantic model it might be immutable or require copy
-                try:
-                    # Attempt shallow copy with update
-                    from copy import copy
-
-                    new_msg = copy(msg)
-                    new_msg.content = summary
-                    pruned_messages.append(new_msg)
-                except Exception:
-                    # Fallback: keep original if we can't modify
-                    pruned_messages.append(msg)
-            else:
-                pruned_messages.append(msg)
-        else:
-            pruned_messages.append(msg)
-
-    return pruned_messages
 
 
 def create_agent(
@@ -164,7 +139,20 @@ def create_agent(
 
     # Create the Model
     model = create_model(provider, model_id, base_url, api_key)
-    settings = ModelSettings(timeout=32400.0)
+    settings = ModelSettings(
+        max_tokens=DEFAULT_MAX_TOKENS,
+        temperature=DEFAULT_TEMPERATURE,
+        top_p=DEFAULT_TOP_P,
+        timeout=DEFAULT_TIMEOUT,
+        parallel_tool_calls=DEFAULT_PARALLEL_TOOL_CALLS,
+        seed=DEFAULT_SEED,
+        presence_penalty=DEFAULT_PRESENCE_PENALTY,
+        frequency_penalty=DEFAULT_FREQUENCY_PENALTY,
+        logit_bias=DEFAULT_LOGIT_BIAS,
+        stop_sequences=DEFAULT_STOP_SEQUENCES,
+        extra_headers=DEFAULT_EXTRA_HEADERS,
+        extra_body=DEFAULT_EXTRA_BODY,
+    )
 
     logger.info("Initializing Agent...")
     return Agent(
@@ -173,7 +161,7 @@ def create_agent(
         model=model,
         model_settings=settings,
         toolsets=agent_toolsets,
-        tool_timeout=32400.0,
+        tool_timeout=DEFAULT_TOOL_TIMEOUT,
         deps_type=AgentState,
     )
 
