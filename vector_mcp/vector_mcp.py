@@ -26,7 +26,7 @@ from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.utils import to_integer, to_boolean
 from vector_mcp.middlewares import UserTokenMiddleware, JWTClaimsLoggingMiddleware
 
-__version__ = "1.0.8"
+__version__ = "1.0.9"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -954,7 +954,7 @@ def register_tools(mcp: FastMCP):
 
 def vector_mcp():
     print(f"vector_mcp v{__version__}")
-    parser = argparse.ArgumentParser(description="Vector MCP")
+    parser = argparse.ArgumentParser(add_help=False, description="Vector MCP")
     parser.add_argument(
         "-t",
         "--transport",
@@ -1140,7 +1140,15 @@ def vector_mcp():
         help="OAuth client secret for OpenAPI import",
     )
 
+    parser.add_argument("--help", action="store_true", help="Show usage")
+
     args = parser.parse_args()
+
+    if hasattr(args, "help") and args.help:
+
+        usage()
+
+        sys.exit(0)
 
     if args.port < 0 or args.port > 65535:
         print(f"Error: Port {args.port} is out of valid range (0-65535).")
@@ -1464,6 +1472,53 @@ def vector_mcp():
     else:
         logger.error("Invalid transport", extra={"transport": args.transport})
         sys.exit(1)
+
+
+def usage():
+    print(
+        f"Vector Mcp ({__version__}): Vector MCP\n\n"
+        "Usage:\n"
+        "-t | --transport                   [ Transport method: 'stdio', 'streamable-http', or 'sse' [legacy] (default: stdio) ]\n"
+        "-s | --host                        [ Host address for HTTP transport (default: 0.0.0.0) ]\n"
+        "-p | --port                        [ Port number for HTTP transport (default: 8000) ]\n"
+        "--auth-type                        [ Authentication type for MCP server: 'none' (disabled), 'static' (internal), 'jwt' (external token verification), 'oauth-proxy', 'oidc-proxy', 'remote-oauth' (external) (default: none) ]\n"
+        "--token-jwks-uri                   [ JWKS URI for JWT verification ]\n"
+        "--token-issuer                     [ Issuer for JWT verification ]\n"
+        "--token-audience                   [ Audience for JWT verification ]\n"
+        "--token-algorithm                  [ JWT signing algorithm (required for HMAC or static key). Auto-detected for JWKS. ]\n"
+        "--token-secret                     [ Shared secret for HMAC (HS*) or PEM public key for static asymmetric verification. ]\n"
+        "--token-public-key                 [ Path to PEM public key file or inline PEM string (for static asymmetric keys). ]\n"
+        "--required-scopes                  [ Comma-separated list of required scopes (e.g., gitlab.read,gitlab.write). ]\n"
+        "--oauth-upstream-auth-endpoint     [ Upstream authorization endpoint for OAuth Proxy ]\n"
+        "--oauth-upstream-token-endpoint    [ Upstream token endpoint for OAuth Proxy ]\n"
+        "--oauth-upstream-client-id         [ Upstream client ID for OAuth Proxy ]\n"
+        "--oauth-upstream-client-secret     [ Upstream client secret for OAuth Proxy ]\n"
+        "--oauth-base-url                   [ Base URL for OAuth Proxy ]\n"
+        "--oidc-config-url                  [ OIDC configuration URL ]\n"
+        "--oidc-client-id                   [ OIDC client ID ]\n"
+        "--oidc-client-secret               [ OIDC client secret ]\n"
+        "--oidc-base-url                    [ Base URL for OIDC Proxy ]\n"
+        "--remote-auth-servers              [ Comma-separated list of authorization servers for Remote OAuth ]\n"
+        "--remote-base-url                  [ Base URL for Remote OAuth ]\n"
+        "--allowed-client-redirect-uris     [ Comma-separated list of allowed client redirect URIs ]\n"
+        "--eunomia-type                     [ Eunomia authorization type: 'none' (disabled), 'embedded' (built-in), 'remote' (external) (default: none) ]\n"
+        "--eunomia-policy-file              [ Policy file for embedded Eunomia (default: mcp_policies.json) ]\n"
+        "--eunomia-remote-url               [ URL for remote Eunomia server ]\n"
+        "--enable-delegation                [ Enable OIDC token delegation ]\n"
+        "--audience                         [ Audience for the delegated token ]\n"
+        "--delegated-scopes                 [ Scopes for the delegated token (space-separated) ]\n"
+        "--openapi-file                     [ Path to the OpenAPI JSON file to import additional tools from ]\n"
+        "--openapi-base-url                 [ Base URL for the OpenAPI client (overrides instance URL) ]\n"
+        "--openapi-use-token                [ Use the incoming Bearer token (from MCP request) to authenticate OpenAPI import ]\n"
+        "--openapi-username                 [ Username for basic auth during OpenAPI import ]\n"
+        "--openapi-password                 [ Password for basic auth during OpenAPI import ]\n"
+        "--openapi-client-id                [ OAuth client ID for OpenAPI import ]\n"
+        "--openapi-client-secret            [ OAuth client secret for OpenAPI import ]\n"
+        "\n"
+        "Examples:\n"
+        "  [Simple]  vector-mcp \n"
+        '  [Complex] vector-mcp --transport "value" --host "value" --port "value" --auth-type "value" --token-jwks-uri "value" --token-issuer "value" --token-audience "value" --token-algorithm "value" --token-secret "value" --token-public-key "value" --required-scopes "value" --oauth-upstream-auth-endpoint "value" --oauth-upstream-token-endpoint "value" --oauth-upstream-client-id "value" --oauth-upstream-client-secret "value" --oauth-base-url "value" --oidc-config-url "value" --oidc-client-id "value" --oidc-client-secret "value" --oidc-base-url "value" --remote-auth-servers "value" --remote-base-url "value" --allowed-client-redirect-uris "value" --eunomia-type "value" --eunomia-policy-file "value" --eunomia-remote-url "value" --enable-delegation --audience "value" --delegated-scopes "value" --openapi-file "value" --openapi-base-url "value" --openapi-use-token --openapi-username "value" --openapi-password "value" --openapi-client-id "value" --openapi-client-secret "value"\n'
+    )
 
 
 if __name__ == "__main__":
