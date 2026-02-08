@@ -24,7 +24,7 @@ from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
 from llama_index.core.schema import Document as LlamaDocument
 
 with optional_import_block():
-    from vector_mcp.vectordb.postgres import PGVectorDB
+    from vector_mcp.vectordb.postgres import PostgreSQL
 
 __all__ = ["PGVectorRetriever"]
 
@@ -59,7 +59,7 @@ class PGVectorRetriever(RAGRetriever):
     ):
         """Initializes a PGVectorRetriever instance."""
 
-        # Connection logic is now mostly handled by PGVectorDB, but we pass params.
+        # Connection logic is now mostly handled by PostgreSQL, but we pass params.
         self.connection_string = connection_string
         self.host = str(host) if host else None
         self.port = str(port) if port else None
@@ -72,13 +72,13 @@ class PGVectorRetriever(RAGRetriever):
 
         self.embed_model = get_embedding_model()
 
-        self.vector_db: PGVectorDB | None = None
+        self.vector_db: PostgreSQL | None = None
         self.index: VectorStoreIndex | None = None
 
     def _set_up(self, overwrite: bool) -> None:
-        """Sets up the PGVector database via PGVectorDB."""
+        """Sets up the PGVector database via PostgreSQL."""
         logger.info("Setting up the database.")
-        self.vector_db: PGVectorDB = VectorDBFactory.create_vector_database(
+        self.vector_db: PostgreSQL = VectorDBFactory.create_vector_database(
             db_type="postgres",
             connection_string=self.connection_string,
             host=self.host,
@@ -94,9 +94,9 @@ class PGVectorRetriever(RAGRetriever):
         )
         logger.info("Vector database created.")
 
-        # PGVectorDB initializes vector_store and storage_context
+        # PostgreSQL initializes vector_store and storage_context
         # We can access internal index if available or create one.
-        # PGVectorDB lazy loads index, so we can trigger it.
+        # PostgreSQL lazy loads index, so we can trigger it.
         self.index = self.vector_db._get_index()
 
     def connect_database(
@@ -127,7 +127,7 @@ class PGVectorRetriever(RAGRetriever):
     ) -> bool:
         try:
             # Logic is slightly different in original: overwrite if exists.
-            # PGVectorDB: create_collection(overwrite=overwrite) handles it.
+            # PostgreSQL: create_collection(overwrite=overwrite) handles it.
             self._set_up(overwrite=overwrite)
 
             if document_directory or document_paths or document_contents:
@@ -235,7 +235,7 @@ class PGVectorRetriever(RAGRetriever):
         self, question: str, number_results: int, *args: Any, **kwargs: Any
     ) -> List[Dict[str, Any]]:
         self._validate_query_index()
-        # PGVectorDB lexical_search returns list of list of (Document, score)
+        # PostgreSQL lexical_search returns list of list of (Document, score)
         results = self.vector_db.lexical_search(
             queries=[question],
             collection_name=self.collection_name,

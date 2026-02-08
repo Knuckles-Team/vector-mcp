@@ -9,12 +9,12 @@ logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 print(f"Python: {sys.version}")
 
 try:
-    from vector_mcp.vectordb.postgres import PGVectorDB
+    from vector_mcp.vectordb.postgres import PostgreSQL
     from vector_mcp.utils import get_embedding_model
 
-    print("SUCCESS: Imported PGVectorDB")
+    print("SUCCESS: Imported PostgreSQL")
 except ImportError as e:
-    print(f"FAILURE: Could not import PGVectorDB: {e}")
+    print(f"FAILURE: Could not import PostgreSQL: {e}")
     sys.exit(1)
 
 print("\n--- Testing get_embedding_model ---")
@@ -28,11 +28,11 @@ except Exception as e:
     print(f"FAILURE: Embedding model check failed: {e}")
     # Don't exit, try DB anyway if possible (but DB relies on it)
 
-print("\n--- Testing PGVectorDB init ---")
+print("\n--- Testing PostgreSQL init ---")
 try:
-    print("Initializing PGVectorDB...")
+    print("Initializing PostgreSQL...")
     # Use params from logs
-    db = PGVectorDB(
+    db = PostgreSQL(
         host="postgres",
         port="5432",
         dbname="vectordb",
@@ -40,7 +40,7 @@ try:
         password="password",
         collection_name="memory",
     )
-    print("SUCCESS: PGVectorDB initialized")
+    print("SUCCESS: PostgreSQL initialized")
 
     print("Creating collection...")
     db.create_collection("memory", overwrite=False)
@@ -51,7 +51,7 @@ try:
     print("SUCCESS: Index retrieved")
 
 except Exception as e:
-    print(f"FAILURE: PGVectorDB init failed: {e}")
+    print(f"FAILURE: PostgreSQL init failed: {e}")
     import traceback
 
     traceback.print_exc()

@@ -4,7 +4,7 @@ import hashlib
 
 # Import the class to test (we might need to mock imports if they fail)
 with (
-    patch("vector_mcp.vectordb.postgres.PGVectorDB"),
+    patch("vector_mcp.vectordb.postgres.PostgreSQL"),
     patch(
         "vector_mcp.vectordb.utils.require_optional_import",
         side_effect=lambda x, y: lambda z: z,

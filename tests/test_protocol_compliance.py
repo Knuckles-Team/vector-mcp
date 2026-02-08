@@ -13,7 +13,7 @@ from vector_mcp.retriever.mongodb_retriever import MongoDBRetriever
 from vector_mcp.retriever.qdrant_retriever import QdrantRetriever
 
 from vector_mcp.vectordb.chromadb import ChromaVectorDB
-from vector_mcp.vectordb.postgres import PGVectorDB
+from vector_mcp.vectordb.postgres import PostgreSQL
 from vector_mcp.vectordb.couchbase import CouchbaseVectorDB
 from vector_mcp.vectordb.mongodb import MongoDBAtlasVectorDB
 from vector_mcp.vectordb.qdrant import QdrantVectorDB
@@ -52,7 +52,7 @@ def test_retriever_implements_protocol(retriever_cls):
     "vectordb_cls",
     [
         ChromaVectorDB,
-        PGVectorDB,
+        PostgreSQL,
         CouchbaseVectorDB,
         MongoDBAtlasVectorDB,
         QdrantVectorDB,

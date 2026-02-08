@@ -209,9 +209,9 @@ class VectorDBFactory:
 
             return ChromaVectorDB(**kwargs)
         if db_type.lower() in ["postgres", "pgvectordb"]:
-            from .postgres import PGVectorDB
+            from .postgres import PostgreSQL
 
-            return PGVectorDB(**kwargs)
+            return PostgreSQL(**kwargs)
         if db_type.lower() in ["mdb", "mongodb", "atlas"]:
             from .mongodb import MongoDBAtlasVectorDB
 

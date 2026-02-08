@@ -29,7 +29,7 @@ logger = get_logger(__name__)
 @require_optional_import(
     ["postgres", "psycopg", "llama_index"], "retrievechat-postgres"
 )
-class PGVectorDB(VectorDB):
+class PostgreSQL(VectorDB):
     """A vector database that uses PGVector as the backend via LlamaIndex."""
 
     def __init__(

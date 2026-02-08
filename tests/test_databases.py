@@ -1,7 +1,7 @@
 import pytest
 import os
 from unittest.mock import MagicMock, patch
-from vector_mcp.vectordb.postgres import PGVectorDB
+from vector_mcp.vectordb.postgres import PostgreSQL
 from vector_mcp.vectordb.mongodb import MongoDBAtlasVectorDB
 from vector_mcp.vectordb.couchbase import CouchbaseVectorDB
 from vector_mcp.vectordb.qdrant import QdrantVectorDB
@@ -24,12 +24,12 @@ def sample_docs():
 def pgvector_db():
     try:
         # Default Postgres params from compose.yml
-        db = PGVectorDB(
+        db = PostgreSQL(
             connection_string="postgresql://postgres:password@localhost:5432/vectordb",
             collection_name="test_collection",
         )
         # Try to connect (usually lazy, so we might need to trigger something)
-        # PGVectorDB uses PGVectorStore which might connect on init or operation.
+        # PostgreSQL uses PGVectorStore which might connect on init or operation.
         # Verify connection by listing something or creating collection
         return db
     except Exception as e:
@@ -39,7 +39,7 @@ def pgvector_db():
 def test_pgvector_integration(pgvector_db, sample_docs):
     # This might fail if DB is not up, but fixture handles skip?
     # Actually if fixture raises Skip, test is skipped.
-    # But PGVectorDB init might not raise if connection is lazy.
+    # But PostgreSQL init might not raise if connection is lazy.
 
     # We'll try an operation
     try:
