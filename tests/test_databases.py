@@ -1,7 +1,7 @@
 import pytest
 import os
 from unittest.mock import MagicMock, patch
-from vector_mcp.vectordb.pgvector import PGVectorDB
+from vector_mcp.vectordb.postgres import PGVectorDB
 from vector_mcp.vectordb.mongodb import MongoDBAtlasVectorDB
 from vector_mcp.vectordb.couchbase import CouchbaseVectorDB
 from vector_mcp.vectordb.qdrant import QdrantVectorDB

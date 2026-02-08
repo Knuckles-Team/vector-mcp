@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from .chromadb_retriever import ChromaDBRetriever
     from .llamaindex_retriever import LlamaIndexRetriever
     from .mongodb_retriever import MongoDBRetriever
-    from .pgvector_retriever import PGVectorRetriever
+    from .postgres_retriever import PGVectorRetriever
     from .couchbase_retriever import CouchbaseRetriever
     from .qdrant_retriever import QdrantRetriever
     from .retriever import RAGRetriever
@@ -37,7 +37,7 @@ def __getattr__(name: str):
 
         return MongoDBRetriever
     elif name == "PGVectorRetriever":
-        from .pgvector_retriever import PGVectorRetriever
+        from .postgres_retriever import PGVectorRetriever
 
         return PGVectorRetriever
     elif name == "CouchbaseRetriever":

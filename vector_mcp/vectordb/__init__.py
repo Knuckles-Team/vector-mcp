@@ -5,7 +5,7 @@ from .utils import get_logger
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .pgvector import PGVectorDB
+    from .postgres import PGVectorDB
     from .qdrant import QdrantVectorDB
     from .couchbase import CouchbaseVectorDB
     from .mongodb import MongoDBAtlasVectorDB
@@ -25,7 +25,7 @@ __all__ = [
 
 def __getattr__(name: str):
     if name == "PGVectorDB":
-        from .pgvector import PGVectorDB
+        from .postgres import PGVectorDB
 
         return PGVectorDB
     elif name == "QdrantVectorDB":

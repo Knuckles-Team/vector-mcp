@@ -9,7 +9,7 @@ logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 print(f"Python: {sys.version}")
 
 try:
-    from vector_mcp.vectordb.pgvector import PGVectorDB
+    from vector_mcp.vectordb.postgres import PGVectorDB
     from vector_mcp.utils import get_embedding_model
 
     print("SUCCESS: Imported PGVectorDB")

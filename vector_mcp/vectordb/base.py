@@ -36,7 +36,7 @@ class VectorDB(Protocol):
 
     Attributes:
         active_collection: Any | The active collection in the vector database. Make get_collection faster. Default is None.
-        type: str | The type of the vector database, chroma, pgvector, etc. Default is "".
+        type: str | The type of the vector database, chroma, postgres, etc. Default is "".
         embed_model: Any | The embedding model used for the vector database.
     """
 
@@ -191,7 +191,7 @@ class VectorDB(Protocol):
 class VectorDBFactory:
     """Factory class for creating vector databases."""
 
-    PREDEFINED_VECTOR_DB = ["chroma", "pgvector", "mongodb", "qdrant", "couchbase"]
+    PREDEFINED_VECTOR_DB = ["chroma", "postgres", "mongodb", "qdrant", "couchbase"]
 
     @staticmethod
     def create_vector_database(db_type: str, **kwargs) -> VectorDB:
@@ -208,8 +208,8 @@ class VectorDBFactory:
             from .chromadb import ChromaVectorDB
 
             return ChromaVectorDB(**kwargs)
-        if db_type.lower() in ["pgvector", "pgvectordb"]:
-            from .pgvector import PGVectorDB
+        if db_type.lower() in ["postgres", "pgvectordb"]:
+            from .postgres import PGVectorDB
 
             return PGVectorDB(**kwargs)
         if db_type.lower() in ["mdb", "mongodb", "atlas"]:

@@ -56,6 +56,6 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y curl nano libpq-dev \
     && curl -LsSf https://astral.sh/uv/install.sh | sh \
-    && uv pip install --system --upgrade --verbose --no-cache --break-system-packages --prerelease=allow .[pgvector,chromadb,couchbase,qdrant,mongodb,a2a]
+    && uv pip install --system --upgrade --verbose --no-cache --break-system-packages --prerelease=allow .[postgres,chromadb,couchbase,qdrant,mongodb,a2a]
 
 CMD ["vector-mcp"]

@@ -12,7 +12,7 @@ QUERY = "List all collections."
 
 AGENTS = {
     # "vector-agent-chromadb": (9023, QUERY),
-    "vector-agent-pgvector": (9024, QUERY),
+    "vector-agent-postgres": (9024, QUERY),
     "vector-agent-mongo": (9025, QUERY),
     "vector-agent-couchbase": (9026, QUERY),
     "vector-agent-qdrant": (9027, QUERY),

@@ -13,7 +13,7 @@ from vector_mcp.retriever.mongodb_retriever import MongoDBRetriever
 from vector_mcp.retriever.qdrant_retriever import QdrantRetriever
 
 from vector_mcp.vectordb.chromadb import ChromaVectorDB
-from vector_mcp.vectordb.pgvector import PGVectorDB
+from vector_mcp.vectordb.postgres import PGVectorDB
 from vector_mcp.vectordb.couchbase import CouchbaseVectorDB
 from vector_mcp.vectordb.mongodb import MongoDBAtlasVectorDB
 from vector_mcp.vectordb.qdrant import QdrantVectorDB
@@ -88,8 +88,8 @@ def test_no_super_init_usage():
                             # Checking specific known files that were refactored
                             if file in [
                                 "chromadb_retriever.py",
-                                "pgvector_retriever.py",
+                                "postgres_retriever.py",
                                 "chromadb.py",
-                                "pgvector.py",
+                                "postgres.py",
                             ]:
                                 pytest.fail(f"Found super().__init__ in {file}")

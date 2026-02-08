@@ -1,83 +1,83 @@
 ---
 services:
   vector-mcp-chromadb:
-   # image: docker.io/knucklessg1/vector-mcp:latest
-   build:
-     context: . # Debug
-     dockerfile: debug.Dockerfile
-   container_name: vector-mcp-chromadb
-   hostname: vector-mcp-chromadb
-   command: [ "vector-mcp" ]
-   extra_hosts:
-     - "host.docker.internal:host-gateway"
-   logging:
-     driver: json-file
-     options:
-       max-size: "10m"
-       max-file: "3"
-   restart: always
-   environment:
-     - "HOST=0.0.0.0"
-     - "PORT=8023"
-     - "TRANSPORT=streamable-http"
-     - "DATABASE_TYPE=${DATABASE_TYPE:-chromadb}"
-     - "DATABASE_PATH=${DATABASE_PATH:-/data/chromadb}"
-     - "DOCUMENT_DIRECTORY=${DOCUMENT_DIRECTORY:-/documents}"
-     - "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python"
-     - "PROVIDER=openai"
-     - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
-     - "OPENAI_API_KEY=llama"
-     - "MODEL_ID=text-embedding-nomic-embed-text-v1.5"
-   ports:
-     - "8023:8023"
-   healthcheck:
-     test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8023/health')" ]
-     interval: 30s
-     timeout: 10s
-     retries: 3
-     start_period: 10s
-   volumes:
-     - ./mcp/vector_data:/data
-     - ./mcp/documents:/documents
+    image: docker.io/knucklessg1/vector-mcp:latest
+    #    build:
+    #      context: . # Debug
+    #      dockerfile: debug.Dockerfile
+    container_name: vector-mcp-chromadb
+    hostname: vector-mcp-chromadb
+    command: [ "vector-mcp" ]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: always
+    environment:
+      - "HOST=0.0.0.0"
+      - "PORT=8023"
+      - "TRANSPORT=streamable-http"
+      - "DATABASE_TYPE=${DATABASE_TYPE:-chromadb}"
+      - "DATABASE_PATH=${DATABASE_PATH:-/data/chromadb}"
+      - "DOCUMENT_DIRECTORY=${DOCUMENT_DIRECTORY:-/documents}"
+      - "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python"
+      - "PROVIDER=openai"
+      - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
+      - "OPENAI_API_KEY=llama"
+      - "MODEL_ID=text-embedding-nomic-embed-text-v1.5"
+    ports:
+      - "8023:8023"
+    healthcheck:
+      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8023/health')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - ./mcp/vector_data:/data
+      - ./mcp/documents:/documents
 
   vector-agent-chromadb:
-   # image: docker.io/knucklessg1/vector-mcp:latest
-   build:
-     context: . # Debug
-     dockerfile: debug.Dockerfile
-   container_name: vector-agent-chromadb
-   hostname: vector-agent-chromadb
-   command: [ "vector-agent" ]
-   extra_hosts:
-     - "host.docker.internal:host-gateway"
-   depends_on:
-     vector-mcp-chromadb:
-       condition: service_healthy
-   logging:
-     driver: json-file
-     options:
-       max-size: "10m"
-       max-file: "3"
-   restart: always
-   environment:
-     - "HOST=0.0.0.0"
-     - "PORT=9023"
-     - "MCP_URL=http://vector-mcp-chromadb:8023/mcp"
-     - "PROVIDER=openai"
-     - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
-     - "OPENAI_API_KEY=llama"
-     - "MODEL_ID=qwen/qwen3-4b-2507"
-     - "DEBUG=False"
-     - "ENABLE_WEB_UI=True"
-     - "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python"
-   ports:
-     - "9023:9023"
-   healthcheck:
-     test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9023/health')" ]
-     interval: 30s
-     timeout: 10s
-     retries: 3
-     start_period: 10s
+    image: docker.io/knucklessg1/vector-mcp:latest
+    #    build:
+    #      context: . # Debug
+    #      dockerfile: debug.Dockerfile
+    container_name: vector-agent-chromadb
+    hostname: vector-agent-chromadb
+    command: [ "vector-agent" ]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      vector-mcp-chromadb:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: always
+    environment:
+      - "HOST=0.0.0.0"
+      - "PORT=9023"
+      - "MCP_URL=http://vector-mcp-chromadb:8023/mcp"
+      - "PROVIDER=openai"
+      - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
+      - "OPENAI_API_KEY=llama"
+      - "MODEL_ID=qwen/qwen3-4b-2507"
+      - "DEBUG=False"
+      - "ENABLE_WEB_UI=True"
+      - "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python"
+    ports:
+      - "9023:9023"
+    healthcheck:
+      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9023/health')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # PGVector + ParadeDB (Vector + BM25 Search)
   postgres:
@@ -98,13 +98,13 @@ services:
       timeout: 5s
       retries: 5
 
-  vector-mcp-pgvector:
+  vector-mcp-postgres:
     # image: docker.io/knucklessg1/vector-mcp:latest
     build:
       context: . # Debug
       dockerfile: debug.Dockerfile
-    container_name: vector-mcp-pgvector
-    hostname: vector-mcp-pgvector
+    container_name: vector-mcp-postgres
+    hostname: vector-mcp-postgres
     command: [ "vector-mcp" ]
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -118,7 +118,7 @@ services:
       - "HOST=0.0.0.0"
       - "PORT=8024"
       - "TRANSPORT=streamable-http"
-      - "DATABASE_TYPE=pgvector"
+      - "DATABASE_TYPE=postgres"
       - "DB_HOST=postgres"
       - "DB_PORT=5432"
       - "DBNAME=vectordb"
@@ -142,18 +142,18 @@ services:
     volumes:
       - ./mcp/documents:/documents
 
-  vector-agent-pgvector:
+  vector-agent-postgres:
     # image: docker.io/knucklessg1/vector-mcp:latest
     build:
       context: . # Debug
       dockerfile: debug.Dockerfile
-    container_name: vector-agent-pgvector
-    hostname: vector-agent-pgvector
+    container_name: vector-agent-postgres
+    hostname: vector-agent-postgres
     command: [ "vector-agent" ]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      vector-mcp-pgvector:
+      vector-mcp-postgres:
         condition: service_healthy
     logging:
       driver: json-file
@@ -164,7 +164,7 @@ services:
     environment:
       - "HOST=0.0.0.0"
       - "PORT=9024"
-      - "MCP_URL=http://vector-mcp-pgvector:8024/mcp"
+      - "MCP_URL=http://vector-mcp-postgres:8024/mcp"
       - "PROVIDER=openai"
       - "OPENAI_BASE_URL=http://host.docker.internal:1234/v1"
       - "OPENAI_API_KEY=llama"
