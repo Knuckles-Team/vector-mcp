@@ -26,7 +26,7 @@ from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.utils import to_integer, to_boolean
 from vector_mcp.middlewares import UserTokenMiddleware, JWTClaimsLoggingMiddleware
 
-__version__ = "1.0.9"
+__version__ = "1.0.10"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -97,7 +97,7 @@ def initialize_retriever(
                 retriever: RAGRetriever = ChromaDBRetriever(
                     path=os.path.join(db_path, db_name), collection_name=collection_name
                 )
-        elif db_type_lower == "pgvector":
+        elif db_type_lower == "postgres":
             from vector_mcp.retriever.pgvector_retriever import PGVectorRetriever
 
             retriever: RAGRetriever = PGVectorRetriever(
@@ -193,7 +193,7 @@ def register_tools(mcp: FastMCP):
     )
     async def create_collection(
         db_type: str = Field(
-            description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
+            description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
             default=DEFAULT_DATABASE_TYPE,
         ),
         db_path: str = Field(
@@ -309,7 +309,7 @@ def register_tools(mcp: FastMCP):
     )
     async def semantic_search(
         db_type: str = Field(
-            description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
+            description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
             default=DEFAULT_DATABASE_TYPE,
         ),
         db_path: str = Field(
@@ -408,7 +408,7 @@ def register_tools(mcp: FastMCP):
     )
     async def lexical_search(
         db_type: str = Field(
-            description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
+            description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
             default=DEFAULT_DATABASE_TYPE,
         ),
         db_path: str = Field(
@@ -507,7 +507,7 @@ def register_tools(mcp: FastMCP):
     )
     async def search(
         db_type: str = Field(
-            description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
+            description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
             default=DEFAULT_DATABASE_TYPE,
         ),
         db_path: str = Field(
@@ -653,7 +653,7 @@ def register_tools(mcp: FastMCP):
     )
     async def add_documents(
         db_type: str = Field(
-            description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
+            description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
             default=DEFAULT_DATABASE_TYPE,
         ),
         db_path: str = Field(
@@ -762,7 +762,7 @@ def register_tools(mcp: FastMCP):
     )
     async def delete_collection(
         db_type: str = Field(
-            description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
+            description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
             default=DEFAULT_DATABASE_TYPE,
         ),
         db_path: str = Field(
@@ -869,7 +869,7 @@ def register_tools(mcp: FastMCP):
     )
     async def list_collections(
         db_type: str = Field(
-            description="Type of vector database (chromadb, pgvector, qdrant, couchbase, mongodb)",
+            description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
         ),
         db_path: str = Field(
             description="The path to store chromadb files",

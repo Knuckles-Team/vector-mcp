@@ -21,7 +21,7 @@
 ![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
 ![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
 
-*Version: 1.0.9*
+*Version: 1.0.10*
 
 ## Overview
 
@@ -347,7 +347,7 @@ python -m pip install vector-mcp
 PGVector dependencies
 
 ```bash
-python -m pip install vector-mcp[pgvector]
+python -m pip install vector-mcp[postgres]
 ```
 
 All

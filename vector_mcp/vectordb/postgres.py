@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 
 
 @require_optional_import(
-    ["pgvector", "psycopg", "llama_index"], "retrievechat-pgvector"
+    ["postgres", "psycopg", "llama_index"], "retrievechat-postgres"
 )
 class PGVectorDB(VectorDB):
     """A vector database that uses PGVector as the backend via LlamaIndex."""
@@ -96,7 +96,7 @@ class PGVectorDB(VectorDB):
             vector_store=self.vector_store
         )
         self.active_collection = collection_name
-        self.type = "pgvector"
+        self.type = "postgres"
 
         # Lazy index
         self._index = None
@@ -354,7 +354,7 @@ class PGVectorDB(VectorDB):
                 # Wait, paradedb.bm25 acts on the index usually.
                 # If using pg_search (ParadeDB), we usually do:
                 # SELECT * FROM table WHERE table @@@ 'query';
-                # But the user mentioned: "PGvector works with paradedb (which supports the bm25 and pgvector extensions)"
+                # But the user mentioned: "PGvector works with paradedb (which supports the bm25 and postgres extensions)"
                 # "It ranks documents ... based purely on how well they match ... in the query."
 
                 # Let's try the standard ParadeDB / pg_search approach if possible, or just exact match if not.

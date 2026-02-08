@@ -24,7 +24,7 @@ from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
 from llama_index.core.schema import Document as LlamaDocument
 
 with optional_import_block():
-    from vector_mcp.vectordb.pgvector import PGVectorDB
+    from vector_mcp.vectordb.postgres import PGVectorDB
 
 __all__ = ["PGVectorRetriever"]
 
@@ -41,7 +41,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-@require_optional_import(["pgvector", "psycopg", "llama_index"], "rag")
+@require_optional_import(["postgres", "psycopg", "llama_index"], "rag")
 class PGVectorRetriever(RAGRetriever):
     """A query engine backed by PGVector that supports document insertion and querying."""
 
@@ -79,7 +79,7 @@ class PGVectorRetriever(RAGRetriever):
         """Sets up the PGVector database via PGVectorDB."""
         logger.info("Setting up the database.")
         self.vector_db: PGVectorDB = VectorDBFactory.create_vector_database(
-            db_type="pgvector",
+            db_type="postgres",
             connection_string=self.connection_string,
             host=self.host,
             port=self.port,

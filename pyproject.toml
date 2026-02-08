@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vector-mcp"
-version = "1.0.9"
+version = "1.0.10"
 description = "Integrate RAG into AI Agents via MCP Server. Supports multiple Vector database technologies."
 readme = "README.md"
 authors = [{ name = "Audel Rouhi", email = "knucklessg1@gmail.com" }]
@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-pgvector = [
+postgres = [
     "pgvector>=0.4.2",
     "psycopg>=3.3.2",
     "llama-index-vector-stores-postgres>=0.7.3",
