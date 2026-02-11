@@ -26,7 +26,7 @@ from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.utils import to_integer, to_boolean
 from vector_mcp.middlewares import UserTokenMiddleware, JWTClaimsLoggingMiddleware
 
-__version__ = "1.1.1"
+__version__ = "1.1.2"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -66,10 +66,8 @@ DEFAULT_DOCUMENT_DIRECTORY = os.environ.get(
 )
 DEFAULT_PROVIDER = os.getenv("PROVIDER", "openai")
 DEFAULT_MODEL_ID = os.getenv("MODEL_ID", "text-embedding-nomic-embed-text-v1.5")
-DEFAULT_OPENAI_BASE_URL = os.getenv(
-    "OPENAI_BASE_URL", "http://host.docker.internal:1234/v1"
-)
-DEFAULT_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "llama")
+DEFAULT_LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://host.docker.internal:1234/v1")
+DEFAULT_LLM_API_KEY = os.getenv("LLM_API_KEY", "llama")
 
 
 def initialize_retriever(
