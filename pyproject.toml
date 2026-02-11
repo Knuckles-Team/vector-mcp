@@ -62,7 +62,7 @@ huggingface = [
 ]
 a2a = [
     "pydantic-ai-slim[fastmcp,openai,anthropic,groq,mistral,google,huggingface,a2a,ag-ui,web]>=1.48.0",
-    "pydantic-ai-skills>=v0.4.0>=0.4.0",
+    "pydantic-ai-skills>=0.4.0",
     "fastapi>=0.128.0"
 ]
 all = [
@@ -91,7 +91,7 @@ all = [
     "fastembed>=0.7.4",
     "pymongo>=4.16.0",
     "pydantic-ai-slim[fastmcp,openai,anthropic,groq,mistral,google,huggingface,a2a,ag-ui,web]>=1.48.0",
-    "pydantic-ai-skills>=v0.4.0>=0.4.0",
+    "pydantic-ai-skills>=v0.4.0",
     "fastapi>=0.128.0"
 ]
 
