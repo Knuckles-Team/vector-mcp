@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vector-mcp"
-version = "1.1.2"
+version = "1.1.3"
 description = "Integrate RAG into AI Agents via MCP Server. Supports multiple Vector database technologies."
 readme = "README.md"
 authors = [{ name = "Audel Rouhi", email = "knucklessg1@gmail.com" }]
@@ -61,8 +61,8 @@ huggingface = [
     "sentence_transformers>=5.2.2",
 ]
 a2a = [
-    "pydantic-ai-slim[fastmcp,openai,anthropic,google,huggingface,a2a,ag-ui,web]>=1.48.0",
-    "pydantic-ai-skills>=0.4.0",
+    "pydantic-ai-slim[fastmcp,openai,anthropic,groq,mistral,google,huggingface,a2a,ag-ui,web]>=1.48.0",
+    "pydantic-ai-skills>=v0.4.0>=0.4.0",
     "fastapi>=0.128.0"
 ]
 all = [
@@ -90,8 +90,8 @@ all = [
     "qdrant-client>=1.16.2",
     "fastembed>=0.7.4",
     "pymongo>=4.16.0",
-    "pydantic-ai-slim[fastmcp,openai,anthropic,google,huggingface,a2a,ag-ui,web]>=1.48.0",
-    "pydantic-ai-skills>=0.4.0",
+    "pydantic-ai-slim[fastmcp,openai,anthropic,groq,mistral,google,huggingface,a2a,ag-ui,web]>=1.48.0",
+    "pydantic-ai-skills>=v0.4.0>=0.4.0",
     "fastapi>=0.128.0"
 ]
 
