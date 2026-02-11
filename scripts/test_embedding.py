@@ -18,8 +18,8 @@ def test_embedding():
     os.environ["EMBEDDING_PROVIDER"] = "openai"
     # Assuming running locally on the host, so localhost is appropriate.
     # If running in a container, this might need to be host.docker.internal or correct IP
-    os.environ["OPENAI_BASE_URL"] = "http://localhost:1234/v1"
-    os.environ["OPENAI_API_KEY"] = "llama"
+    os.environ["LLM_BASE_URL"] = "http://localhost:1234/v1"
+    os.environ["LLM_API_KEY"] = "llama"
     os.environ["EMBEDDING_MODEL"] = "text-embedding-nomic-embed-text-v1.5"
 
     # Check if documents directory exists

@@ -4,8 +4,8 @@ from openai import OpenAI
 
 print(f"Python: {sys.version}")
 
-base_url = os.environ.get("OPENAI_BASE_URL", "http://host.docker.internal:1234/v1")
-api_key = os.environ.get("OPENAI_API_KEY", "llama")
+base_url = os.environ.get("LLM_BASE_URL", "http://host.docker.internal:1234/v1")
+api_key = os.environ.get("LLM_API_KEY", "llama")
 
 print(f"Testing OpenAI connection to: {base_url}")
 

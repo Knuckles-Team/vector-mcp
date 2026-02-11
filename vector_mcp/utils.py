@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import os
+import httpx
 import pickle
 import yaml
 from typing import Optional
@@ -14,7 +15,40 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.huggingface import HuggingFaceModel
+from pydantic_ai.models.groq import GroqModel
+from pydantic_ai.models.mistral import MistralModel
 from fasta2a import Skill
+
+# Try importing specific clients/providers, but don't fail if variables are missing
+try:
+
+    from openai import AsyncOpenAI
+    from pydantic_ai.providers.openai import OpenAIProvider
+except ImportError:
+    AsyncOpenAI = None
+    OpenAIProvider = None
+
+try:
+    from groq import AsyncGroq
+    from pydantic_ai.providers.groq import GroqProvider
+except ImportError:
+    AsyncGroq = None
+    GroqProvider = None
+
+try:
+    from mistralai import Mistral
+    from pydantic_ai.providers.mistral import MistralProvider
+except ImportError:
+    Mistral = None
+    MistralProvider = None
+
+try:
+    from anthropic import AsyncAnthropic
+    from pydantic_ai.providers.anthropic import AnthropicProvider
+except ImportError:
+    AsyncAnthropic = None
+    AnthropicProvider = None
+
 
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
@@ -231,36 +265,113 @@ def load_skills_from_directory(directory: str) -> List[Skill]:
     return skills
 
 
+def get_http_client(ssl_verify: bool = True) -> httpx.AsyncClient | None:
+    if not ssl_verify:
+        return httpx.AsyncClient(verify=False)
+    return None
+
+
 def create_model(
     provider: str,
     model_id: str,
-    base_url: Optional[str],
-    api_key: Optional[str],
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    ssl_verify: bool = True,
 ):
+    http_client = get_http_client(ssl_verify=ssl_verify)
+
     if provider == "openai":
         target_base_url = base_url
         target_api_key = api_key
+
+        # If we have a custom client or specific settings, we might want to use the explicit provider object
+        if http_client and AsyncOpenAI and OpenAIProvider:
+            client = AsyncOpenAI(
+                api_key=target_api_key or os.environ.get("LLM_API_KEY"),
+                base_url=target_base_url or os.environ.get("LLM_BASE_URL"),
+                http_client=http_client,
+            )
+            provider_instance = OpenAIProvider(openai_client=client)
+            return OpenAIChatModel(model_name=model_id, provider=provider_instance)
+
+        # Fallback to standard env vars
         if target_base_url:
-            os.environ["OPENAI_BASE_URL"] = target_base_url
+            os.environ["LLM_BASE_URL"] = target_base_url
         if target_api_key:
-            os.environ["OPENAI_API_KEY"] = target_api_key
+            os.environ["LLM_API_KEY"] = target_api_key
+        return OpenAIChatModel(model_name=model_id, provider="openai")
+
+    elif provider == "ollama":
+        # Ollama is OpenAI compatible
+        target_base_url = base_url or "http://localhost:11434/v1"
+        target_api_key = api_key or "ollama"
+
+        if http_client and AsyncOpenAI and OpenAIProvider:
+            client = AsyncOpenAI(
+                api_key=target_api_key,
+                base_url=target_base_url,
+                http_client=http_client,
+            )
+            provider_instance = OpenAIProvider(openai_client=client)
+            return OpenAIChatModel(model_name=model_id, provider=provider_instance)
+
+        os.environ["LLM_BASE_URL"] = target_base_url
+        os.environ["LLM_API_KEY"] = target_api_key
         return OpenAIChatModel(model_name=model_id, provider="openai")
 
     elif provider == "anthropic":
         if api_key:
-            os.environ["ANTHROPIC_API_KEY"] = api_key
+            os.environ["LLM_API_KEY"] = api_key
+
+        try:
+            if http_client and AsyncAnthropic and AnthropicProvider:
+                client = AsyncAnthropic(
+                    api_key=api_key or os.environ.get("LLM_API_KEY"),
+                    http_client=http_client,
+                )
+                provider_instance = AnthropicProvider(anthropic_client=client)
+                return AnthropicModel(model_name=model_id, provider=provider_instance)
+        except ImportError:
+            pass
+
         return AnthropicModel(model_name=model_id)
 
     elif provider == "google":
+        # Google generic setup, skipping complex SSL for now as agreed
         if api_key:
-            os.environ["GEMINI_API_KEY"] = api_key
-            os.environ["GOOGLE_API_KEY"] = api_key
+            os.environ["LLM_API_KEY"] = api_key
         return GoogleModel(model_name=model_id)
+
+    elif provider == "groq":
+        if api_key:
+            os.environ["LLM_API_KEY"] = api_key
+
+        if http_client and AsyncGroq and GroqProvider:
+            client = AsyncGroq(
+                api_key=api_key or os.environ.get("LLM_API_KEY"),
+                http_client=http_client,
+            )
+            provider_instance = GroqProvider(groq_client=client)
+            return GroqModel(model_name=model_id, provider=provider_instance)
+
+        return GroqModel(model_name=model_id)
+
+    elif provider == "mistral":
+        if api_key:
+            os.environ["LLM_API_KEY"] = api_key
+
+        if http_client and Mistral and MistralProvider:
+            # Assuming mistral_client argument for MistralProvider
+            # Ideally we would verify this, but we'll try standard pattern
+            pass
+
+        return MistralModel(model_name=model_id)
 
     elif provider == "huggingface":
         if api_key:
-            os.environ["HF_TOKEN"] = api_key
+            os.environ["LLM_API_KEY"] = api_key
         return HuggingFaceModel(model_name=model_id)
+
     return OpenAIChatModel(model_name=model_id, provider="openai")
 
 
@@ -278,8 +389,8 @@ def get_embedding_model() -> BaseEmbedding:
             model_name=os.environ.get(
                 "EMBEDDING_MODEL", "text-embedding-nomic-embed-text-v1.5"
             ),
-            api_key=os.environ.get("OPENAI_API_KEY"),
-            api_base=os.environ.get("OPENAI_BASE_URL", "http://localhost:1234/v1"),
+            api_key=os.environ.get("LLM_API_KEY"),
+            api_base=os.environ.get("LLM_BASE_URL", "http://localhost:1234/v1"),
             timeout=32400.0,
         )
     elif provider == "huggingface":

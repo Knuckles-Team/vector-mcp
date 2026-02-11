@@ -3,7 +3,7 @@ import sys
 from typing import Any
 
 # Mock env vars to avoid errors during instantiation if keys are missing
-os.environ["OPENAI_API_KEY"] = "sk-test-key"
+os.environ["LLM_API_KEY"] = "sk-test-key"
 
 try:
     from llama_index.embeddings.openai import OpenAIEmbedding
