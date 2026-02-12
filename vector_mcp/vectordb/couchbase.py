@@ -36,7 +36,7 @@ class CouchbaseVectorDB(VectorDB):
         connection_string: Optional[str] = None,
         host: Optional[Union[str, int]] = None,
         port: Optional[Union[str, int]] = None,
-        dbname: Optional[str] = None,  # Bucket name
+        dbname: Optional[str] = None,
         username: Optional[str] = None,
         password: Optional[str] = None,
         embed_model: Any | None = None,
@@ -49,7 +49,6 @@ class CouchbaseVectorDB(VectorDB):
         self.embed_model = embed_model or get_embedding_model()
         self.metadata = metadata or {}
 
-        # Connection logic
         if not connection_string:
             connection_string = f"couchbase://{host or 'localhost'}"
 
@@ -86,7 +85,6 @@ class CouchbaseVectorDB(VectorDB):
         self, collection_name: str, overwrite: bool = False, get_or_create: bool = True
     ) -> Any:
         self.collection_name = collection_name
-        # Couchbase collection ops are implicit in LlamaIndex mostly, but we can re-init
         self.vector_store = CouchbaseVectorStore(
             cluster=self.cluster,
             bucket_name=self.bucket_name,
@@ -99,13 +97,11 @@ class CouchbaseVectorDB(VectorDB):
         self.active_collection = collection_name
         self._index = None
 
-        # Overwrite logic? Couchbase delete collection manually maybe?
         if overwrite:
-            pass  # Not easily exposed
+            pass
         return self.vector_store
 
     def get_collection(self, collection_name: str = None) -> Any:
-        # Return something representing collection
         return self.vector_store
 
     def insert_documents(
@@ -168,7 +164,6 @@ class CouchbaseVectorDB(VectorDB):
         include=None,
         **kwargs,
     ) -> list[Document]:
-        # Couchbase KV get
         bucket = self.cluster.bucket(self.bucket_name)
         scope = bucket.scope(self.scope_name)
         coll = scope.collection(collection_name or self.collection_name)
@@ -178,7 +173,6 @@ class CouchbaseVectorDB(VectorDB):
             try:
                 res = coll.get(_id)
                 content = res.content_as[dict]
-                # Schema mapping needed
                 docs.append(
                     Document(
                         id=_id,
@@ -203,11 +197,9 @@ class CouchbaseVectorDB(VectorDB):
         self.vector_store.delete_nodes(ids)
 
     def delete_collection(self, collection_name: str) -> None:
-        # TODO: Implement drop collection
         pass
 
     def get_collections(self) -> Any:
-        # Management API
         return []
 
     def lexical_search(
@@ -219,39 +211,20 @@ class CouchbaseVectorDB(VectorDB):
     ) -> QueryResults:
         collection_name = collection_name or self.collection_name
 
-        # Couchbase FTS (Search Service)
-        # We assume an index exists. If not, this might fail or return empty.
-        # Index name usually matches collection name or is "default".
-        # Let's assume index name = collection_name for simplicity in this integration,
-        # or user needs to setup the index mapping.
-
-        # NOTE: Couchbase Vector Store in LlamaIndex uses Search Service.
-        # We can leverage cluster.search_query()
-
         results = []
         for query_text in queries:
             try:
-                # Simple MatchQuery
-                # We need to target the index.
-                # Assuming index name is `collection_name` or standard `vector-index`?
-                # User config dependent. We will try `collection_name`.
                 index_name = collection_name
 
-                # We need to import locally to avoid top-level optional import issues if logic changes
                 from couchbase.search import SearchOptions, MatchQuery
 
-                # Perform search
                 search_result = self.cluster.search_query(
                     index_name, MatchQuery(query_text), SearchOptions(limit=n_results)
                 )
 
                 query_result = []
                 for row in search_result.rows():
-                    # row.id is key.
-                    # We need to fetch document content via KV or if stored in search index (if stored=true).
-                    # Let's fetch via KV to be safe and get full content.
 
-                    # Fetch doc
                     bucket = self.cluster.bucket(self.bucket_name)
                     scope = bucket.scope(self.scope_name)
                     coll = scope.collection(collection_name)
@@ -259,8 +232,6 @@ class CouchbaseVectorDB(VectorDB):
                     try:
                         doc_kv = coll.get(row.id)
                         content = doc_kv.content_as[dict]
-                        # Assume content structure
-                        # LlamaIndex: {"text": ..., "metadata": ...}
                         doc = Document(
                             id=row.id,
                             content=content.get("text", "")
@@ -270,7 +241,6 @@ class CouchbaseVectorDB(VectorDB):
                         )
                         query_result.append((doc, row.score))
                     except Exception:
-                        # Document might be deleted or issue fetching
                         pass
                 results.append(query_result)
 

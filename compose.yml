@@ -16,6 +16,8 @@ services:
         max-size: "10m"
         max-file: "3"
     restart: always
+    env_file:
+      - .env
     environment:
       - "HOST=0.0.0.0"
       - "PORT=8023"
@@ -26,7 +28,7 @@ services:
       - "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python"
       - "PROVIDER=openai"
       - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
-      - "LLM_API_KEY=llama"
+      - "LLM_API_KEY=${LLM_API_KEY:-llama}"
       - "MODEL_ID=text-embedding-nomic-embed-text-v1.5"
     ports:
       - "8023:8023"
@@ -59,13 +61,15 @@ services:
         max-size: "10m"
         max-file: "3"
     restart: always
+    env_file:
+      - .env
     environment:
       - "HOST=0.0.0.0"
       - "PORT=9023"
       - "MCP_URL=http://vector-mcp-chromadb:8023/mcp"
       - "PROVIDER=openai"
       - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
-      - "LLM_API_KEY=llama"
+      - "LLM_API_KEY=${LLM_API_KEY:-llama}"
       - "MODEL_ID=${MODEL_ID:-qwen/qwen3-coder-next}"
       - "DEBUG=False"
       - "ENABLE_WEB_UI=True"
@@ -114,6 +118,8 @@ services:
         max-size: "10m"
         max-file: "3"
     restart: always
+    env_file:
+      - .env
     environment:
       - "HOST=0.0.0.0"
       - "PORT=8024"
@@ -126,7 +132,7 @@ services:
       - "PASSWORD=password"
       - "PROVIDER=openai"
       - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
-      - "LLM_API_KEY=llama"
+      - "LLM_API_KEY=${LLM_API_KEY:-llama}"
       - "MODEL_ID=text-embedding-nomic-embed-text-v1.5"
     ports:
       - "8024:8024"
@@ -161,13 +167,15 @@ services:
         max-size: "10m"
         max-file: "3"
     restart: always
+    env_file:
+      - .env
     environment:
       - "HOST=0.0.0.0"
       - "PORT=9024"
       - "MCP_URL=http://vector-mcp-postgres:8024/mcp"
       - "PROVIDER=openai"
       - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
-      - "LLM_API_KEY=llama"
+      - "LLM_API_KEY=${LLM_API_KEY:-llama}"
       - "MODEL_ID=${MODEL_ID:-qwen/qwen3-coder-next}"
       - "DEBUG=False"
       - "ENABLE_WEB_UI=True"
@@ -181,29 +189,33 @@ services:
       start_period: 10s
   # MongoDB
   mongodb:
-   image: mongo:latest
-   container_name: mongodb
-   environment:
+    image: mongo:latest
+    container_name: mongodb
+    environment:
      MONGO_INITDB_ROOT_USERNAME: mongo
      MONGO_INITDB_ROOT_PASSWORD: password
-   ports:
+    ports:
      - "27017:27017"
-   restart: always
+    restart: always
+    env_file:
+      - .env
 
   vector-mcp-mongo:
-   image: docker.io/knucklessg1/vector-mcp:latest
-   container_name: vector-mcp-mongo
-   hostname: vector-mcp-mongo
-   command: [ "vector-mcp" ]
-   extra_hosts:
+    image: docker.io/knucklessg1/vector-mcp:latest
+    container_name: vector-mcp-mongo
+    hostname: vector-mcp-mongo
+    command: [ "vector-mcp" ]
+    extra_hosts:
      - "host.docker.internal:host-gateway"
-   logging:
+    logging:
      driver: json-file
      options:
        max-size: "10m"
        max-file: "3"
-   restart: always
-   environment:
+    restart: always
+    env_file:
+      - .env
+    environment:
      - "HOST=0.0.0.0"
      - "PORT=8025"
      - "TRANSPORT=streamable-http"
@@ -215,19 +227,19 @@ services:
      - "PASSWORD=password"
      - "PROVIDER=openai"
      - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
-     - "LLM_API_KEY=llama"
+     - "LLM_API_KEY=${LLM_API_KEY:-llama}"
      - "MODEL_ID=text-embedding-nomic-embed-text-v1.5"
-   ports:
+    ports:
      - "8025:8025"
-   healthcheck:
+    healthcheck:
      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8025/health')" ]
      interval: 30s
      timeout: 10s
      retries: 3
      start_period: 10s
-   depends_on:
+    depends_on:
      - mongodb
-   volumes:
+    volumes:
      - ./mcp/documents:/documents
 
   vector-agent-mongo:
@@ -251,7 +263,7 @@ services:
      - "MCP_URL=http://vector-mcp-mongo:8025/mcp"
      - "PROVIDER=openai"
      - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
-     - "LLM_API_KEY=llama"
+     - "LLM_API_KEY=${LLM_API_KEY:-llama}"
      - "MODEL_ID=${MODEL_ID:-qwen/qwen3-coder-next}"
      - "DEBUG=False"
      - "ENABLE_WEB_UI=True"
@@ -266,29 +278,33 @@ services:
 
   # Couchbase
   couchbase:
-   image: couchbase:latest
-   container_name: couchbase
-   ports:
+    image: couchbase:latest
+    container_name: couchbase
+    ports:
      - "8091:8091"
      - "8092:8092"
      - "8093:8093"
      - "11210:11210"
-   restart: always
+    restart: always
+    env_file:
+      - .env
 
   vector-mcp-couchbase:
-   image: docker.io/knucklessg1/vector-mcp:latest
-   container_name: vector-mcp-couchbase
-   hostname: vector-mcp-couchbase
-   command: [ "vector-mcp" ]
-   extra_hosts:
+    image: docker.io/knucklessg1/vector-mcp:latest
+    container_name: vector-mcp-couchbase
+    hostname: vector-mcp-couchbase
+    command: [ "vector-mcp" ]
+    extra_hosts:
      - "host.docker.internal:host-gateway"
-   logging:
+    logging:
      driver: json-file
      options:
        max-size: "10m"
        max-file: "3"
-   restart: always
-   environment:
+    restart: always
+    env_file:
+      - .env
+    environment:
      - "HOST=0.0.0.0"
      - "PORT=8026"
      - "TRANSPORT=streamable-http"
@@ -300,19 +316,19 @@ services:
      - "PASSWORD=password"
      - "PROVIDER=openai"
      - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
-     - "LLM_API_KEY=llama"
+     - "LLM_API_KEY=${LLM_API_KEY:-llama}"
      - "MODEL_ID=text-embedding-nomic-embed-text-v1.5"
-   ports:
+    ports:
      - "8026:8026"
-   healthcheck:
+    healthcheck:
      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8026/health')" ]
      interval: 30s
      timeout: 10s
      retries: 3
      start_period: 10s
-   depends_on:
+    depends_on:
      - couchbase
-   volumes:
+    volumes:
      - ./mcp/documents:/documents
 
   vector-agent-couchbase:
@@ -336,7 +352,7 @@ services:
      - "MCP_URL=http://vector-mcp-couchbase:8026/mcp"
      - "PROVIDER=openai"
      - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
-     - "LLM_API_KEY=llama"
+     - "LLM_API_KEY=${LLM_API_KEY:-llama}"
      - "MODEL_ID=${MODEL_ID:-qwen/qwen3-coder-next}"
      - "DEBUG=False"
      - "ENABLE_WEB_UI=True"
@@ -351,26 +367,30 @@ services:
 
   # Qdrant
   qdrant:
-   image: qdrant/qdrant:latest
-   container_name: qdrant
-   ports:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
      - "6333:6333"
-   restart: always
+    restart: always
+    env_file:
+      - .env
 
   vector-mcp-qdrant:
-   image: docker.io/knucklessg1/vector-mcp:latest
-   container_name: vector-mcp-qdrant
-   hostname: vector-mcp-qdrant
-   command: [ "vector-mcp" ]
-   extra_hosts:
+    image: docker.io/knucklessg1/vector-mcp:latest
+    container_name: vector-mcp-qdrant
+    hostname: vector-mcp-qdrant
+    command: [ "vector-mcp" ]
+    extra_hosts:
      - "host.docker.internal:host-gateway"
-   logging:
+    logging:
      driver: json-file
      options:
        max-size: "10m"
        max-file: "3"
-   restart: always
-   environment:
+    restart: always
+    env_file:
+      - .env
+    environment:
      - "HOST=0.0.0.0"
      - "PORT=8027"
      - "TRANSPORT=streamable-http"
@@ -379,49 +399,51 @@ services:
      - "DB_PORT=6333"
      - "PROVIDER=openai"
      - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
-     - "LLM_API_KEY=llama"
+     - "LLM_API_KEY=${LLM_API_KEY:-llama}"
      - "MODEL_ID=text-embedding-nomic-embed-text-v1.5"
-   ports:
+    ports:
      - "8027:8027"
-   healthcheck:
+    healthcheck:
      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8027/health')" ]
      interval: 30s
      timeout: 10s
      retries: 3
      start_period: 10s
-   depends_on:
+    depends_on:
      - qdrant
-   volumes:
+    volumes:
      - ./mcp/documents:/documents
 
   vector-agent-qdrant:
-   image: docker.io/knucklessg1/vector-mcp:latest
-   container_name: vector-agent-qdrant
-   hostname: vector-agent-qdrant
-   command: [ "vector-agent" ]
-   extra_hosts:
+    image: docker.io/knucklessg1/vector-mcp:latest
+    container_name: vector-agent-qdrant
+    hostname: vector-agent-qdrant
+    command: [ "vector-agent" ]
+    extra_hosts:
      - "host.docker.internal:host-gateway"
-   depends_on:
+    depends_on:
      - vector-mcp-qdrant
-   logging:
+    logging:
      driver: json-file
      options:
        max-size: "10m"
        max-file: "3"
-   restart: always
-   environment:
+    restart: always
+    env_file:
+      - .env
+    environment:
      - "HOST=0.0.0.0"
      - "PORT=9027"
      - "MCP_URL=http://vector-mcp-qdrant:8027/mcp"
      - "PROVIDER=openai"
      - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
-     - "LLM_API_KEY=llama"
+     - "LLM_API_KEY=${LLM_API_KEY:-llama}"
      - "MODEL_ID=${MODEL_ID:-qwen/qwen3-coder-next}"
      - "DEBUG=False"
      - "ENABLE_WEB_UI=True"
-   ports:
+    ports:
      - "9027:9027"
-   healthcheck:
+    healthcheck:
      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9027/health')" ]
      interval: 30s
      timeout: 10s

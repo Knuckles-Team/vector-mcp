@@ -125,9 +125,7 @@ def chroma_results_to_query_results(
             sub_dict = {}
             for key in keys:
                 if len(data_dict[key]) > i:
-                    sub_dict[key[:-1]] = data_dict[key][i][
-                        j
-                    ]  # remove 's' in the end from key
+                    sub_dict[key[:-1]] = data_dict[key][i][j]
             sub_result.append((sub_dict, distance))
         result.append(sub_result)
 
@@ -152,16 +150,13 @@ class ModuleInfo:
         import importlib.util
         from importlib.metadata import version as get_version, PackageNotFoundError
 
-        # Check if module spec can be found (installed)
         if not importlib.util.find_spec(self.name):
             return f"'{self.name}' is not installed."
 
-        # Check version if constraints exist
         if self.min_version or self.max_version:
             try:
                 installed_version = get_version(self.name)
             except PackageNotFoundError:
-                # Fallback: try to import and check __version__ (for some packages like older sklearn)
                 try:
                     module = importlib.import_module(self.name)
                     installed_version = getattr(module, "__version__", None)
@@ -171,7 +166,6 @@ class ModuleInfo:
             if installed_version is None:
                 return f"'{self.name}' is installed, but the version is not available."
 
-            # Convert to version object for comparison
             installed_ver = version.parse(installed_version)
 
             if self.min_version:
@@ -293,7 +287,6 @@ def optional_import_block() -> Generator[Result, None, None]:
         yield result
         result._failed = False
     except ImportError as e:
-        # Ignore ImportErrors during this context
         logger.debug(f"Ignoring ImportError: {e}")
         result._failed = True
 
@@ -344,7 +337,6 @@ class PatchObject(ABC, Generic[T]):
         o = self.get_object_with_metadata()
         plural = len(self.missing_modules) > 1
         fqn = f"{o.__module__}.{o.__name__}" if hasattr(o, "__module__") else o.__name__
-        # modules_str = ", ".join([f"'{m}'" for m in self.missing_modules])
         msg = f"{'Modules' if plural else 'A module'} needed for {fqn} {'are' if plural else 'is'} missing:\n"
         for _, status in self.missing_modules.items():
             msg += f" - {status}\n"
@@ -416,7 +408,6 @@ class PatchCallable(PatchObject[F]):
 class PatchStatic(PatchObject[F]):
     @classmethod
     def accept(cls, o: Any) -> bool:
-        # return inspect.ismethoddescriptor(o)
         return isinstance(o, staticmethod)
 
     def patch(self, except_for: Iterable[str]) -> F:
@@ -504,7 +495,6 @@ class PatchClass(PatchObject[type[Any]]):
             return self.o
 
         for name, member in inspect.getmembers(self.o):
-            # Patch __init__ method if possible, but not other internal methods
             if name.startswith("__") and name != "__init__":
                 continue
             patched = patch_object(

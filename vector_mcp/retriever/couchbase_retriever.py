@@ -36,7 +36,6 @@ EMPTY_RESPONSE_REPLY = (
     "If you haven't ingested any documents, please try that."
 )
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -91,11 +90,8 @@ class CouchbaseRetriever(RAGRetriever):
         self.collection_name = collection_name
         self.index_name = index_name
 
-        self.embed_model = (
-            get_embedding_model()
-        )  # embedding_function ignored mostly or used if custom passed? ignoring for now to standardize.
+        self.embed_model = get_embedding_model()
 
-        # These will be initialized later
         self.vector_db: CouchbaseVectorDB | None = None
         self.vector_store: CouchbaseVectorStore | None = None  # type: ignore[no-any-unimported]
         self.storage_context: StorageContext | None = None  # type: ignore[no-any-unimported]
@@ -109,7 +105,7 @@ class CouchbaseRetriever(RAGRetriever):
             connection_string=self.connection_string,
             username=self.username,
             password=self.password,
-            dbname=self.bucket_name,  # bucket mapped to dbname
+            dbname=self.bucket_name,
             scope_name=self.scope_name,
             collection_name=self.collection_name,
             index_name=self.index_name,
@@ -120,13 +116,11 @@ class CouchbaseRetriever(RAGRetriever):
         )
         logger.info("Couchbase vector database created.")
 
-        # Access internal components
         self.index = self.vector_db._get_index()
 
     def _check_existing_collection(self) -> bool:
         """Checks if the specified collection exists in the Couchbase database."""
         try:
-            # CouchbaseVectorDB (wrapped) doesn't expose bucket directly easily unless we access internal
             collection_mgr = self.vector_db.cluster.bucket(
                 self.bucket_name
             ).collections()
@@ -145,10 +139,8 @@ class CouchbaseRetriever(RAGRetriever):
         if collection_name:
             self.collection_name = collection_name
         try:
-            # Just set up, overwrite false.
             self._set_up(overwrite=False)
 
-            # Simple ping-like query to verify connection
             self.vector_db.cluster.ping()
             logger.info("Connected to Couchbase successfully.")
             return True
@@ -167,13 +159,9 @@ class CouchbaseRetriever(RAGRetriever):
     ) -> bool:
         """Initializes the Couchbase database by creating or overwriting the collection and indexing documents."""
         try:
-            # Logic is slightly different in original: overwrite if exists.
-            # CouchbaseVectorDB: create_collection(overwrite=overwrite) handles it? logic is weak there.
-            # But let's trust _set_up logic.
 
-            # Set up the database with overwriting if specified
             self._set_up(overwrite=overwrite)
-            self.vector_db.cluster.ping()  # Simple ping-like query
+            self.vector_db.cluster.ping()
 
             if document_directory or document_paths or document_contents:
                 logger.info("Setting up the database with documents.")
@@ -278,7 +266,6 @@ class CouchbaseRetriever(RAGRetriever):
         self, question: str, number_results: int, *args: Any, **kwargs: Any
     ) -> List[Dict[str, Any]]:
         self._validate_query_index()
-        # CouchbaseVectorDB lexical_search returns list of list of (Document, score)
         results = self.vector_db.lexical_search(
             queries=[question],
             collection_name=self.collection_name,

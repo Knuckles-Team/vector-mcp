@@ -5,7 +5,7 @@ from typing import Any, Protocol, TypedDict, runtime_checkable
 
 Metadata = Mapping[str, Any] | None
 Vector = Sequence[float] | Sequence[int]
-ItemID = str | int  # chromadb doesn't support int ids, VikingDB does
+ItemID = str | int
 
 
 class Document(TypedDict):

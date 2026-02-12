@@ -2,7 +2,6 @@ import sys
 import os
 import logging
 
-# Configure logging to see LlamaIndex logs
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
@@ -26,12 +25,10 @@ try:
     print(f"Embedding generated. Dim: {len(emb)}")
 except Exception as e:
     print(f"FAILURE: Embedding model check failed: {e}")
-    # Don't exit, try DB anyway if possible (but DB relies on it)
 
 print("\n--- Testing PostgreSQL init ---")
 try:
     print("Initializing PostgreSQL...")
-    # Use params from logs
     db = PostgreSQL(
         host="postgres",
         port="5432",

@@ -3,8 +3,6 @@ import unittest
 from dataclasses import dataclass
 from typing import Any
 
-# Mocking the prune_large_messages function import since it is in vector_agent.py
-# We will import it directly
 sys.path.insert(0, "/home/genius/Workspace/vector-mcp")
 from vector_mcp.vector_agent import prune_large_messages
 
@@ -33,10 +31,6 @@ class TestPruning(unittest.TestCase):
 
         pruned = prune_large_messages(messages, max_length=5000)
         self.assertEqual(len(pruned), 1)
-        # Since MockMessage is not mutable in the loop (we need to support that logic if used with Pydantic)
-        # The current implementation attempts to copy. Let's see if it works with dataclass which is mutable.
-        # Wait, dataclass is not inherently copyable via 'copy' import without issues? simple copy works.
-        # But my implementation uses `from copy import copy`.
 
         self.assertLess(len(pruned[0].content), 5000)
         self.assertTrue("truncated" in pruned[0].content)

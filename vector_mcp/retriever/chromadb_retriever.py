@@ -38,7 +38,6 @@ EMPTY_RESPONSE_REPLY = (
 )
 
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -80,20 +79,14 @@ class ChromaDBRetriever(RAGRetriever):
         self.vector_store: ChromaVectorStore | None = None
         self.storage_context: StorageContext | None = None
 
-        # Try connection/client creation just to mirror original check logic (optional)
-        # But we will rely on VectorDBFactory
         if (not host or not port) and not path:
-            # Just logging warning as per original
             logger.warning(
                 "Can't connect to remote Chroma client without host or port not. Using an ephemeral, in-memory client (implied by path or lack thereof)."
             )
 
     def _set_up(self, overwrite: bool) -> None:
         """Set up ChromaDB and LlamaIndex storage."""
-        # Using self.client if it was passed? No, constructor just took host/port.
-        # We construct client via ChromaVectorDB now.
 
-        # NOTE: ChromaVectorDB takes client object or path or host/port.
         client = None
         if self.host and self.port:
             try:
@@ -105,7 +98,7 @@ class ChromaDBRetriever(RAGRetriever):
                     database=self.database if self.database else DEFAULT_DATABASE,  # type: ignore
                 )
             except Exception:
-                pass  # Fallback? Or raise? Original raised.
+                pass
 
         self.vector_db = VectorDBFactory.create_vector_database(
             db_type="chroma",
@@ -210,7 +203,6 @@ class ChromaDBRetriever(RAGRetriever):
         self, question: str, number_results: int, *args: Any, **kwargs: Any
     ) -> List[Dict[str, Any]]:
         self._validate_query_index()
-        # ChromaVectorDB lexical_search returns list of list of (Document, score)
         results = self.vector_db.lexical_search(
             queries=[question],
             collection_name=self.collection_name,

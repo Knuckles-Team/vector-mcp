@@ -7,12 +7,10 @@ from typing import List
 
 __all__: List[str] = []
 
-# Core modules – always available
 CORE_MODULES = [
     "vector_mcp.vector_mcp",
 ]
 
-# Optional modules
 OPTIONAL_MODULES = {
     "vector_mcp.vector_agent": "a2a",
     "vector_mcp.vector_mcp": "mcp",
@@ -37,12 +35,10 @@ def _expose_members(module):
             __all__.append(name)
 
 
-# Always import core modules
 for module_name in CORE_MODULES:
     module = importlib.import_module(module_name)
     _expose_members(module)
 
-# Conditionally import optional modules
 for module_name, extra_name in OPTIONAL_MODULES.items():
     module = _import_module_safely(module_name)
     if module is not None:

@@ -167,9 +167,7 @@ class ChromaVectorDB(VectorDB):
         **kwargs,
     ) -> list[Document]:
         collection = self.get_collection(collection_name)
-        # Chroma native get
         results = collection.get(ids=ids, include=include or ["metadatas", "documents"])
-        # parse results which are dict of lists
         docs = []
         if results and results["ids"]:
             for i, _id in enumerate(results["ids"]):
@@ -214,27 +212,12 @@ class ChromaVectorDB(VectorDB):
         collection = self.get_collection(collection_name)
         results = []
         for query in queries:
-            # ChromaDB v0.4+ supports `where_document={"$contains": "search_term"}`
-            # This is a substring match, not true BM25, but it's the closest "keyword search"
-            # we can get without managing our own index or using 3rd party tools.
-            # However, `query` method always expects embeddings or does embedding on `query_texts`.
-            # If we just want keyword match, we can use `get` with `where_document`.
-            # But `get` doesn't rank by relevance (it just returns matches).
 
-            # Try to use `query` but we need to supply embeddings or text.
-            # If we supply text, it does vector search + can filter.
-            # But user wants BM25.
-
-            # Alternative: pure "keyword" search using `get` and `where_document`.
             query_res = collection.get(
                 where_document={"$contains": query},
                 include=["documents", "metadatas"],
                 limit=n_results,
             )
-            # Result is dict: {'ids': [], 'documents': [], 'metadatas': []}
-
-            # If we want some "score", maybe we can't get it easily.
-            # We will just return 1.0 or attempt a simple count? No, just 1.0.
 
             query_result = []
             if query_res and query_res["ids"]:

@@ -36,7 +36,6 @@ EMPTY_RESPONSE_REPLY = (
     "If you haven't ingested any documents, please try that."
 )
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -59,15 +58,11 @@ class MongoDBRetriever(RAGRetriever):
             raise ValueError("Connection string is required to connect to MongoDB.")
 
         self.connection_string = connection_string
-        # ToDo: Is it okay if database_name is None?
         self.database_name = database_name
         self.collection_name = collection_name or DEFAULT_COLLECTION_NAME
 
-        self.embed_model = (
-            get_embedding_model()
-        )  # embedding_function ignored mostly or used if custom passed? ignoring for now to standardize.
+        self.embed_model = get_embedding_model()
 
-        # These will be initialized later.
         self.vector_db: MongoDBAtlasVectorDB | None = None
         self.semantic_search_engine: MongoDBAtlasVectorSearch | None = None  # type: ignore[no-any-unimported]
         self.storage_context: StorageContext | None = None  # type: ignore[no-any-unimported]
@@ -79,7 +74,7 @@ class MongoDBRetriever(RAGRetriever):
         self.vector_db: MongoDBAtlasVectorDB = VectorDBFactory.create_vector_database(  # type: ignore[assignment, no-redef]
             db_type="mongodb",
             connection_string=self.connection_string,
-            dbname=self.database_name,  # Note: using dbname as per factory arg usually
+            dbname=self.database_name,
             embed_model=self.embed_model,
             collection_name=self.collection_name,
         )
@@ -88,7 +83,6 @@ class MongoDBRetriever(RAGRetriever):
         )
         logger.info("Vector database created.")
 
-        # Access internal LlamaIndex components from VectorDB wrapper
         self.index = self.vector_db._get_index()
 
     def _check_existing_collection(self) -> bool:
@@ -100,13 +94,11 @@ class MongoDBRetriever(RAGRetriever):
     def connect_database(self, *args: Any, **kwargs: Any) -> bool:
         """Connects to the MongoDB database and initializes the query index from the existing collection."""
         try:
-            # Check if the target collection exists.
             if not self._check_existing_collection():
                 raise ValueError(
                     f"Collection '{self.collection_name}' not found in database '{self.database_name}'. "
                     "Please run init_db to create a new collection."
                 )
-            # Reinitialize without overwriting the existing collection.
             self._set_up(overwrite=False)
 
             self.vector_db.mongo_client.admin.command("ping")  # type: ignore[union-attr]
@@ -126,16 +118,13 @@ class MongoDBRetriever(RAGRetriever):
     ) -> bool:
         """Initializes the MongoDB database by creating or overwriting the collection and indexing documents."""
         try:
-            # Check if the collection already exists.
             if self._check_existing_collection():
                 logger.warning(
                     f"Collection '{self.collection_name}' already exists in database '{self.database_name}'. "
                     "Please use connect_database to connect to the existing collection or use init_db to overwrite it."
                 )
-            # Set up the database with overwriting.
             self._set_up(overwrite=True)
             self.vector_db.mongo_client.admin.command("ping")  # type: ignore[union-attr]
-            # Gather document paths.
             logger.info("Setting up the database with existing collection.")
 
             if document_directory or document_paths or document_contents:
@@ -236,7 +225,6 @@ class MongoDBRetriever(RAGRetriever):
         self, question: str, number_results: int, *args: Any, **kwargs: Any
     ) -> List[Dict[str, Any]]:
         self._validate_query_index()
-        # MongoDBAtlasVectorDB lexical_search returns list of list of (Document, score)
         results = self.vector_db.lexical_search(
             queries=[question],
             collection_name=self.collection_name,

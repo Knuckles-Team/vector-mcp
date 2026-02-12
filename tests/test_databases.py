@@ -7,9 +7,6 @@ from vector_mcp.vectordb.couchbase import CouchbaseVectorDB
 from vector_mcp.vectordb.qdrant import QdrantVectorDB
 from vector_mcp.vectordb.base import Document
 
-# Integration tests that try to connect to real services.
-# If connection fails, we skip.
-
 
 @pytest.fixture
 def sample_docs():
@@ -19,29 +16,20 @@ def sample_docs():
     ]
 
 
-# --- PGVECTOR ---
 @pytest.fixture
 def pgvector_db():
     try:
-        # Default Postgres params from compose.yml
         db = PostgreSQL(
             connection_string="postgresql://postgres:password@localhost:5432/vectordb",
             collection_name="test_collection",
         )
-        # Try to connect (usually lazy, so we might need to trigger something)
-        # PostgreSQL uses PGVectorStore which might connect on init or operation.
-        # Verify connection by listing something or creating collection
         return db
     except Exception as e:
         pytest.skip(f"PGVector not available: {e}")
 
 
 def test_pgvector_integration(pgvector_db, sample_docs):
-    # This might fail if DB is not up, but fixture handles skip?
-    # Actually if fixture raises Skip, test is skipped.
-    # But PostgreSQL init might not raise if connection is lazy.
 
-    # We'll try an operation
     try:
         pgvector_db.create_collection("test_col_int", overwrite=True)
         pgvector_db.insert_documents(sample_docs)
@@ -51,11 +39,6 @@ def test_pgvector_integration(pgvector_db, sample_docs):
         if "connection" in str(e).lower() or "timeout" in str(e).lower():
             pytest.skip(f"PGVector connection failed during op: {e}")
         else:
-            # If it's a code error, fail.
-            # But identifying connection error vs code error is hard without specific Exceptions.
-            # We will assume environment is flaky and mark xfail or skip if specific error.
-            # For now, let's just let it fail so user knows to fix env,
-            # UNLESS it is clearly a connection error.
             import psycopg
 
             if isinstance(e, psycopg.OperationalError):
@@ -63,7 +46,6 @@ def test_pgvector_integration(pgvector_db, sample_docs):
             raise e
 
 
-# --- MONGODB ---
 @pytest.fixture
 def mongo_db():
     try:
@@ -71,7 +53,7 @@ def mongo_db():
             host="localhost",
             port=27017,
             dbname="vectordb",
-            username="mongo",  # compose: MONGO_INITDB_ROOT_USERNAME=mongo
+            username="mongo",
             password="password",
             collection_name="test_col_mongo",
         )
@@ -88,19 +70,15 @@ def test_mongodb_integration(mongo_db, sample_docs):
 
     mongo_db.create_collection("test_col_mongo", overwrite=True)
     mongo_db.insert_documents(sample_docs)
-    # Search requires index setup in Atlas usually, but local mongo?
-    # MongoDBVectorStore in LlamaIndex might need specific setup.
-    # We check if insert worked.
     count = mongo_db.get_collection("test_col_mongo").count_documents({})
     assert count == 2
 
 
-# --- QDRANT ---
 @pytest.fixture
 def qdrant_db():
     try:
         db = QdrantVectorDB(
-            location="http://localhost:6333",  # Accessing HTTP port
+            location="http://localhost:6333",
             collection_name="test_col_qdrant",
         )
         return db
@@ -114,12 +92,9 @@ def test_qdrant_integration(qdrant_db, sample_docs):
     except Exception as e:
         pytest.skip(f"Qdrant connection failed: {e}")
 
-    # Create & Insert
     qdrant_db.create_collection("test_col_qdrant", overwrite=True)
     qdrant_db.insert_documents(sample_docs)
 
-    # Verify
-    # Qdrant might take a moment to index?
     import time
 
     time.sleep(1)
@@ -128,7 +103,6 @@ def test_qdrant_integration(qdrant_db, sample_docs):
     assert len(results) > 0
 
 
-# --- COUCHBASE ---
 @pytest.fixture
 def couchbase_db():
     try:
@@ -151,4 +125,3 @@ def test_couchbase_integration(couchbase_db, sample_docs):
         pytest.skip(f"Couchbase ping failed: {e}")
 
     couchbase_db.insert_documents(sample_docs, collection_name="test_col_cb")
-    # Verify

@@ -11,7 +11,6 @@ print(f"Testing OpenAI connection to: {base_url}")
 
 try:
     client = OpenAI(base_url=base_url, api_key=api_key)
-    # List models or generate embedding
     print("Attempting to list models...")
     models = client.models.list()
     print("SUCCESS: Listed models")
@@ -21,7 +20,7 @@ try:
     print("\nAttempting to generate embedding...")
     resp = client.embeddings.create(
         input="test",
-        model="text-embedding-nomic-embed-text-v1.5",  # Default in vector_mcp.py
+        model="text-embedding-nomic-embed-text-v1.5",
     )
     print("SUCCESS: Generated embedding")
     print(f"Dimension: {len(resp.data[0].embedding)}")

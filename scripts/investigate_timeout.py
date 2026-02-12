@@ -2,7 +2,6 @@ import os
 import sys
 from typing import Any
 
-# Mock env vars to avoid errors during instantiation if keys are missing
 os.environ["LLM_API_KEY"] = "sk-test-key"
 
 try:
@@ -28,13 +27,8 @@ def inspect_openai():
 
     print("\n--- Inspecting OpenAIEmbedding ---")
     try:
-        # Initialize with timeout
         embed_model = OpenAIEmbedding(model="text-embedding-3-small", timeout=32400.0)
         print(f"Initialized OpenAIEmbedding with timeout=32400.0")
-
-        # Force client initialization usually happens on first call or via _get_client
-        # We can try to access the property .client or call a private method if needed,
-        # or just run a dummy embedding if credentials allowed (might fail if key is invalid)
 
         if hasattr(embed_model, "_get_client"):
             print("Calling _get_client()")
@@ -45,7 +39,6 @@ def inspect_openai():
             else:
                 print("Client does not have 'timeout' attribute")
 
-        # Test explicit http_client injection
         try:
             import httpx
 
@@ -55,13 +48,9 @@ def inspect_openai():
                 model="text-embedding-3-small", http_client=custom_client
             )
 
-            # Check if client uses our custom client or configures one with same timeout
             if hasattr(embed_model_custom, "_get_client"):
                 client_c = embed_model_custom._get_client()
-                # openai client _client is the httpx client usually, or it wraps it
-                if hasattr(
-                    client_c, "_client"
-                ):  # OpenAI Python Client stores httpx client in _client
+                if hasattr(client_c, "_client"):
                     print(
                         f"OpenAI Internal HTTPX Client Timeout: {client_c._client.timeout}"
                     )
@@ -71,7 +60,6 @@ def inspect_openai():
         except Exception as e:
             print(f"Error testing http_client injection: {e}")
 
-        # Check standard openai client attributes if possible
         if hasattr(embed_model, "_client") and embed_model._client:
             print(f"_client.timeout: {embed_model._client.timeout}")
 
@@ -85,14 +73,11 @@ def inspect_ollama():
 
     print("\n--- Inspecting OllamaEmbedding ---")
     try:
-        # Ollama might not take timeout in init in some versions, or might pass it to client
         embed_model = OllamaEmbedding(model_name="nomic-embed-text", timeout=32400.0)
         print(f"Initialized OllamaEmbedding with timeout=32400.0")
 
-        # Check attributes - Ollama usually uses simple httpx calls or client
         print(f"OllamaEmbedding instance attributes: {embed_model.__dict__.keys()}")
 
-        # Often stored in _client or similar if using base class
         if hasattr(embed_model, "_client"):
             print(f"Found _client: {embed_model._client}")
             if hasattr(embed_model._client, "timeout"):
@@ -100,7 +85,6 @@ def inspect_ollama():
 
     except TypeError as e:
         print(f"TypeError initializing OllamaEmbedding: {e}")
-        # Try without timeout to see what it has
         try:
             embed_model = OllamaEmbedding(model_name="nomic-embed-text")
             print("Initialized OllamaEmbedding WITHOUT timeout")

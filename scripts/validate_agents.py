@@ -5,13 +5,9 @@ import uuid
 import sys
 import time
 
-# Configuration: Map of Agent Name -> (Port, Test Question)
-# We run the same workflow on all agents: Create, Insert, Retrieve, List.
-# QUERY = "Create a collection called 'test_collection', insert a document with text 'This is a test document', retrieve it by searching for 'test', and finally list all collections."
 QUERY = "List all collections."
 
 AGENTS = {
-    # "vector-agent-chromadb": (9023, QUERY),
     "vector-agent-postgres": (9024, QUERY),
     "vector-agent-mongo": (9025, QUERY),
     "vector-agent-couchbase": (9026, QUERY),
@@ -26,7 +22,6 @@ async def validate_agent(name, port, question):
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
-            # Construct JSON-RPC payload
             payload = {
                 "jsonrpc": "2.0",
                 "method": "message/send",
@@ -75,11 +70,8 @@ async def validate_agent(name, port, question):
             task_id = data["result"]["id"]
             print(f"[{name}] Task {task_id} submitted. Polling...")
 
-            # Poll for completion
             attempts = 0
-            # 15 minutes timeout: 15 * 60 seconds / 2 seconds interval = 450 attempts
-            # User suggested 9600, which is fine (320 mins), sticking to user's logic or a reasonable cap.
-            max_attempts = 9600  # 15 mins should be enough for this.
+            max_attempts = 9600
 
             while attempts < max_attempts:
                 await asyncio.sleep(2)
@@ -107,11 +99,9 @@ async def validate_agent(name, port, question):
                             duration = time.time() - start_time
                             print(f"[{name}] Finished with state: {state}")
 
-                            # Extract result text
                             result_text = "No text content found."
                             if "history" in poll_data["result"]:
                                 history = poll_data["result"]["history"]
-                                # Find last non-user message
                                 for msg in reversed(history):
                                     if msg.get("role") != "user":
                                         if "parts" in msg:
@@ -119,7 +109,7 @@ async def validate_agent(name, port, question):
                                             for part in msg["parts"]:
                                                 if "text" in part:
                                                     parts_text.append(part["text"])
-                                                elif "content" in part:  # Fallback
+                                                elif "content" in part:
                                                     parts_text.append(part["content"])
                                             if parts_text:
                                                 result_text = "\n".join(parts_text)
@@ -177,9 +167,7 @@ async def main():
     results = {}
     tasks = []
 
-    # Run validations concurrently but with a staggered start
     for name, (port, question) in AGENTS.items():
-        # Stagger start by 6 seconds
         await asyncio.sleep(6)
         task = asyncio.create_task(validate_agent(name, port, question))
         tasks.append((name, task))

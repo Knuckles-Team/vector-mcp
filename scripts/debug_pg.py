@@ -25,7 +25,6 @@ except ImportError as e:
     print(f"FAILURE: PGVectorStore import failed: {e}")
 
 if "psycopg" in sys.modules:
-    # Try to connect using psycopg directly
     print("\nAttempting raw psycopg connection...")
     try:
         conn = psycopg.connect(
@@ -41,10 +40,8 @@ if "psycopg" in sys.modules:
     except Exception as e:
         print(f"FAILURE: Raw psycopg connection failed: {e}")
 
-# Try PGVectorStore
 print("\nAttempting PGVectorStore init...")
 try:
-    # Try forcing asyncpg if needed, or psycopg
     store = PGVectorStore.from_params(
         host="postgres",
         port="5432",

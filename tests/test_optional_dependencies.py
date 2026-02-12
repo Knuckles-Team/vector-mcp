@@ -1,11 +1,9 @@
 import sys
 
-# Mock missing dependencies
 sys.modules["llama_index.embeddings.huggingface"] = None
 sys.modules["llama_index.vector_stores.postgres"] = None
 sys.modules["qdrant_client"] = None
 sys.modules["llama_index.vector_stores.qdrant"] = None
-# Mock others if needed
 
 print("Checking vector_mcp.vector_mcp import...")
 try:

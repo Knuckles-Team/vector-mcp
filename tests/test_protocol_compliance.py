@@ -3,9 +3,6 @@ from typing import Protocol, runtime_checkable
 from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.vectordb.base import VectorDB
 
-# Import implementations
-# Using try-except imports to handle optional dependencies if they were missing,
-# but since we installed [all], they should be there.
 from vector_mcp.retriever.chromadb_retriever import ChromaDBRetriever
 from vector_mcp.retriever.pgvector_retriever import PGVectorRetriever
 from vector_mcp.retriever.couchbase_retriever import CouchbaseRetriever
@@ -38,12 +35,6 @@ def test_vectordb_is_protocol():
     ],
 )
 def test_retriever_implements_protocol(retriever_cls):
-    # Since protocols are runtime checkable, we can checks compliance
-    # But note: isinstance check works better on instances.
-    # For classes, we verify they have the methods.
-
-    # Instantiate with minimal args if possible, or just mock
-    # RAGRetriever protocols methods: initialize_collection, add_documents, connect_database, query
 
     assert issubclass(retriever_cls, RAGRetriever)
 
@@ -63,8 +54,6 @@ def test_vectordb_implements_protocol(vectordb_cls):
 
 
 def test_no_super_init_usage():
-    # Inspection test to ensure no super().__init__ calls exist in key files
-    # This repeats the logic of verify_protocol.py but as a test
     import os
     import vector_mcp
 
@@ -77,15 +66,11 @@ def test_no_super_init_usage():
                 with open(path, "r") as f:
                     content = f.read()
                     if "super().__init__" in content:
-                        # Allow it in __init__.py or unrelated files if necessary,
-                        # but for our retrievers/dbs it should be gone.
                         if "retriever.py" in file or "base.py" in file:
-                            # These are protocols now, shouldn't satisfy it anyway basically.
                             pass
                         elif "test" in file:
                             pass
                         else:
-                            # Checking specific known files that were refactored
                             if file in [
                                 "chromadb_retriever.py",
                                 "postgres_retriever.py",

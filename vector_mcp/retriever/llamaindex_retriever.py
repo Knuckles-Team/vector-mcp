@@ -28,7 +28,6 @@ EMPTY_RESPONSE_REPLY = (
 )
 
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -153,7 +152,6 @@ class LlamaIndexRetriever:
         return loaded_documents
 
 
-# mypy will fail if LlamaIndexRetriever does not implement RAGQueryEngine protocol
 if TYPE_CHECKING:
     from .retriever import RAGQueryEngine
 

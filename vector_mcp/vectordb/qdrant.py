@@ -48,7 +48,6 @@ class QdrantVectorDB(VectorDB):
         self.embed_model = embed_model or get_embedding_model()
         self.metadata = metadata or {}
 
-        # Connection params
         self.client = qdrant_client.QdrantClient(
             location=location, url=url, host=host, port=port, api_key=api_key, **kwargs
         )
@@ -155,11 +154,10 @@ class QdrantVectorDB(VectorDB):
         include=None,
         **kwargs,
     ) -> list[Document]:
-        # Qdrant client retrieve
         records = self.client.retrieve(
             collection_name=collection_name or self.collection_name,
             ids=ids,
-            with_vectors=True,  # Optional?
+            with_vectors=True,
             with_payload=True,
         )
         docs = []
@@ -203,39 +201,9 @@ class QdrantVectorDB(VectorDB):
         collection_name = collection_name or self.collection_name
         results = []
         for query in queries:
-            # Qdrant Full Text Search (keyword match)
-            # Use Scroll with Filter
-            # Payload field 'text' (default LlamaIndex field)
             try:
-                # We need a payload index on 'text' for fast search, but usually Qdrant does exact match without it too?
-                # Actually, Qdrant has 'Text' index type.
-                # Assuming index exists or we just match.
-
-                # Filter for text matching
-                # Match(text="query") is token based full text match if index is text, or exact match if key.
-                # Use "text" (LlamaIndex stores content in "doc_content" or "_node_content" or "text"?
-                # Standard LlamaIndex Qdrant store:
-                # payload key "text" is usually customizable, but generic is "text" or "content".
-                # Let's check LlamaIndex source or just try "text".
-                # Actually LlamaIndex Qdrant uses "text" key in payload by default for storing node content.
-
-                # We will perform a scroll with a filter that matches the text.
-                # This doesn't provide relevance scoring (BM25) natively in Qdrant < 1.10?
-                # Qdrant 1.10 introduced BM25 support via `query` API (Query API).
-                # But `qdrant-client` might need update.
-
-                # Check installed version?
-                # We can try using the new Query API if available? `client.query_points(...)`
-                # If not, fallback to Scroll with Filter (boolean search).
-
-                # Let's try the new `query_points` with `qdrant_client.models.Query(text=query)` if we want hybrid/sparse?
-                # But standard BM25 support is recent.
-
-                # Safest "keyword search":
-                # client.scroll(collection_name, scroll_filter=Filter(must=[FieldCondition(key="text", match=Match(text=query))]), limit=n_results)
 
                 result_points = []
-                # Try scroll first (keyword match)
                 scroll_result, _ = self.client.scroll(
                     collection_name=collection_name,
                     scroll_filter=models.Filter(
@@ -257,13 +225,12 @@ class QdrantVectorDB(VectorDB):
             query_result = []
             for point in result_points:
                 payload = point.payload or {}
-                # Qdrant point has 'id', 'payload', etc.
                 doc = Document(
                     id=point.id,
                     content=payload.get("text", ""),
                     metadata=payload.get("metadata", {}),
                     embedding=None,
                 )
-                query_result.append((doc, 1.0))  # No score from scroll
+                query_result.append((doc, 1.0))
             results.append(query_result)
         return results

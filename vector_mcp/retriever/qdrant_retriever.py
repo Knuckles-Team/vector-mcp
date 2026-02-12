@@ -36,7 +36,6 @@ EMPTY_RESPONSE_REPLY = (
     "If you haven't ingested any documents, please try that."
 )
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -74,11 +73,8 @@ class QdrantRetriever(RAGRetriever):
         self.metadata_payload_key = metadata_payload_key
         self.collection_options = collection_options
 
-        self.embed_model = (
-            get_embedding_model()
-        )  # embedding_function ignored mostly or used if custom passed? ignoring for now to standardize.
+        self.embed_model = get_embedding_model()
 
-        # These will be initialized later
         self.vector_db: QdrantVectorDB | None = None
         self.vector_store: QdrantVectorStore | None = None  # type: ignore[no-any-unimported]
         self.storage_context: StorageContext | None = None  # type: ignore[no-any-unimported]
@@ -101,7 +97,6 @@ class QdrantRetriever(RAGRetriever):
         )
         logger.info("Qdrant vector database created.")
 
-        # Access internal components
         self.index = self.vector_db._get_index()
 
     def _check_existing_collection(self) -> bool:
@@ -119,10 +114,8 @@ class QdrantRetriever(RAGRetriever):
         if collection_name:
             self.collection_name = collection_name
         try:
-            # Reinitialize without overwriting the existing collection
             self._set_up(overwrite=False)
 
-            # Simple ping-like query to verify connection
             self.vector_db.client.get_collections()
             logger.info("Connected to Qdrant successfully.")
             return True
@@ -141,9 +134,8 @@ class QdrantRetriever(RAGRetriever):
     ) -> bool:
         """Initializes the Qdrant database by creating or overwriting the collection and indexing documents."""
         try:
-            # Logic matching others: use _set_up with overwrite
             self._set_up(overwrite=overwrite)
-            self.vector_db.client.get_collections()  # Simple ping-like query
+            self.vector_db.client.get_collections()
 
             if document_directory or document_paths or document_contents:
                 logger.info("Setting up the database with documents.")
@@ -248,7 +240,6 @@ class QdrantRetriever(RAGRetriever):
         self, question: str, number_results: int, *args: Any, **kwargs: Any
     ) -> List[Dict[str, Any]]:
         self._validate_query_index()
-        # QdrantVectorDB lexical_search returns list of list of (Document, score)
         results = self.vector_db.lexical_search(
             queries=[question],
             collection_name=self.collection_name,

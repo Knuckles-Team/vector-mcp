@@ -47,7 +47,6 @@ class MongoDBAtlasVectorDB(VectorDB):
         self.embed_model = embed_model or get_embedding_model()
         self.metadata = metadata or {}
 
-        # Construct connection string
         if connection_string:
             self.connection_string = connection_string
         else:
@@ -88,7 +87,6 @@ class MongoDBAtlasVectorDB(VectorDB):
     ) -> Any:
         self.collection_name = collection_name
         if overwrite:
-            # Drop collection
             db = self.mongo_client[self.dbname]
             db.drop_collection(collection_name)
 
@@ -168,19 +166,14 @@ class MongoDBAtlasVectorDB(VectorDB):
         include=None,
         **kwargs,
     ) -> list[Document]:
-        # Simple mongo find
         coll = self.get_collection(collection_name)
         if not ids:
             cursor = coll.find({})
         else:
-            cursor = coll.find(
-                {"id": {"$in": ids}}
-            )  # Assuming 'id' is store field, LlamaIndex uses 'id_' or 'doc_id' typically but stores metadata
+            cursor = coll.find({"id": {"$in": ids}})
 
-        # NOTE: LlamaIndex schema might differ, but assuming basic storage
         docs = []
         for res in cursor:
-            # This depends on LlamaIndex internal schema in MongoDB
             docs.append(
                 Document(
                     id=res.get("id", str(res.get("_id"))),
@@ -223,31 +216,12 @@ class MongoDBAtlasVectorDB(VectorDB):
         results = []
         for query in queries:
             try:
-                # MongoDB Atlas Search (Atlas only, not standard Mongo usually, but user mentioned mongot/atlas search)
-                # Requires an index definition on the collection.
-                # Pipeline:
-                # [{
-                #   "$search": {
-                #     "index": "default", # or custom
-                #     "text": {
-                #       "query": query,
-                #       "path": "text" # LlamaIndex usually stores content in 'text' field (or 'doc_content'?)
-                #     }
-                #   }
-                # }, {
-                #   "$limit": n_results
-                # }, {
-                #   "$project": { ... }
-                # }]
-
-                # Check LlamaIndex MongoDB schema:
-                # content is usually "text" key.
 
                 pipeline = [
                     {
                         "$search": {
-                            "index": "default",  # User must ensure this index exists
-                            "text": {"query": query, "path": "text"},  # Targeted field
+                            "index": "default",
+                            "text": {"query": query, "path": "text"},
                         }
                     },
                     {"$limit": n_results},
@@ -265,7 +239,7 @@ class MongoDBAtlasVectorDB(VectorDB):
                 query_result = []
                 for res in cursor:
                     doc = Document(
-                        id=str(res.get("_id")),  # or res.get("id_") or similar
+                        id=str(res.get("_id")),
                         content=res.get("text", ""),
                         metadata=res.get("metadata", {}),
                         embedding=None,

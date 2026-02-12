@@ -35,7 +35,6 @@ EMPTY_RESPONSE_REPLY = (
     "If you haven't ingested any documents, please try that."
 )
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -59,7 +58,6 @@ class PGVectorRetriever(RAGRetriever):
     ):
         """Initializes a PGVectorRetriever instance."""
 
-        # Connection logic is now mostly handled by PostgreSQL, but we pass params.
         self.connection_string = connection_string
         self.host = str(host) if host else None
         self.port = str(port) if port else None
@@ -94,9 +92,6 @@ class PGVectorRetriever(RAGRetriever):
         )
         logger.info("Vector database created.")
 
-        # PostgreSQL initializes vector_store and storage_context
-        # We can access internal index if available or create one.
-        # PostgreSQL lazy loads index, so we can trigger it.
         self.index = self.vector_db._get_index()
 
     def connect_database(
@@ -126,8 +121,6 @@ class PGVectorRetriever(RAGRetriever):
         **kwargs: Any,
     ) -> bool:
         try:
-            # Logic is slightly different in original: overwrite if exists.
-            # PostgreSQL: create_collection(overwrite=overwrite) handles it.
             self._set_up(overwrite=overwrite)
 
             if document_directory or document_paths or document_contents:
@@ -137,13 +130,8 @@ class PGVectorRetriever(RAGRetriever):
                     input_docs=document_paths,
                     input_contents=document_contents,
                 )
-                # Use vector_db insert to handle index update
-                # Using internal index insert
                 for doc in documents:
                     self.index.insert(doc)
-                # Or just insert_documents?
-                # self.vector_db.insert_documents(...) expects dicts, we have LlamaDocuments.
-                # Better to use index directly as before.
 
                 logger.info("Database initialized with %d documents.", len(documents))
             return True
@@ -235,14 +223,12 @@ class PGVectorRetriever(RAGRetriever):
         self, question: str, number_results: int, *args: Any, **kwargs: Any
     ) -> List[Dict[str, Any]]:
         self._validate_query_index()
-        # PostgreSQL lexical_search returns list of list of (Document, score)
         results = self.vector_db.lexical_search(
             queries=[question],
             collection_name=self.collection_name,
             n_results=number_results,
             **kwargs,
         )
-        # results[0] because we sent 1 question
         doc_scores = results[0]
 
         formatted_results = []
