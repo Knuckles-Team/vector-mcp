@@ -97,7 +97,8 @@ class ChromaDBRetriever(RAGRetriever):
                     tenant=self.tenant if self.tenant else DEFAULT_TENANT,  # type: ignore
                     database=self.database if self.database else DEFAULT_DATABASE,  # type: ignore
                 )
-            except Exception:
+            except Exception as e:
+                logger.info(f"Unable to retrieve toolset: {e}")
                 pass
 
         self.vector_db = VectorDBFactory.create_vector_database(

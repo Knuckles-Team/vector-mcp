@@ -89,7 +89,8 @@ class ChromaVectorDB(VectorDB):
         if overwrite:
             try:
                 self.client.delete_collection(collection_name)
-            except Exception:
+            except Exception as e:
+                logger.info(f"Unable to retrieve toolset: {e}")
                 pass
 
         self.chroma_collection = self.client.get_or_create_collection(collection_name)

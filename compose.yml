@@ -18,7 +18,9 @@ services:
     restart: always
     env_file:
       - .env
+
     environment:
+      - "PYTHONUNBUFFERED=1"
       - "HOST=0.0.0.0"
       - "PORT=8023"
       - "TRANSPORT=streamable-http"
@@ -63,7 +65,9 @@ services:
     restart: always
     env_file:
       - .env
+
     environment:
+      - "PYTHONUNBUFFERED=1"
       - "HOST=0.0.0.0"
       - "PORT=9023"
       - "MCP_URL=http://vector-mcp-chromadb:8023/mcp"
@@ -87,7 +91,9 @@ services:
   postgres:
     image: paradedb/paradedb:latest-pg16 # Changed to ParadeDB with PG16 support
     container_name: postgres
+
     environment:
+      - "PYTHONUNBUFFERED=1"
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: vectordb
@@ -120,7 +126,9 @@ services:
     restart: always
     env_file:
       - .env
+
     environment:
+      - "PYTHONUNBUFFERED=1"
       - "HOST=0.0.0.0"
       - "PORT=8024"
       - "TRANSPORT=streamable-http"
@@ -169,7 +177,9 @@ services:
     restart: always
     env_file:
       - .env
+
     environment:
+      - "PYTHONUNBUFFERED=1"
       - "HOST=0.0.0.0"
       - "PORT=9024"
       - "MCP_URL=http://vector-mcp-postgres:8024/mcp"
@@ -191,7 +201,9 @@ services:
   mongodb:
     image: mongo:latest
     container_name: mongodb
+
     environment:
+      - "PYTHONUNBUFFERED=1"
      MONGO_INITDB_ROOT_USERNAME: mongo
      MONGO_INITDB_ROOT_PASSWORD: password
     ports:
@@ -215,7 +227,9 @@ services:
     restart: always
     env_file:
       - .env
+
     environment:
+      - "PYTHONUNBUFFERED=1"
      - "HOST=0.0.0.0"
      - "PORT=8025"
      - "TRANSPORT=streamable-http"
@@ -304,7 +318,9 @@ services:
     restart: always
     env_file:
       - .env
+
     environment:
+      - "PYTHONUNBUFFERED=1"
      - "HOST=0.0.0.0"
      - "PORT=8026"
      - "TRANSPORT=streamable-http"
@@ -390,7 +406,9 @@ services:
     restart: always
     env_file:
       - .env
+
     environment:
+      - "PYTHONUNBUFFERED=1"
      - "HOST=0.0.0.0"
      - "PORT=8027"
      - "TRANSPORT=streamable-http"
@@ -431,7 +449,9 @@ services:
     restart: always
     env_file:
       - .env
+
     environment:
+      - "PYTHONUNBUFFERED=1"
      - "HOST=0.0.0.0"
      - "PORT=9027"
      - "MCP_URL=http://vector-mcp-qdrant:8027/mcp"
