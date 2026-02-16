@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vector-mcp"
-version = "1.1.12"
+version = "1.1.13"
 description = "Integrate RAG into AI Agents via MCP Server. Supports multiple Vector database technologies."
 readme = "README.md"
 authors = [{ name = "Audel Rouhi", email = "knucklessg1@gmail.com" }]
@@ -42,6 +42,9 @@ postgres = [
 chromadb = [
     "chromadb>=1.4.1",
     "llama-index-vector-stores-chroma>=0.5.5",
+    "opentelemetry-api>=1.25.0",
+    "opentelemetry-sdk>=1.25.0",
+    "opentelemetry-exporter-otlp>=1.25.0",
 ]
 couchbase = [
     "couchbase>=4.5.0",
@@ -92,7 +95,10 @@ all = [
     "pymongo>=4.16.0",
     "pydantic-ai-slim[fastmcp,openai,anthropic,groq,mistral,google,huggingface,a2a,ag-ui,web]>=1.48.0",
     "pydantic-ai-skills>=v0.4.0",
-    "fastapi>=0.128.0"
+    "fastapi>=0.128.0",
+    "opentelemetry-api>=1.25.0",
+    "opentelemetry-sdk>=1.25.0",
+    "opentelemetry-exporter-otlp>=1.25.0"
 ]
 
 [project.scripts]

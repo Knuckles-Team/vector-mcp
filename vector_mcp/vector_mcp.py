@@ -26,7 +26,7 @@ from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.utils import to_integer, to_boolean
 from vector_mcp.middlewares import UserTokenMiddleware, JWTClaimsLoggingMiddleware
 
-__version__ = "1.1.12"
+__version__ = "1.1.13"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -683,10 +683,30 @@ def register_tools(mcp: FastMCP):
     ) -> Dict:
         """Adds documents to an existing collection in the vector database.
         This can be used to extend collections with additional documents"""
+
         if not document_directory and not document_paths and not document_contents:
             raise ValueError(
                 "At least one of document_directory, document_paths, or document_contents must be provided."
             )
+
+        if document_directory:
+            doc_dir_path = Path(document_directory)
+            if doc_dir_path.exists() and doc_dir_path.is_dir():
+                # check if it has any files
+                files = [f for f in doc_dir_path.iterdir() if f.is_file()]
+                if not files and not document_paths and not document_contents:
+                    logger.warning(f"No files found in {document_directory}")
+                    return {
+                        "added_texts": [],
+                        "message": "No documents found to ingest.",
+                        "data": {
+                            "Database Type": db_type,
+                            "Collection Name": collection_name,
+                            "Document Directory": document_directory,
+                            "Status": "Skipped - Empty Directory",
+                        },
+                        "status": 200,
+                    }
 
         retriever = initialize_retriever(
             db_type=db_type,
