@@ -1,4 +1,3 @@
-
 import os
 import sys
 from llama_index.core import Settings
@@ -8,6 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 try:
     from vector_mcp.vector_mcp import config
+
     print(f"Current Config: {config}")
 except ImportError:
     print("Could not import vector_mcp")
