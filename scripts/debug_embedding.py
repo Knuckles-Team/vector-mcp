@@ -20,7 +20,7 @@ try:
     print("\nAttempting to generate embedding...")
     resp = client.embeddings.create(
         input="test",
-        model="text-embedding-nomic-embed-text-v1.5",
+        model="text-embedding-nomic-embed-text-v2-moe",
     )
     print("SUCCESS: Generated embedding")
     print(f"Dimension: {len(resp.data[0].embedding)}")

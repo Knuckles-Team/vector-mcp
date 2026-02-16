@@ -15,7 +15,7 @@ def test_embedding():
     os.environ["EMBEDDING_PROVIDER"] = "openai"
     os.environ["LLM_BASE_URL"] = "http://localhost:1234/v1"
     os.environ["LLM_API_KEY"] = "llama"
-    os.environ["EMBEDDING_MODEL"] = "text-embedding-nomic-embed-text-v1.5"
+    os.environ["EMBEDDING_MODEL"] = "text-embedding-nomic-embed-text-v2-moe"
 
     docs_path = Path("./mcp/documents")
     if not docs_path.exists():

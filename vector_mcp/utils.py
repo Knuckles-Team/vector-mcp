@@ -385,7 +385,7 @@ def get_embedding_model() -> BaseEmbedding:
     if provider == "openai":
         return OpenAIEmbedding(
             model_name=os.environ.get(
-                "EMBEDDING_MODEL", "text-embedding-nomic-embed-text-v1.5"
+                "EMBEDDING_MODEL", "text-embedding-nomic-embed-text-v2-moe"
             ),
             api_key=os.environ.get("LLM_API_KEY"),
             api_base=os.environ.get("LLM_BASE_URL", "http://localhost:1234/v1"),

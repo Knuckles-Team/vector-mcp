@@ -26,7 +26,7 @@ from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.utils import to_integer, to_boolean
 from vector_mcp.middlewares import UserTokenMiddleware, JWTClaimsLoggingMiddleware
 
-__version__ = "1.1.13"
+__version__ = "1.1.14"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -65,9 +65,16 @@ DEFAULT_DOCUMENT_DIRECTORY = os.environ.get(
     "DOCUMENT_DIRECTORY", os.path.normpath("/documents")
 )
 DEFAULT_PROVIDER = os.getenv("PROVIDER", "openai")
-DEFAULT_MODEL_ID = os.getenv("MODEL_ID", "text-embedding-nomic-embed-text-v1.5")
+DEFAULT_MODEL_ID = os.getenv("MODEL_ID", "text-embedding-nomic-embed-text-v2-moe")
 DEFAULT_LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://host.docker.internal:1234/v1")
 DEFAULT_LLM_API_KEY = os.getenv("LLM_API_KEY", "llama")
+
+# Set global chunk size
+from llama_index.core import Settings
+
+chunk_size = to_integer(os.getenv("CHUNK_SIZE", "1024"))
+Settings.chunk_size = chunk_size
+logger.info(f"Global chunk size set to: {chunk_size}")
 
 
 def initialize_retriever(

@@ -31,6 +31,7 @@ services:
       - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
       - "LLM_API_KEY=${LLM_API_KEY:-llama}"
       - "MODEL_ID=${EMBEDDING_MODEL_ID:-text-embedding-nomic-embed-text-v2-moe}"
+      - "CHUNK_SIZE=${CHUNK_SIZE:-512}"
     ports:
       - "8023:8023"
     healthcheck:
@@ -140,6 +141,7 @@ services:
       - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
       - "LLM_API_KEY=${LLM_API_KEY:-llama}"
       - "MODEL_ID=${EMBEDDING_MODEL_ID:-text-embedding-nomic-embed-text-v2-moe}"
+      - "CHUNK_SIZE=${CHUNK_SIZE:-512}"
     ports:
       - "8024:8024"
     healthcheck:
@@ -238,6 +240,7 @@ services:
       - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
       - "LLM_API_KEY=${LLM_API_KEY:-llama}"
       - "MODEL_ID=${EMBEDDING_MODEL_ID:-text-embedding-nomic-embed-text-v2-moe}"
+      - "CHUNK_SIZE=${CHUNK_SIZE:-512}"
     ports:
      - "8025:8025"
     healthcheck:
@@ -330,6 +333,7 @@ services:
       - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
       - "LLM_API_KEY=${LLM_API_KEY:-llama}"
       - "MODEL_ID=${EMBEDDING_MODEL_ID:-text-embedding-nomic-embed-text-v2-moe}"
+      - "CHUNK_SIZE=${CHUNK_SIZE:-512}"
     ports:
      - "8026:8026"
     healthcheck:
@@ -416,6 +420,7 @@ services:
       - "LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
       - "LLM_API_KEY=${LLM_API_KEY:-llama}"
       - "MODEL_ID=${EMBEDDING_MODEL_ID:-text-embedding-nomic-embed-text-v2-moe}"
+      - "CHUNK_SIZE=${CHUNK_SIZE:-512}"
     ports:
      - "8027:8027"
     healthcheck:
