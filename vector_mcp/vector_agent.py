@@ -41,7 +41,7 @@ from pydantic import ValidationError
 from pydantic_ai.ui import SSE_CONTENT_TYPE
 from pydantic_ai.ui.ag_ui import AGUIAdapter
 
-__version__ = "1.1.14"
+__version__ = "1.1.15"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -62,7 +62,7 @@ DEFAULT_LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://host.docker.internal:12
 DEFAULT_LLM_API_KEY = os.getenv("LLM_API_KEY", "llama")
 DEFAULT_MCP_URL = os.getenv("MCP_URL", None)
 DEFAULT_MCP_CONFIG = os.getenv("MCP_CONFIG", get_mcp_config_path())
-DEFAULT_SKILLS_DIRECTORY = os.getenv("SKILLS_DIRECTORY", get_skills_path())
+DEFAULT_CUSTOM_SKILLS_DIRECTORY = os.getenv("CUSTOM_SKILLS_DIRECTORY", None)
 DEFAULT_ENABLE_WEB_UI = to_boolean(os.getenv("ENABLE_WEB_UI", "False"))
 DEFAULT_SSL_VERIFY = to_boolean(os.getenv("SSL_VERIFY", "True"))
 
@@ -114,7 +114,7 @@ def create_agent(
     api_key: Optional[str] = DEFAULT_LLM_API_KEY,
     mcp_url: str = DEFAULT_MCP_URL,
     mcp_config: str = DEFAULT_MCP_CONFIG,
-    skills_directory: Optional[str] = DEFAULT_SKILLS_DIRECTORY,
+    custom_skills_directory: Optional[str] = DEFAULT_CUSTOM_SKILLS_DIRECTORY,
     ssl_verify: bool = DEFAULT_SSL_VERIFY,
 ) -> Agent:
     agent_toolsets = []
@@ -146,11 +146,25 @@ def create_agent(
         agent_toolsets.extend(mcp_toolset)
         logger.info(f"Connected to MCP Config JSON: {mcp_toolset}")
 
-    if skills_directory and os.path.exists(skills_directory):
-        logger.debug(f"Loading skills {skills_directory}")
-        skills = SkillsToolset(directories=[str(skills_directory)])
-        agent_toolsets.append(skills)
-        logger.info(f"Loaded Skills at {skills_directory}")
+    # Always load default skills
+
+    skill_dirs = [get_skills_path()]
+
+    # Load custom skills if provided
+
+    if custom_skills_directory and os.path.exists(custom_skills_directory):
+
+        logger.debug(f"Loading custom skills {custom_skills_directory}")
+
+        skill_dirs.append(str(custom_skills_directory))
+
+        logger.info(f"Loaded Custom Skills at {custom_skills_directory}")
+
+    skills = SkillsToolset(directories=skill_dirs)
+
+    agent_toolsets.append(skills)
+
+    logger.info(f"Loaded Default Skills at {get_skills_path()}")
 
     model = create_model(
         provider=provider,
@@ -194,7 +208,7 @@ def create_agent_server(
     api_key: Optional[str] = DEFAULT_LLM_API_KEY,
     mcp_url: str = DEFAULT_MCP_URL,
     mcp_config: str = DEFAULT_MCP_CONFIG,
-    skills_directory: Optional[str] = DEFAULT_SKILLS_DIRECTORY,
+    custom_skills_directory: Optional[str] = DEFAULT_CUSTOM_SKILLS_DIRECTORY,
     debug: Optional[bool] = DEFAULT_DEBUG,
     host: Optional[str] = DEFAULT_HOST,
     port: Optional[int] = DEFAULT_PORT,
@@ -216,14 +230,30 @@ def create_agent_server(
         api_key=api_key,
         mcp_url=mcp_url,
         mcp_config=mcp_config,
-        skills_directory=skills_directory,
+        custom_skills_directory=custom_skills_directory,
         ssl_verify=ssl_verify,
     )
 
-    if skills_directory and os.path.exists(skills_directory):
-        skills = load_skills_from_directory(skills_directory)
-        logger.info(f"Loaded {len(skills)} skills from {skills_directory}")
-    else:
+    # Always load default skills
+
+    skills = load_skills_from_directory(get_skills_path())
+
+    logger.info(f"Loaded {len(skills)} default skills from {get_skills_path()}")
+
+    # Load custom skills if provided
+
+    if custom_skills_directory and os.path.exists(custom_skills_directory):
+
+        custom_skills = load_skills_from_directory(custom_skills_directory)
+
+        skills.extend(custom_skills)
+
+        logger.info(
+            f"Loaded {len(custom_skills)} custom skills from {custom_skills_directory}"
+        )
+
+    if not skills:
+
         skills = [
             Skill(
                 id="vector_agent",
@@ -342,9 +372,9 @@ def agent_server():
         "--mcp-config", default=DEFAULT_MCP_CONFIG, help="MCP Server Config"
     )
     parser.add_argument(
-        "--skills-directory",
-        default=DEFAULT_SKILLS_DIRECTORY,
-        help="Directory containing agent skills",
+        "--custom-skills-directory",
+        default=DEFAULT_CUSTOM_SKILLS_DIRECTORY,
+        help="Directory containing additional custom agent skills",
     )
 
     parser.add_argument(
@@ -394,7 +424,7 @@ def agent_server():
         api_key=args.api_key,
         mcp_url=args.mcp_url,
         mcp_config=args.mcp_config,
-        skills_directory=args.skills_directory,
+        custom_skills_directory=args.custom_skills_directory,
         debug=args.debug,
         host=args.host,
         port=args.port,
@@ -417,12 +447,12 @@ def usage():
         "--api-key             [ LLM API Key ]\n"
         "--mcp-url             [ MCP Server URL ]\n"
         "--mcp-config          [ MCP Server Config ]\n"
-        "--skills-directory    [ Directory containing agent skills ]\n"
+        "--custom-skills-directory    [ Directory containing additional custom agent skills ]\n"
         "--web                 [ Enable Pydantic AI Web UI ]\n"
         "\n"
         "Examples:\n"
         "  [Simple]  vector-agent \n"
-        '  [Complex] vector-agent --host "value" --port "value" --debug "value" --reload --provider "value" --model-id "value" --base-url "value" --api-key "value" --mcp-url "value" --mcp-config "value" --skills-directory "value" --web\n'
+        '  [Complex] vector-agent --host "value" --port "value" --debug "value" --reload --provider "value" --model-id "value" --base-url "value" --api-key "value" --mcp-url "value" --mcp-config "value" --custom-skills-directory "value" --web\n'
     )
 
 
