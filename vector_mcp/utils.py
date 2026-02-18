@@ -5,22 +5,27 @@ import os
 import httpx
 import pickle
 import yaml
-from typing import Optional
-
+import logging
 from pathlib import Path
-from typing import Any, Union, List
+from typing import Union, List, Any, Optional
 import json
 from importlib.resources import files, as_file
 from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.huggingface import HuggingFaceModel
 from pydantic_ai.models.groq import GroqModel
 from pydantic_ai.models.mistral import MistralModel
 from fasta2a import Skill
 
-try:
+from llama_index.core.embeddings import BaseEmbedding
+from llama_index.embeddings.openai import OpenAIEmbedding
 
+try:
+    from llama_index.embeddings.ollama import OllamaEmbedding
+except ImportError:
+    OllamaEmbedding = None
+
+try:
     from openai import AsyncOpenAI
     from pydantic_ai.providers.openai import OpenAIProvider
 except ImportError:
@@ -42,20 +47,16 @@ except ImportError:
     MistralProvider = None
 
 try:
+    from pydantic_ai.models.anthropic import AnthropicModel
     from anthropic import AsyncAnthropic
     from pydantic_ai.providers.anthropic import AnthropicProvider
 except ImportError:
+    AnthropicModel = None
     AsyncAnthropic = None
     AnthropicProvider = None
 
 
-from llama_index.core.embeddings import BaseEmbedding
-from llama_index.embeddings.openai import OpenAIEmbedding
-
-try:
-    from llama_index.embeddings.ollama import OllamaEmbedding
-except ImportError:
-    OllamaEmbedding = None
+logger = logging.getLogger(__name__)
 
 
 def to_integer(string: Union[str, int] = None) -> int:
@@ -371,6 +372,74 @@ def create_model(
         return HuggingFaceModel(model_name=model_id)
 
     return OpenAIChatModel(model_name=model_id, provider="openai")
+
+
+def extract_tool_tags(tool_def: Any) -> List[str]:
+    """
+    Extracts tags from a tool definition object.
+
+    Found structure in debug:
+    tool_def.name (str)
+    tool_def.meta (dict) -> {'fastmcp': {'tags': ['tag']}}
+
+    This function checks multiple paths to be robust:
+    1. tool_def.meta['fastmcp']['tags']
+    2. tool_def.meta['tags']
+    3. tool_def.metadata['tags'] (legacy/alternative wrapper)
+    4. tool_def.metadata.get('meta')... (nested path)
+    """
+    tags_list = []
+
+    meta = getattr(tool_def, "meta", None)
+    if isinstance(meta, dict):
+        fastmcp = meta.get("fastmcp") or meta.get("_fastmcp") or {}
+        tags_list = fastmcp.get("tags", [])
+        if tags_list:
+            return tags_list
+
+        tags_list = meta.get("tags", [])
+        if tags_list:
+            return tags_list
+
+    metadata = getattr(tool_def, "metadata", None)
+    if isinstance(metadata, dict):
+        tags_list = metadata.get("tags", [])
+        if tags_list:
+            return tags_list
+
+        meta_nested = metadata.get("meta") or {}
+        fastmcp = meta_nested.get("fastmcp") or meta_nested.get("_fastmcp") or {}
+        tags_list = fastmcp.get("tags", [])
+        if tags_list:
+            return tags_list
+
+        tags_list = meta_nested.get("tags", [])
+        if tags_list:
+            return tags_list
+
+    tags_list = getattr(tool_def, "tags", [])
+    if isinstance(tags_list, list) and tags_list:
+        return tags_list
+
+    return []
+
+
+def tool_in_tag(tool_def: Any, tag: str) -> bool:
+    """
+    Checks if a tool belongs to a specific tag.
+    """
+    tool_tags = extract_tool_tags(tool_def)
+    if tag in tool_tags:
+        return True
+    else:
+        return False
+
+
+def filter_tools_by_tag(tools: List[Any], tag: str) -> List[Any]:
+    """
+    Filters a list of tools for a given tag.
+    """
+    return [t for t in tools if tool_in_tag(t, tag)]
 
 
 def get_embedding_model() -> BaseEmbedding:
