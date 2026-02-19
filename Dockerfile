@@ -52,8 +52,8 @@ ENV HOST=${HOST} \
     UV_COMPILE_BYTECODE=1
 
 RUN apt-get update \
-    && apt-get install -y curl nano libpq-dev \
+    && apt-get install -y ripgrep tree fd-find curl nano libpq-dev \
     && curl -LsSf https://astral.sh/uv/install.sh | sh \
-    && uv pip install --system --upgrade --verbose --no-cache --break-system-packages --prerelease=allow vector-mcp[postgres,chromadb,couchbase,qdrant,mongodb,a2a]>=1.1.18
+    && uv pip install --system --upgrade --verbose --no-cache --break-system-packages --prerelease=allow vector-mcp[postgres,chromadb,couchbase,qdrant,mongodb,a2a]>=1.1.19
 
 CMD ["vector-mcp"]
