@@ -26,7 +26,7 @@ from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.utils import to_integer, to_boolean
 from vector_mcp.middlewares import UserTokenMiddleware, JWTClaimsLoggingMiddleware
 
-__version__ = "1.1.17"
+__version__ = "1.1.18"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -52,6 +52,7 @@ config = {
 DEFAULT_TRANSPORT = os.environ.get("TRANSPORT", "stdio")
 DEFAULT_HOST = os.environ.get("HOST", "0.0.0.0")
 DEFAULT_PORT = to_integer(os.environ.get("PORT", "8000"))
+DEFAULT_SSL_VERIFY = to_boolean(os.environ.get("SSL_VERIFY", "False"))
 DEFAULT_DB_HOST = os.environ.get("DB_HOST", None)
 DEFAULT_DB_PORT = os.environ.get("DB_PORT", None)
 DEFAULT_DATABASE_TYPE = os.environ.get("DATABASE_TYPE", "chromadb").lower()
@@ -75,6 +76,43 @@ from llama_index.core import Settings
 chunk_size = to_integer(os.getenv("CHUNK_SIZE", "1024"))
 Settings.chunk_size = chunk_size
 logger.info(f"Global chunk size set to: {chunk_size}")
+
+
+DEFAULT_COLLECTIONS = [
+    "decisions",
+    "user",
+    "myself",
+    "knowledge",
+    "tasks",
+    "patterns",
+]
+
+
+def create_default_collections(
+    db_type: str = DEFAULT_DATABASE_TYPE,
+    db_path: str = DEFAULT_DATABASE_PATH,
+    host: Optional[str] = DEFAULT_DB_HOST,
+    port: Optional[str] = DEFAULT_DB_PORT,
+    db_name: Optional[str] = DEFAULT_DBNAME,
+    username: Optional[str] = DEFAULT_USERNAME,
+    password: Optional[str] = DEFAULT_PASSWORD,
+):
+    for collection in DEFAULT_COLLECTIONS:
+        try:
+            initialize_retriever(
+                db_type=db_type,
+                db_path=db_path,
+                host=host,
+                port=port,
+                db_name=db_name,
+                username=username,
+                password=password,
+                collection_name=collection,
+                ensure_collection_exists=True,
+            )
+            logger.info(f"Ensured default collection exists: {collection}")
+        except Exception as e:
+            logger.error(f"Failed to create default collection {collection}: {e}")
 
 
 def initialize_retriever(
@@ -1452,6 +1490,8 @@ def vector_mcp():
 
     for mw in middlewares:
         mcp.add_middleware(mw)
+
+    create_default_collections()
 
     print("\nStarting Vector MCP Server")
     print(f"  Transport: {args.transport.upper()}")

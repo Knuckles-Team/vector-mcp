@@ -41,7 +41,7 @@ from pydantic import ValidationError
 from pydantic_ai.ui import SSE_CONTENT_TYPE
 from pydantic_ai.ui.ag_ui import AGUIAdapter
 
-__version__ = "1.1.17"
+__version__ = "1.1.18"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -89,6 +89,12 @@ AGENT_SYSTEM_PROMPT = (
     "CRITICAL RULE: \n"
     "1. List all available collections using`list_collections` to discover which knowledge base collections exist.\n"
     "2. Select the most relevant collection (or collections) from the list.\n"
+    "   - `decisions`: For storing key decisions made.\n"
+    "   - `user`: For storing user preferences and information.\n"
+    "   - `myself`: For storing agent's self-reflection, identity, or learnings.\n"
+    "   - `knowledge`: For general knowledge base.\n"
+    "   - `tasks`: For tracking tasks and project status.\n"
+    "   - `patterns`: For reusable patterns and coding standards.\n"
     "- If no specific collection is mentioned in the question, default to the memory collection.\n"
     '- If the question implies a domain (e.g., "ag-ui", "pydantic", "debug"), infer the most relevant collection from the context.\n'
     "3. Perform a hybrid search using the `search` tool with the selected collection(s) to retrieve relevant information.\n"
