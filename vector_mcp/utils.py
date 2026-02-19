@@ -442,44 +442,71 @@ def filter_tools_by_tag(tools: List[Any], tag: str) -> List[Any]:
     return [t for t in tools if tool_in_tag(t, tag)]
 
 
-def get_embedding_model() -> BaseEmbedding:
+def get_embedding_model(
+    provider: Optional[str] = os.environ.get("EMBEDDING_PROVIDER", "openai").lower(),
+    model: Optional[str] = os.environ.get(
+        "EMBEDDING_MODEL", "text-embedding-nomic-embed-text-v2-moe"
+    ),
+    base_url: Optional[str] = os.environ.get(
+        "LLM_BASE_URL", "http://localhost:1234/v1"
+    ),
+    api_key: Optional[str] = os.environ.get("LLM_API_KEY", None),
+    ssl_verify: bool = to_boolean(string=os.environ.get("VECTOR_SSL_VERIFY", "true")),
+    timeout: float = 300.0,
+) -> BaseEmbedding:
     """
-    Get the embedding model based on environment variables.
+    Get the embedding model based on parameters or environment variables.
+
+    Args:
+        provider: The embedding provider (openai, huggingface, ollama, local)
+        model: The specific model ID to use
+        base_url: Optional base URL for the API
+        api_key: Optional API key
+        ssl_verify: Whether to verify SSL certificates (default: True).
+                    Checks VECTOR_SSL_VERIFY env var if not explicitly disabled.
+        timeout: Request timeout in seconds
 
     Returns:
         BaseEmbedding: The LlamaIndex embedding model.
     """
-    provider = os.environ.get("EMBEDDING_PROVIDER", "openai").lower()
+    http_client = None
+    if not ssl_verify:
+        http_client = httpx.AsyncClient(verify=False, timeout=timeout)
 
     if provider == "openai":
         return OpenAIEmbedding(
-            model_name=os.environ.get(
-                "EMBEDDING_MODEL", "text-embedding-nomic-embed-text-v2-moe"
-            ),
-            api_key=os.environ.get("LLM_API_KEY"),
-            api_base=os.environ.get("LLM_BASE_URL", "http://localhost:1234/v1"),
-            timeout=32400.0,
+            model_name=model,
+            api_key=api_key,
+            api_base=base_url,
+            timeout=timeout,
+            http_client=http_client,
         )
+
     elif provider == "huggingface":
         from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
+        cache_folder = os.environ.get("HF_HOME")
+
         return HuggingFaceEmbedding(
-            model_name=os.environ.get("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"),
-            cache_folder=os.environ.get("HF_HOME"),
-            request_timeout=32400.0,
+            model_name=model,
+            cache_folder=cache_folder,
+            request_timeout=timeout,
         )
+
     elif provider == "ollama":
         if OllamaEmbedding is None:
             raise ImportError("llama-index-embeddings-ollama is not installed.")
+
         return OllamaEmbedding(
-            model_name=os.environ.get("EMBEDDING_MODEL", "nomic-embed-text"),
-            base_url=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"),
-            timeout=32400.0,
+            model_name=model,
+            base_url=base_url,
+            timeout=timeout,
         )
+
     elif provider == "local":
         from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
-        model_name = os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-        return HuggingFaceEmbedding(model_name=model_name)
+        return HuggingFaceEmbedding(model_name=model)
+
     else:
         raise ValueError(f"Unsupported embedding provider: {provider}")

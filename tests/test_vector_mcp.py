@@ -70,9 +70,10 @@ def test_insert_docs_success(chromadb_instance, sample_docs):
 
         chromadb_instance.insert_documents(sample_docs)
 
-        mock_index.insert_documents.assert_called_once()
-        call_args = mock_index.insert_documents.call_args[0][0]
-        assert len(call_args) == 2
+        # The implementation iterates and calls insert for each doc
+        assert mock_index.insert.call_count == len(sample_docs)
+        # Check first call argument
+        call_args = mock_index.insert.call_args_list[0][0]
         assert call_args[0].text == "Test document 1"
 
 
@@ -84,4 +85,4 @@ def test_update_docs_success(chromadb_instance, sample_docs):
 
         chromadb_instance.update_documents(sample_docs)
 
-        mock_index.insert_documents.assert_called_once()
+        assert mock_index.insert.call_count == len(sample_docs)
