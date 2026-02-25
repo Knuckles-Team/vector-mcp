@@ -1,6 +1,4 @@
-import pytest
 from unittest.mock import MagicMock, patch
-import hashlib
 
 with (
     patch("vector_mcp.vectordb.postgres.PostgreSQL"),

@@ -1,6 +1,7 @@
 ---
 name: vector-mcp-collection-management
 description: Vector Mcp Collection Management capabilities for A2A Agent.
+tags: [collection-management]
 ---
 ### Overview
 This skill provides access to collection_management operations.

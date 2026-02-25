@@ -17,7 +17,7 @@ from vector_mcp.vectordb.utils import (
     require_optional_import,
 )
 
-from vector_mcp.utils import get_embedding_model
+from agent_utilities import create_embedding_model
 from vector_mcp.vectordb.base import VectorDBFactory
 
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
@@ -68,7 +68,7 @@ class PGVectorRetriever(RAGRetriever):
         self.database_name = database_name or dbname
         self.collection_name = collection_name or DEFAULT_COLLECTION_NAME
 
-        self.embed_model = get_embedding_model()
+        self.embed_model = create_embedding_model()
 
         self.vector_db: PostgreSQL | None = None
         self.index: VectorStoreIndex | None = None

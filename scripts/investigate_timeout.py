@@ -1,6 +1,4 @@
 import os
-import sys
-from typing import Any
 
 os.environ["LLM_API_KEY"] = "sk-test-key"
 
@@ -28,7 +26,7 @@ def inspect_openai():
     print("\n--- Inspecting OpenAIEmbedding ---")
     try:
         embed_model = OpenAIEmbedding(model="text-embedding-3-small", timeout=32400.0)
-        print(f"Initialized OpenAIEmbedding with timeout=32400.0")
+        print("Initialized OpenAIEmbedding with timeout=32400.0")
 
         if hasattr(embed_model, "_get_client"):
             print("Calling _get_client()")
@@ -74,7 +72,7 @@ def inspect_ollama():
     print("\n--- Inspecting OllamaEmbedding ---")
     try:
         embed_model = OllamaEmbedding(model_name="nomic-embed-text", timeout=32400.0)
-        print(f"Initialized OllamaEmbedding with timeout=32400.0")
+        print("Initialized OllamaEmbedding with timeout=32400.0")
 
         print(f"OllamaEmbedding instance attributes: {embed_model.__dict__.keys()}")
 

@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # coding: utf-8
 import os
-import argparse
 import sys
 import logging
 import hashlib
@@ -22,22 +21,24 @@ from fastmcp.server.middleware.timing import TimingMiddleware
 from fastmcp.server.middleware.rate_limiting import RateLimitingMiddleware
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 from fastmcp.utilities.logging import get_logger
-from agent_utilities.mcp_utilities import create_mcp_parser, config
+from agent_utilities.base_utilities import to_integer
+from agent_utilities.mcp_utilities import (
+    create_mcp_parser,
+    config,
+)
+from agent_utilities.middlewares import (
+    UserTokenMiddleware,
+    JWTClaimsLoggingMiddleware,
+)
 from vector_mcp.retriever.retriever import RAGRetriever
-from vector_mcp.utils import to_integer, to_boolean
-from vector_mcp.middlewares import UserTokenMiddleware, JWTClaimsLoggingMiddleware
 
-__version__ = "1.1.19"
+__version__ = "1.1.20"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = get_logger("VectorServer")
 
-DEFAULT_TRANSPORT = os.environ.get("TRANSPORT", "stdio")
-DEFAULT_HOST = os.environ.get("HOST", "0.0.0.0")
-DEFAULT_PORT = to_integer(os.environ.get("PORT", "8000"))
-DEFAULT_SSL_VERIFY = to_boolean(os.environ.get("SSL_VERIFY", "False"))
 DEFAULT_DB_HOST = os.environ.get("DB_HOST", None)
 DEFAULT_DB_PORT = os.environ.get("DB_PORT", None)
 DEFAULT_DATABASE_TYPE = os.environ.get("DATABASE_TYPE", "chromadb").lower()

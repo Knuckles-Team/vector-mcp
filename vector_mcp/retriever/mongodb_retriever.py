@@ -18,7 +18,7 @@ from vector_mcp.vectordb.utils import (
     require_optional_import,
 )
 
-from vector_mcp.utils import get_embedding_model
+from agent_utilities import create_embedding_model
 
 with optional_import_block():
     from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
@@ -61,7 +61,7 @@ class MongoDBRetriever(RAGRetriever):
         self.database_name = database_name
         self.collection_name = collection_name or DEFAULT_COLLECTION_NAME
 
-        self.embed_model = get_embedding_model()
+        self.embed_model = create_embedding_model()
 
         self.vector_db: MongoDBAtlasVectorDB | None = None
         self.semantic_search_engine: MongoDBAtlasVectorSearch | None = None  # type: ignore[no-any-unimported]

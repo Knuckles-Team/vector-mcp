@@ -2,7 +2,7 @@
 name: test-skill
 description: A test skill.
 version: 0.1.0
-tags: [custom]
+tags: [test-skill]
 input_modes: [text]
 output_modes: [text]
 ---

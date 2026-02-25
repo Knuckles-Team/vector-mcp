@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # coding: utf-8
-from vector_mcp.vector_mcp import vector_mcp
+from vector_mcp.mcp import mcp_server
 
 if __name__ == "__main__":
-    vector_mcp()
+    mcp_server()

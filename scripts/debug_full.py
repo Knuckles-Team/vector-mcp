@@ -1,5 +1,4 @@
 import sys
-import os
 import logging
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)

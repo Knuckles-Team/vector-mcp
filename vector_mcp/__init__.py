@@ -7,13 +7,11 @@ from typing import List
 
 __all__: List[str] = []
 
-CORE_MODULES = [
-    "vector_mcp.vector_mcp",
-]
+CORE_MODULES = []
 
 OPTIONAL_MODULES = {
-    "vector_mcp.vector_agent": "a2a",
-    "vector_mcp.vector_mcp": "mcp",
+    "vector_mcp.agent": "agent",
+    "vector_mcp.mcp": "mcp",
 }
 
 
@@ -47,12 +45,12 @@ for module_name, extra_name in OPTIONAL_MODULES.items():
     else:
         globals()[f"_{extra_name.upper()}_AVAILABLE"] = False
 
-_MCP_AVAILABLE = OPTIONAL_MODULES.get("vector_mcp.vector_mcp") in [
+_MCP_AVAILABLE = OPTIONAL_MODULES.get("vector_mcp.mcp") in [
     m.__name__ for m in globals().values() if hasattr(m, "__name__")
 ]
-_A2A_AVAILABLE = "vector_mcp.vector_agent" in globals()
+_AGENT_AVAILABLE = "vector_mcp.agent" in globals()
 
-__all__.extend(["_MCP_AVAILABLE", "_A2A_AVAILABLE"])
+__all__.extend(["_MCP_AVAILABLE", "_AGENT_AVAILABLE"])
 
 
 """

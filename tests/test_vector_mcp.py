@@ -2,7 +2,6 @@ import pytest
 import shutil
 from unittest.mock import MagicMock, patch
 from vector_mcp.vectordb.chromadb import ChromaVectorDB
-from vector_mcp.vectordb.base import Document
 
 
 @pytest.fixture

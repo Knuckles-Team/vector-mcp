@@ -1,5 +1,5 @@
 import pytest
-from typing import Protocol, runtime_checkable
+from typing import Protocol
 from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.vectordb.base import VectorDB
 

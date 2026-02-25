@@ -17,7 +17,7 @@ from vector_mcp.vectordb.utils import (
     require_optional_import,
 )
 
-from vector_mcp.utils import get_embedding_model
+from agent_utilities import create_embedding_model
 from vector_mcp.vectordb.base import VectorDBFactory
 
 from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
@@ -90,7 +90,7 @@ class CouchbaseRetriever(RAGRetriever):
         self.collection_name = collection_name
         self.index_name = index_name
 
-        self.embed_model = get_embedding_model()
+        self.embed_model = create_embedding_model()
 
         self.vector_db: CouchbaseVectorDB | None = None
         self.vector_store: CouchbaseVectorStore | None = None  # type: ignore[no-any-unimported]

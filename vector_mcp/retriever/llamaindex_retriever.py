@@ -12,7 +12,7 @@ from vector_mcp.vectordb.utils import (
     require_optional_import,
 )
 
-from vector_mcp.utils import get_embedding_model
+from agent_utilities import create_embedding_model
 
 with optional_import_block():
     from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
@@ -58,7 +58,7 @@ class LlamaIndexRetriever:
             file_reader_class if file_reader_class else SimpleDirectoryReader
         )
 
-        self.embed_model = get_embedding_model()
+        self.embed_model = create_embedding_model()
 
     def init_db(
         self,

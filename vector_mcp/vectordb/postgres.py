@@ -9,7 +9,7 @@ from vector_mcp.vectordb.utils import (
     require_optional_import,
 )
 
-from vector_mcp.utils import get_embedding_model
+from agent_utilities import create_embedding_model
 
 from llama_index.core import (
     VectorStoreIndex,
@@ -55,7 +55,7 @@ class PostgreSQL(VectorDB):
             collection_name: str | Name of the table/collection
             metadata: dict | HNSW index params
         """
-        self.embed_model = embed_model or get_embedding_model()
+        self.embed_model = embed_model or create_embedding_model()
         self.collection_name = collection_name
         self.metadata = metadata or {
             "hnsw_m": 16,

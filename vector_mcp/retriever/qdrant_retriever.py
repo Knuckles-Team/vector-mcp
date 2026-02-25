@@ -17,7 +17,7 @@ from vector_mcp.vectordb.utils import (
     require_optional_import,
 )
 
-from vector_mcp.utils import get_embedding_model
+from agent_utilities import create_embedding_model
 from vector_mcp.vectordb.base import VectorDBFactory
 
 from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
@@ -73,7 +73,7 @@ class QdrantRetriever(RAGRetriever):
         self.metadata_payload_key = metadata_payload_key
         self.collection_options = collection_options
 
-        self.embed_model = get_embedding_model()
+        self.embed_model = create_embedding_model()
 
         self.vector_db: QdrantVectorDB | None = None
         self.vector_store: QdrantVectorStore | None = None  # type: ignore[no-any-unimported]

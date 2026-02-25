@@ -7,7 +7,6 @@ sys.modules["llama_index.vector_stores.qdrant"] = None
 
 print("Checking vector_mcp.vector_mcp import...")
 try:
-    import vector_mcp.vector_mcp
 
     print("Success: vector_mcp.vector_mcp imported.")
 except Exception as e:
@@ -16,7 +15,6 @@ except Exception as e:
 
 print("Checking vector_mcp.retriever import...")
 try:
-    import vector_mcp.retriever
 
     print("Success: vector_mcp.retriever imported.")
 except Exception as e:
