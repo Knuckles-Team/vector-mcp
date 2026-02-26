@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # coding: utf-8
 from .base import Document, VectorDB
-from .utils import get_logger
+from agent_utilities import get_logger
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

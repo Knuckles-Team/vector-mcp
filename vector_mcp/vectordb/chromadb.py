@@ -4,7 +4,7 @@ import os
 from typing import Any, Optional
 
 from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
-from vector_mcp.vectordb.utils import (
+from vector_mcp.vectordb.db_utils import (
     get_logger,
     optional_import_block,
     require_optional_import,
