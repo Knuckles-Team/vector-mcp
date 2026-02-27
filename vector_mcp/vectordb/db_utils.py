@@ -1,59 +1,37 @@
 #!/usr/bin/python
 # coding: utf-8
-from agent_utilities import get_logger
-from .base import QueryResults
-from typing import Any
-
-logger = get_logger(__name__)
-
-#!/usr/bin/python
-# coding: utf-8
 import inspect
 import re
-import sys
-import logging
-from typing import Any
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from functools import wraps
-from logging import getLogger
-from typing import Generic, Optional, TypeVar
-from packaging import version
 from typing import (
-    TYPE_CHECKING,
+    Any,
+    Generic,
+    Optional,
+    TypeVar,
 )
-from typing_extensions import (
-    ParamSpec,
-)
+
+from packaging import version
+
+from agent_utilities import get_logger
+
 from .base import QueryResults
+
+logger = get_logger(__name__)
 
 __all__ = [
     "optional_import_block",
     "require_optional_import",
+    "filter_results_by_distance",
+    "chroma_results_to_query_results",
 ]
 
 
-logger = getLogger(__name__)
-
-
-def get_logger(name: str):
-    logger = getLogger(name)
-    logger.setLevel(logging.DEBUG)
-    logger.handlers.clear()
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    return logger
-
-
 def filter_results_by_distance(
-        results: QueryResults, distance_threshold: float = -1
+    results: QueryResults, distance_threshold: float = -1
 ) -> QueryResults:
     """Filters results based on a distance threshold.
 
@@ -74,7 +52,7 @@ def filter_results_by_distance(
 
 
 def chroma_results_to_query_results(
-        data_dict: dict[str, list[list[Any]]], special_key="distances"
+    data_dict: dict[str, list[list[Any]]], special_key="distances"
 ) -> QueryResults:
     """Converts a dictionary with list-of-list values to a list of tuples.
 
@@ -121,8 +99,8 @@ def chroma_results_to_query_results(
         key
         for key in data_dict
         if key != special_key
-           and data_dict[key] is not None
-           and isinstance(data_dict[key][0], list)
+        and data_dict[key] is not None
+        and isinstance(data_dict[key][0], list)
     ]
     result = []
     data_special_key = data_dict[special_key]
@@ -378,11 +356,11 @@ class PatchObject(ABC, Generic[T]):
 
     @classmethod
     def create(
-            cls,
-            o: T,
-            *,
-            missing_modules: dict[str, str],
-            dep_target: str,
+        cls,
+        o: T,
+        *,
+        missing_modules: dict[str, str],
+        dep_target: str,
     ) -> Optional["PatchObject[T]"]:
         for subclass in cls._registry:
             if subclass.accept(o):
@@ -519,12 +497,12 @@ class PatchClass(PatchObject[type[Any]]):
 
 
 def patch_object(
-        o: T,
-        *,
-        missing_modules: dict[str, str],
-        dep_target: str,
-        fail_if_not_patchable: bool = True,
-        except_for: str | Iterable[str] | None = None,
+    o: T,
+    *,
+    missing_modules: dict[str, str],
+    dep_target: str,
+    fail_if_not_patchable: bool = True,
+    except_for: str | Iterable[str] | None = None,
 ) -> T:
     patcher = PatchObject.create(
         o, missing_modules=missing_modules, dep_target=dep_target
@@ -539,10 +517,10 @@ def patch_object(
 
 
 def require_optional_import(
-        modules: str | Iterable[str],
-        dep_target: str,
-        *,
-        except_for: str | Iterable[str] | None = None,
+    modules: str | Iterable[str],
+    dep_target: str,
+    *,
+    except_for: str | Iterable[str] | None = None,
 ) -> Callable[[T], T]:
     """Decorator to handle optional module dependencies
 
@@ -569,58 +547,3 @@ def require_optional_import(
             )
 
     return decorator
-
-
-if TYPE_CHECKING:
-    pass
-
-P = ParamSpec("P")
-T = TypeVar("T")
-
-
-def filter_results_by_distance(
-    results: QueryResults, distance_threshold: float = -1
-) -> QueryResults:
-    """Filters results based on a distance threshold.
-
-    Args:
-        results: QueryResults | The query results. List[List[Tuple[Document, float]]]
-        distance_threshold: The maximum distance allowed for results.
-
-    Returns:
-        QueryResults | A filtered results containing only distances smaller than the threshold.
-    """
-    if distance_threshold > 0:
-        results = [
-            [(key, value) for key, value in data if value < distance_threshold]
-            for data in results
-        ]
-
-    return results
-
-
-def chroma_results_to_query_results(
-    data_dict: dict[str, list[list[Any]]], special_key="distances"
-) -> QueryResults:
-    """Converts a dictionary with list-of-list values to a list of tuples."""
-    keys = [
-        key
-        for key in data_dict
-        if key != special_key
-        and data_dict[key] is not None
-        and isinstance(data_dict[key][0], list)
-    ]
-    result = []
-    data_special_key = data_dict[special_key]
-
-    for i in range(len(data_special_key)):
-        sub_result = []
-        for j, distance in enumerate(data_special_key[i]):
-            sub_dict = {}
-            for key in keys:
-                if len(data_dict[key]) > i:
-                    sub_dict[key[:-1]] = data_dict[key][i][j]
-            sub_result.append((sub_dict, distance))
-        result.append(sub_result)
-
-    return result

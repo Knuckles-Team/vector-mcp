@@ -76,6 +76,7 @@ services:
   #     - "MODEL_ID=${MODEL_ID:-qwen/qwen3-coder-next}"
   #     - "DEBUG=False"
   #     - "ENABLE_WEB_UI=True"
+  #    - "ENABLE_OTEL=True"
   #     - "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python"
   #   ports:
   #     - "9023:9023"
@@ -188,6 +189,7 @@ services:
       - "MODEL_ID=${MODEL_ID:-qwen/qwen3-coder-next}"
       - "DEBUG=False"
       - "ENABLE_WEB_UI=True"
+      - "ENABLE_OTEL=True"
     ports:
       - "9024:9024"
     healthcheck:
@@ -196,7 +198,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-  # # MongoDB
+
+  # MongoDB
   # mongodb:
   #   image: mongo:latest
   #   container_name: mongodb
@@ -281,6 +284,7 @@ services:
   #    - "MODEL_ID=${MODEL_ID:-qwen/qwen3-coder-next}"
   #    - "DEBUG=False"
   #    - "ENABLE_WEB_UI=True"
+  #    - "ENABLE_OTEL=True"
   #  ports:
   #    - "9025:9025"
   #  healthcheck:
@@ -374,6 +378,7 @@ services:
   #    - "MODEL_ID=${MODEL_ID:-qwen/qwen3-coder-next}"
   #    - "DEBUG=False"
   #    - "ENABLE_WEB_UI=True"
+  #    - "ENABLE_OTEL=True"
   #  ports:
   #    - "9026:9026"
   #  healthcheck:
@@ -462,6 +467,7 @@ services:
   #     - "MODEL_ID=${MODEL_ID:-qwen/qwen3-coder-next}"
   #     - "DEBUG=False"
   #     - "ENABLE_WEB_UI=True"
+  #    - "ENABLE_OTEL=True"
   #   ports:
   #    - "9027:9027"
   #   healthcheck:
