@@ -32,7 +32,7 @@ from agent_utilities.middlewares import (
 )
 from vector_mcp.retriever.retriever import RAGRetriever
 
-__version__ = "1.1.24"
+__version__ = "1.1.25"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
