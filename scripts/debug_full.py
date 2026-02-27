@@ -8,16 +8,16 @@ print(f"Python: {sys.version}")
 
 try:
     from vector_mcp.vectordb.postgres import PostgreSQL
-    from vector_mcp.utils import get_embedding_model
+    from agent_utilities.embedding_utilities import create_embedding_model
 
     print("SUCCESS: Imported PostgreSQL")
 except ImportError as e:
     print(f"FAILURE: Could not import PostgreSQL: {e}")
     sys.exit(1)
 
-print("\n--- Testing get_embedding_model ---")
+print("\n--- Testing create_embedding_model ---")
 try:
-    embed_model = get_embedding_model()
+    embed_model = create_embedding_model()
     print(f"Got embedding model: {embed_model}")
     print("Generating test embedding...")
     emb = embed_model.get_text_embedding("test")

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.vectordb import ChromaVectorDB
-from vector_mcp.vectordb.utils import (
+from vector_mcp.vectordb.db_utils import (
     optional_import_block,
     require_optional_import,
 )
