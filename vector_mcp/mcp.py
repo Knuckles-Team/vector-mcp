@@ -1,5 +1,7 @@
 #!/usr/bin/python
 # coding: utf-8
+from dotenv import load_dotenv, find_dotenv
+from agent_utilities.base_utilities import to_boolean
 import os
 import sys
 import logging
@@ -32,7 +34,7 @@ from agent_utilities.middlewares import (
 )
 from vector_mcp.retriever.retriever import RAGRetriever
 
-__version__ = "1.1.29"
+__version__ = "1.1.30"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -200,11 +202,12 @@ def initialize_retriever(
         raise e
 
 
-def register_tools(mcp: FastMCP):
-    @mcp.custom_route("/health", methods=["GET"])
+def register_misc_tools(mcp: FastMCP):
     async def health_check(request: Request) -> JSONResponse:
         return JSONResponse({"status": "OK"})
 
+
+def register_collection_management_tools(mcp: FastMCP):
     @mcp.tool(
         annotations={
             "title": "Create a Collection",
@@ -321,6 +324,338 @@ def register_tools(mcp: FastMCP):
             logger.error(f"Failed to create collection: {str(e)}")
             raise RuntimeError(f"Failed to create collection: {str(e)}")
 
+    @mcp.tool(
+        annotations={
+            "title": "Add Documents to a Collection",
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
+        tags={"collection_management"},
+    )
+    async def add_documents(
+        db_type: str = Field(
+            description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
+            default=DEFAULT_DATABASE_TYPE,
+        ),
+        db_path: str = Field(
+            description="The path to store chromadb files",
+            default=DEFAULT_DATABASE_PATH,
+        ),
+        host: Optional[str] = Field(
+            description="Hostname or IP address of the database server",
+            default=DEFAULT_DB_HOST,
+        ),
+        port: Optional[str] = Field(
+            description="Port number of the database server", default=DEFAULT_DB_PORT
+        ),
+        db_name: Optional[str] = Field(
+            description="Name of the database or path (depending on DB type)",
+            default=DEFAULT_DBNAME,
+        ),
+        username: Optional[str] = Field(
+            description="Username for database authentication", default=DEFAULT_USERNAME
+        ),
+        password: Optional[str] = Field(
+            description="Password for database authentication", default=DEFAULT_PASSWORD
+        ),
+        collection_name: str = Field(
+            description="Name of the target collection.", default=None
+        ),
+        document_directory: Optional[Union[Path, str]] = Field(
+            description="Document directory to read documents from",
+            default=DEFAULT_DOCUMENT_DIRECTORY,
+        ),
+        document_paths: Optional[Union[Path, str]] = Field(
+            description="Document paths on the file system or URLs to read from",
+            default=None,
+        ),
+        document_contents: Optional[List[str]] = Field(
+            description="List of string contents to ingest directly", default=None
+        ),
+        ctx: Context = Field(
+            description="FastMCP context for progress reporting", default=None
+        ),
+    ) -> Dict:
+        """Adds documents to an existing collection in the vector database.
+        This can be used to extend collections with additional documents"""
+
+        if not document_directory and not document_paths and not document_contents:
+            raise ValueError(
+                "At least one of document_directory, document_paths, or document_contents must be provided."
+            )
+
+        if document_directory:
+            doc_dir_path = Path(document_directory)
+            if doc_dir_path.exists() and doc_dir_path.is_dir():
+                # check if it has any files
+                files = [f for f in doc_dir_path.iterdir() if f.is_file()]
+                if not files and not document_paths and not document_contents:
+                    logger.warning(f"No files found in {document_directory}")
+                    return {
+                        "added_texts": [],
+                        "message": "No documents found to ingest.",
+                        "data": {
+                            "Database Type": db_type,
+                            "Collection Name": collection_name,
+                            "Document Directory": document_directory,
+                            "Status": "Skipped - Empty Directory",
+                        },
+                        "status": 200,
+                    }
+
+        retriever = initialize_retriever(
+            db_type=db_type,
+            db_path=db_path,
+            host=host,
+            port=port,
+            db_name=db_name,
+            username=username,
+            password=password,
+            collection_name=collection_name,
+        )
+        logger.debug(
+            f"Inserting documents into collection: {collection_name}. "
+            f"Directory: {document_directory}, Paths: {document_paths}, Contents: {'Yes' if document_contents else 'No'}"
+        )
+
+        try:
+            if ctx:
+                await ctx.report_progress(progress=0, total=100)
+            texts = retriever.add_documents(
+                document_directory=document_directory,
+                document_paths=document_paths,
+                document_contents=document_contents,
+            )
+            if ctx:
+                await ctx.report_progress(progress=100, total=100)
+
+            response = {
+                "added_texts": texts,
+                "message": "Collection created successfully",
+                "data": {
+                    "Database Type": db_type,
+                    "Collection Name": collection_name,
+                    "Document Directory": document_directory,
+                    "Document Paths": document_paths,
+                    "Document Contents": "Yes" if document_contents else "No",
+                    "Database": db_name,
+                    "Database Host": host,
+                },
+                "status": 200,
+            }
+            return response
+        except ValueError as e:
+            logger.error(f"Invalid input for insert_documents: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Failed to insert documents: {str(e)}")
+            raise RuntimeError(f"Failed to insert documents: {str(e)}")
+
+    @mcp.tool(
+        annotations={
+            "title": "Delete a Collection",
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
+        tags={"collection_management"},
+    )
+    async def delete_collection(
+        db_type: str = Field(
+            description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
+            default=DEFAULT_DATABASE_TYPE,
+        ),
+        db_path: str = Field(
+            description="The path to store chromadb files",
+            default=DEFAULT_DATABASE_PATH,
+        ),
+        host: Optional[str] = Field(
+            description="Hostname or IP address of the database server",
+            default=DEFAULT_DB_HOST,
+        ),
+        port: Optional[str] = Field(
+            description="Port number of the database server", default=DEFAULT_DB_PORT
+        ),
+        db_name: Optional[str] = Field(
+            description="Name of the database or path (depending on DB type)",
+            default=DEFAULT_DBNAME,
+        ),
+        username: Optional[str] = Field(
+            description="Username for database authentication", default=DEFAULT_USERNAME
+        ),
+        password: Optional[str] = Field(
+            description="Password for database authentication", default=DEFAULT_PASSWORD
+        ),
+        collection_name: str = Field(
+            description="Name of the target collection.", default=None
+        ),
+        confirm: bool = Field(
+            description="Explicitly confirm deletion without interactive prompt",
+            default=False,
+        ),
+        ctx: Context = Field(
+            description="FastMCP context for progress reporting", default=None
+        ),
+    ) -> Dict:
+        """Deletes a collection from the vector database."""
+
+        if not confirm:
+            if ctx:
+                message = f"Are you sure you want to DELETE collection {collection_name} from {db_type}?"
+                try:
+                    result = await ctx.elicit(message, response_type=bool)
+                    if result.action != "accept" or not result.data:
+                        return {
+                            "status": "cancelled",
+                            "message": "Operation cancelled by user.",
+                        }
+                except Exception as e:
+                    logger.warning(f"Elicitation failed: {str(e)}")
+                    return {
+                        "status": "error",
+                        "message": "Elicitation not supported by client. Please set 'confirm=True' to force deletion.",
+                    }
+            else:
+                return {
+                    "status": "error",
+                    "message": "Context missing and confirm=False. Please set 'confirm=True' to force deletion.",
+                }
+
+        retriever = initialize_retriever(
+            db_type=db_type,
+            db_path=db_path,
+            host=host,
+            port=port,
+            db_name=db_name,
+            username=username,
+            password=password,
+            collection_name=collection_name,
+        )
+        logger.debug(f"Deleting collection: {collection_name} from: {db_type}")
+
+        try:
+            if ctx:
+                await ctx.report_progress(progress=0, total=100)
+            retriever.vector_db.delete_collection(collection_name=collection_name)
+            if ctx:
+                await ctx.report_progress(progress=100, total=100)
+            response = {
+                "message": f"Collection {collection_name} deleted successfully",
+                "data": {
+                    "Database Type": db_type,
+                    "Collection Name": collection_name,
+                    "Database": db_name,
+                    "Database Host": host,
+                },
+                "status": 200,
+            }
+            return response
+        except ValueError as e:
+            logger.error(f"Invalid input for delete collection: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Failed to delete collection: {str(e)}")
+            raise RuntimeError(f"Failed to delete collection: {str(e)}")
+
+    @mcp.tool(
+        annotations={
+            "title": "List Collections",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
+        tags={"collection_management"},
+    )
+    async def list_collections(
+        db_type: str = Field(
+            description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
+        ),
+        db_path: str = Field(
+            description="The path to store chromadb files",
+            default=DEFAULT_DATABASE_PATH,
+        ),
+        host: Optional[str] = Field(
+            description="Hostname or IP address of the database server",
+            default=DEFAULT_DB_HOST,
+        ),
+        port: Optional[str] = Field(
+            description="Port number of the database server", default=DEFAULT_DB_PORT
+        ),
+        db_name: Optional[str] = Field(
+            description="Name of the database or path (depending on DB type)",
+            default=DEFAULT_DBNAME,
+        ),
+        username: Optional[str] = Field(
+            description="Username for database authentication", default=DEFAULT_USERNAME
+        ),
+        password: Optional[str] = Field(
+            description="Password for database authentication", default=DEFAULT_PASSWORD
+        ),
+        ctx: Context = Field(
+            description="FastMCP context for progress reporting", default=None
+        ),
+    ) -> Dict:
+        """Lists all collections in the vector database."""
+
+        if db_type == "chromadb" and os.environ.get("DATABASE_TYPE"):
+            db_type = os.environ.get("DATABASE_TYPE")
+
+        try:
+            retriever = initialize_retriever(
+                db_type=db_type,
+                db_path=db_path,
+                host=host,
+                port=port,
+                db_name=db_name,
+                username=username,
+                password=password,
+                ensure_collection_exists=False,
+            )
+            logger.debug(f"Listing collections for: {db_type}")
+
+            if ctx:
+                await ctx.report_progress(progress=0, total=100)
+
+            collections = retriever.vector_db.get_collections()
+            collection_names = []
+            if isinstance(collections, list) or isinstance(collections, tuple):
+                for c in collections:
+                    if hasattr(c, "name"):
+                        collection_names.append(c.name)
+                    else:
+                        collection_names.append(str(c))
+            else:
+                collection_names = str(collections)
+
+            if ctx:
+                await ctx.report_progress(progress=100, total=100)
+            response = {
+                "collections": collection_names,
+                "message": "Collections listed successfully",
+                "data": {
+                    "Database Type": db_type,
+                    "Database": db_name,
+                    "Database Host": host,
+                },
+                "status": 200,
+            }
+            return response
+        except ValueError as e:
+            logger.error(f"Invalid input for list_collections: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Failed to list collections: {str(e)}")
+            import traceback
+
+            logger.error(traceback.format_exc())
+            raise RuntimeError(f"Failed to list collections: {str(e)}")
+
+
+def register_search_tools(mcp: FastMCP):
     @mcp.tool(
         annotations={
             "title": "Vector Search Texts from a Collection",
@@ -658,338 +993,9 @@ def register_tools(mcp: FastMCP):
             logger.error(f"Failed to search: {str(e)}")
             raise RuntimeError(f"Failed to search: {str(e)}")
 
-    @mcp.tool(
-        annotations={
-            "title": "Add Documents to a Collection",
-            "readOnlyHint": False,
-            "destructiveHint": False,
-            "idempotentHint": True,
-            "openWorldHint": False,
-        },
-        tags={"collection_management"},
-    )
-    async def add_documents(
-        db_type: str = Field(
-            description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
-            default=DEFAULT_DATABASE_TYPE,
-        ),
-        db_path: str = Field(
-            description="The path to store chromadb files",
-            default=DEFAULT_DATABASE_PATH,
-        ),
-        host: Optional[str] = Field(
-            description="Hostname or IP address of the database server",
-            default=DEFAULT_DB_HOST,
-        ),
-        port: Optional[str] = Field(
-            description="Port number of the database server", default=DEFAULT_DB_PORT
-        ),
-        db_name: Optional[str] = Field(
-            description="Name of the database or path (depending on DB type)",
-            default=DEFAULT_DBNAME,
-        ),
-        username: Optional[str] = Field(
-            description="Username for database authentication", default=DEFAULT_USERNAME
-        ),
-        password: Optional[str] = Field(
-            description="Password for database authentication", default=DEFAULT_PASSWORD
-        ),
-        collection_name: str = Field(
-            description="Name of the target collection.", default=None
-        ),
-        document_directory: Optional[Union[Path, str]] = Field(
-            description="Document directory to read documents from",
-            default=DEFAULT_DOCUMENT_DIRECTORY,
-        ),
-        document_paths: Optional[Union[Path, str]] = Field(
-            description="Document paths on the file system or URLs to read from",
-            default=None,
-        ),
-        document_contents: Optional[List[str]] = Field(
-            description="List of string contents to ingest directly", default=None
-        ),
-        ctx: Context = Field(
-            description="FastMCP context for progress reporting", default=None
-        ),
-    ) -> Dict:
-        """Adds documents to an existing collection in the vector database.
-        This can be used to extend collections with additional documents"""
-
-        if not document_directory and not document_paths and not document_contents:
-            raise ValueError(
-                "At least one of document_directory, document_paths, or document_contents must be provided."
-            )
-
-        if document_directory:
-            doc_dir_path = Path(document_directory)
-            if doc_dir_path.exists() and doc_dir_path.is_dir():
-                # check if it has any files
-                files = [f for f in doc_dir_path.iterdir() if f.is_file()]
-                if not files and not document_paths and not document_contents:
-                    logger.warning(f"No files found in {document_directory}")
-                    return {
-                        "added_texts": [],
-                        "message": "No documents found to ingest.",
-                        "data": {
-                            "Database Type": db_type,
-                            "Collection Name": collection_name,
-                            "Document Directory": document_directory,
-                            "Status": "Skipped - Empty Directory",
-                        },
-                        "status": 200,
-                    }
-
-        retriever = initialize_retriever(
-            db_type=db_type,
-            db_path=db_path,
-            host=host,
-            port=port,
-            db_name=db_name,
-            username=username,
-            password=password,
-            collection_name=collection_name,
-        )
-        logger.debug(
-            f"Inserting documents into collection: {collection_name}. "
-            f"Directory: {document_directory}, Paths: {document_paths}, Contents: {'Yes' if document_contents else 'No'}"
-        )
-
-        try:
-            if ctx:
-                await ctx.report_progress(progress=0, total=100)
-            texts = retriever.add_documents(
-                document_directory=document_directory,
-                document_paths=document_paths,
-                document_contents=document_contents,
-            )
-            if ctx:
-                await ctx.report_progress(progress=100, total=100)
-
-            response = {
-                "added_texts": texts,
-                "message": "Collection created successfully",
-                "data": {
-                    "Database Type": db_type,
-                    "Collection Name": collection_name,
-                    "Document Directory": document_directory,
-                    "Document Paths": document_paths,
-                    "Document Contents": "Yes" if document_contents else "No",
-                    "Database": db_name,
-                    "Database Host": host,
-                },
-                "status": 200,
-            }
-            return response
-        except ValueError as e:
-            logger.error(f"Invalid input for insert_documents: {str(e)}")
-            raise
-        except Exception as e:
-            logger.error(f"Failed to insert documents: {str(e)}")
-            raise RuntimeError(f"Failed to insert documents: {str(e)}")
-
-    @mcp.tool(
-        annotations={
-            "title": "Delete a Collection",
-            "readOnlyHint": False,
-            "destructiveHint": True,
-            "idempotentHint": True,
-            "openWorldHint": False,
-        },
-        tags={"collection_management"},
-    )
-    async def delete_collection(
-        db_type: str = Field(
-            description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
-            default=DEFAULT_DATABASE_TYPE,
-        ),
-        db_path: str = Field(
-            description="The path to store chromadb files",
-            default=DEFAULT_DATABASE_PATH,
-        ),
-        host: Optional[str] = Field(
-            description="Hostname or IP address of the database server",
-            default=DEFAULT_DB_HOST,
-        ),
-        port: Optional[str] = Field(
-            description="Port number of the database server", default=DEFAULT_DB_PORT
-        ),
-        db_name: Optional[str] = Field(
-            description="Name of the database or path (depending on DB type)",
-            default=DEFAULT_DBNAME,
-        ),
-        username: Optional[str] = Field(
-            description="Username for database authentication", default=DEFAULT_USERNAME
-        ),
-        password: Optional[str] = Field(
-            description="Password for database authentication", default=DEFAULT_PASSWORD
-        ),
-        collection_name: str = Field(
-            description="Name of the target collection.", default=None
-        ),
-        confirm: bool = Field(
-            description="Explicitly confirm deletion without interactive prompt",
-            default=False,
-        ),
-        ctx: Context = Field(
-            description="FastMCP context for progress reporting", default=None
-        ),
-    ) -> Dict:
-        """Deletes a collection from the vector database."""
-
-        if not confirm:
-            if ctx:
-                message = f"Are you sure you want to DELETE collection {collection_name} from {db_type}?"
-                try:
-                    result = await ctx.elicit(message, response_type=bool)
-                    if result.action != "accept" or not result.data:
-                        return {
-                            "status": "cancelled",
-                            "message": "Operation cancelled by user.",
-                        }
-                except Exception as e:
-                    logger.warning(f"Elicitation failed: {str(e)}")
-                    return {
-                        "status": "error",
-                        "message": "Elicitation not supported by client. Please set 'confirm=True' to force deletion.",
-                    }
-            else:
-                return {
-                    "status": "error",
-                    "message": "Context missing and confirm=False. Please set 'confirm=True' to force deletion.",
-                }
-
-        retriever = initialize_retriever(
-            db_type=db_type,
-            db_path=db_path,
-            host=host,
-            port=port,
-            db_name=db_name,
-            username=username,
-            password=password,
-            collection_name=collection_name,
-        )
-        logger.debug(f"Deleting collection: {collection_name} from: {db_type}")
-
-        try:
-            if ctx:
-                await ctx.report_progress(progress=0, total=100)
-            retriever.vector_db.delete_collection(collection_name=collection_name)
-            if ctx:
-                await ctx.report_progress(progress=100, total=100)
-            response = {
-                "message": f"Collection {collection_name} deleted successfully",
-                "data": {
-                    "Database Type": db_type,
-                    "Collection Name": collection_name,
-                    "Database": db_name,
-                    "Database Host": host,
-                },
-                "status": 200,
-            }
-            return response
-        except ValueError as e:
-            logger.error(f"Invalid input for delete collection: {str(e)}")
-            raise
-        except Exception as e:
-            logger.error(f"Failed to delete collection: {str(e)}")
-            raise RuntimeError(f"Failed to delete collection: {str(e)}")
-
-    @mcp.tool(
-        annotations={
-            "title": "List Collections",
-            "readOnlyHint": True,
-            "destructiveHint": False,
-            "idempotentHint": True,
-            "openWorldHint": False,
-        },
-        tags={"collection_management"},
-    )
-    async def list_collections(
-        db_type: str = Field(
-            description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
-        ),
-        db_path: str = Field(
-            description="The path to store chromadb files",
-            default=DEFAULT_DATABASE_PATH,
-        ),
-        host: Optional[str] = Field(
-            description="Hostname or IP address of the database server",
-            default=DEFAULT_DB_HOST,
-        ),
-        port: Optional[str] = Field(
-            description="Port number of the database server", default=DEFAULT_DB_PORT
-        ),
-        db_name: Optional[str] = Field(
-            description="Name of the database or path (depending on DB type)",
-            default=DEFAULT_DBNAME,
-        ),
-        username: Optional[str] = Field(
-            description="Username for database authentication", default=DEFAULT_USERNAME
-        ),
-        password: Optional[str] = Field(
-            description="Password for database authentication", default=DEFAULT_PASSWORD
-        ),
-        ctx: Context = Field(
-            description="FastMCP context for progress reporting", default=None
-        ),
-    ) -> Dict:
-        """Lists all collections in the vector database."""
-
-        if db_type == "chromadb" and os.environ.get("DATABASE_TYPE"):
-            db_type = os.environ.get("DATABASE_TYPE")
-
-        try:
-            retriever = initialize_retriever(
-                db_type=db_type,
-                db_path=db_path,
-                host=host,
-                port=port,
-                db_name=db_name,
-                username=username,
-                password=password,
-                ensure_collection_exists=False,
-            )
-            logger.debug(f"Listing collections for: {db_type}")
-
-            if ctx:
-                await ctx.report_progress(progress=0, total=100)
-
-            collections = retriever.vector_db.get_collections()
-            collection_names = []
-            if isinstance(collections, list) or isinstance(collections, tuple):
-                for c in collections:
-                    if hasattr(c, "name"):
-                        collection_names.append(c.name)
-                    else:
-                        collection_names.append(str(c))
-            else:
-                collection_names = str(collections)
-
-            if ctx:
-                await ctx.report_progress(progress=100, total=100)
-            response = {
-                "collections": collection_names,
-                "message": "Collections listed successfully",
-                "data": {
-                    "Database Type": db_type,
-                    "Database": db_name,
-                    "Database Host": host,
-                },
-                "status": 200,
-            }
-            return response
-        except ValueError as e:
-            logger.error(f"Invalid input for list_collections: {str(e)}")
-            raise
-        except Exception as e:
-            logger.error(f"Failed to list collections: {str(e)}")
-            import traceback
-
-            logger.error(traceback.format_exc())
-            raise RuntimeError(f"Failed to list collections: {str(e)}")
-
 
 def mcp_server():
+    load_dotenv(find_dotenv())
     print(f"mcp v{__version__}")
     parser = create_mcp_parser()
 
@@ -1293,7 +1299,17 @@ def mcp_server():
             sys.exit(1)
 
     mcp = FastMCP(name="VectorMCP", auth=auth)
-    register_tools(mcp)
+    DEFAULT_MISCTOOL = to_boolean(os.getenv("MISCTOOL", "True"))
+    if DEFAULT_MISCTOOL:
+        register_misc_tools(mcp)
+    DEFAULT_COLLECTION_MANAGEMENTTOOL = to_boolean(
+        os.getenv("COLLECTION_MANAGEMENTTOOL", "True")
+    )
+    if DEFAULT_COLLECTION_MANAGEMENTTOOL:
+        register_collection_management_tools(mcp)
+    DEFAULT_SEARCHTOOL = to_boolean(os.getenv("SEARCHTOOL", "True"))
+    if DEFAULT_SEARCHTOOL:
+        register_search_tools(mcp)
 
     for mw in middlewares:
         mcp.add_middleware(mw)
