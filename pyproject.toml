@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vector-mcp"
-version = "1.1.39"
+version = "1.1.40"
 description = "Integrate RAG into AI Agents via MCP Server. Supports multiple Vector database technologies."
 readme = "README.md"
 authors = [{ name = "Audel Rouhi", email = "knucklessg1@gmail.com" }]
@@ -52,7 +52,7 @@ huggingface = [
 agent = [
     "agent-utilities[agent,logfire]>=0.2.21"]
 all = [
-    "vector-mcp[postgres,chromadb,couchbase,qdrant,mongodb,huggingface,agent]>=1.1.39"
+    "vector-mcp[postgres,chromadb,couchbase,qdrant,mongodb,huggingface,agent]>=1.1.40"
 ]
 
 [project.scripts]
