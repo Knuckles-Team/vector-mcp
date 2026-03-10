@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vector-mcp"
-version = "1.1.42"
+version = "1.1.44"
 description = "Integrate RAG into AI Agents via MCP Server. Supports multiple Vector database technologies."
 readme = "README.md"
 authors = [{ name = "Audel Rouhi", email = "knucklessg1@gmail.com" }]
@@ -12,7 +12,7 @@ license = { text = "MIT" }
 classifiers = [ "Development Status :: 5 - Production/Stable", "License :: Public Domain", "Environment :: Console", "Operating System :: POSIX :: Linux", "Programming Language :: Python :: 3"]
 requires-python = ">=3.10"
 dependencies = [
-    "agent-utilities[embeddings-openai,mcp]>=0.2.23",
+    "agent-utilities[embeddings-openai,mcp]>=0.2.25",
     "chromadb>=1.5.1",
     "markdownify>=1.2.2",
     "beautifulsoup4>=4.14.3",
@@ -50,20 +50,20 @@ huggingface = [
     "llama-index-embeddings-huggingface>=0.6.1",
     "sentence_transformers>=5.2.2"]
 agent = [
-    "agent-utilities[agent,logfire]>=0.2.23"]
+    "agent-utilities[agent,logfire]>=0.2.25"]
 all = [
-    "vector-mcp[postgres,chromadb,couchbase,qdrant,mongodb,huggingface,agent]>=1.1.42"
+    "vector-mcp[postgres,chromadb,couchbase,qdrant,mongodb,huggingface,agent]>=1.1.44"
 ]
 
 [project.scripts]
-vector-mcp = "vector_mcp.mcp:mcp_server"
-vector-agent = "vector_mcp.agent:agent_server"
+vector-mcp = "vector_mcp.mcp_server:mcp_server"
+vector-agent = "vector_mcp.agent_server:agent_server"
 
 [tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.package-data]
-vector_mcp = [ "mcp_config.json", "agent/**"]
+vector_mcp = [ "mcp_config.json", "agent_data/**"]
 
 [tool.setuptools.packages.find]
-where = [ "."]
+where = ["."]

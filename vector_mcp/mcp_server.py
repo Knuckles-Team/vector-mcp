@@ -21,7 +21,7 @@ from agent_utilities.mcp_utilities import (
 )
 from vector_mcp.retriever.retriever import RAGRetriever
 
-__version__ = "1.1.42"
+__version__ = "1.1.44"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -1008,38 +1008,6 @@ def mcp_server():
     create_default_collections()
 
     print(f"Vector MCP v{__version__}")
-    print("\nStarting Vector MCP Server")
-    print(f"  Transport: {args.transport.upper()}")
-    print(f"  Auth: {args.auth_type}")
-    print(f"  Delegation: {'ON' if config['enable_delegation'] else 'OFF'}")
-    print(f"  Eunomia: {args.eunomia_type}")
-
-    if args.transport == "stdio":
-        mcp.run(transport="stdio")
-    elif args.transport == "streamable-http":
-        mcp.run(transport="streamable-http", host=args.host, port=args.port)
-    elif args.transport == "sse":
-        mcp.run(transport="sse", host=args.host, port=args.port)
-    else:
-        logger.error("Invalid transport", extra={"transport": args.transport})
-        sys.exit(1)
-    DEFAULT_MISCTOOL = to_boolean(os.getenv("MISCTOOL", "True"))
-    if DEFAULT_MISCTOOL:
-        register_misc_tools(mcp)
-    DEFAULT_COLLECTION_MANAGEMENTTOOL = to_boolean(
-        os.getenv("COLLECTION_MANAGEMENTTOOL", "True")
-    )
-    if DEFAULT_COLLECTION_MANAGEMENTTOOL:
-        register_collection_management_tools(mcp)
-    DEFAULT_SEARCHTOOL = to_boolean(os.getenv("SEARCHTOOL", "True"))
-    if DEFAULT_SEARCHTOOL:
-        register_search_tools(mcp)
-
-    for mw in middlewares:
-        mcp.add_middleware(mw)
-
-    create_default_collections()
-
     print("\nStarting Vector MCP Server")
     print(f"  Transport: {args.transport.upper()}")
     print(f"  Auth: {args.auth_type}")
