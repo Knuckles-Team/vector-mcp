@@ -7,7 +7,7 @@ import sys
 import logging
 import hashlib
 from pathlib import Path
-from typing import Optional, List, Dict, Union
+from typing import Any, Optional, List, Dict, Union
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -17,11 +17,10 @@ from fastmcp.utilities.logging import get_logger
 from agent_utilities.base_utilities import to_integer
 from agent_utilities.mcp_utilities import (
     create_mcp_server,
-    config,
 )
 from vector_mcp.retriever.retriever import RAGRetriever
 
-__version__ = "1.1.50"
+__version__ = "1.1.51"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -981,7 +980,8 @@ def register_search_tools(mcp: FastMCP):
             raise RuntimeError(f"Failed to search: {str(e)}")
 
 
-def mcp_server():
+def get_mcp_instance() -> tuple[Any, Any, Any, Any]:
+    """Initialize and return the MCP instance, args, and middlewares."""
     load_dotenv(find_dotenv())
 
     args, mcp, middlewares = create_mcp_server(
@@ -1004,15 +1004,17 @@ def mcp_server():
 
     for mw in middlewares:
         mcp.add_middleware(mw)
+    registered_tags = []
+    return mcp, args, middlewares, registered_tags
 
-    create_default_collections()
 
-    print(f"Vector MCP v{__version__}")
-    print("\nStarting Vector MCP Server")
-    print(f"  Transport: {args.transport.upper()}")
-    print(f"  Auth: {args.auth_type}")
-    print(f"  Delegation: {'ON' if config['enable_delegation'] else 'OFF'}")
-    print(f"  Eunomia: {args.eunomia_type}")
+def mcp_server() -> None:
+    mcp, args, middlewares, registered_tags = get_mcp_instance()
+    print(f"{args.name or 'vector-mcp'} MCP v{__version__}", file=sys.stderr)
+    print("\nStarting MCP Server", file=sys.stderr)
+    print(f"  Transport: {args.transport.upper()}", file=sys.stderr)
+    print(f"  Auth: {args.auth_type}", file=sys.stderr)
+    print(f"  Dynamic Tags Loaded: {len(set(registered_tags))}", file=sys.stderr)
 
     if args.transport == "stdio":
         mcp.run(transport="stdio")
