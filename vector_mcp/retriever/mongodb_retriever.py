@@ -1,5 +1,5 @@
 #!/usr/bin/python
-               
+
 
 import logging
 import os
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 class MongoDBRetriever(RAGRetriever):
     """A query engine backed by MongoDB Atlas that supports document insertion and querying."""
 
-    def __init__(                                   
+    def __init__(
         self,
         connection_string: str,
         database_name: str | None = None,
@@ -64,14 +64,14 @@ class MongoDBRetriever(RAGRetriever):
         self.embed_model = create_embedding_model()
 
         self.vector_db: MongoDBAtlasVectorDB | None = None
-        self.semantic_search_engine: MongoDBAtlasVectorSearch | None = None                                   
-        self.storage_context: StorageContext | None = None                                   
-        self.index: VectorStoreIndex | None = None                                   
+        self.semantic_search_engine: MongoDBAtlasVectorSearch | None = None
+        self.storage_context: StorageContext | None = None
+        self.index: VectorStoreIndex | None = None
 
     def _set_up(self, overwrite: bool) -> None:
         """Sets up the MongoDB vector database via VectorDBFactory."""
         logger.info("Setting up the database.")
-        self.vector_db: MongoDBAtlasVectorDB = VectorDBFactory.create_vector_database(                                      
+        self.vector_db: MongoDBAtlasVectorDB = VectorDBFactory.create_vector_database(
             db_type="mongodb",
             connection_string=self.connection_string,
             dbname=self.database_name,
@@ -87,8 +87,8 @@ class MongoDBRetriever(RAGRetriever):
 
     def _check_existing_collection(self) -> bool:
         """Checks if the specified collection exists in the MongoDB database."""
-        client: MongoClient[Any] = MongoClient(self.connection_string)                                   
-        db = client[self.database_name or "default_db"]                       
+        client: MongoClient[Any] = MongoClient(self.connection_string)
+        db = client[self.database_name or "default_db"]
         return self.collection_name in db.list_collection_names()
 
     def connect_database(self, *args: Any, **kwargs: Any) -> bool:
@@ -101,7 +101,7 @@ class MongoDBRetriever(RAGRetriever):
                 )
             self._set_up(overwrite=False)
 
-            self.vector_db.mongo_client.admin.command("ping")                            
+            self.vector_db.mongo_client.admin.command("ping")
             logger.info("Connected to MongoDB successfully.")
             return True
         except Exception as error:
@@ -124,7 +124,7 @@ class MongoDBRetriever(RAGRetriever):
                     "Please use connect_database to connect to the existing collection or use init_db to overwrite it."
                 )
             self._set_up(overwrite=True)
-            self.vector_db.mongo_client.admin.command("ping")                            
+            self.vector_db.mongo_client.admin.command("ping")
             logger.info("Setting up the database with existing collection.")
 
             if document_directory or document_paths or document_contents:
@@ -148,7 +148,7 @@ class MongoDBRetriever(RAGRetriever):
                 "Query index is not initialized. Please call init_db or connect_database first."
             )
 
-    def _load_doc(                                   
+    def _load_doc(
         self,
         input_dir: Path | str | None = None,
         input_docs: Sequence[Path | str] | None = None,
@@ -169,7 +169,7 @@ class MongoDBRetriever(RAGRetriever):
                 if not os.path.exists(doc):
                     raise ValueError(f"Document file not found: {doc}")
             loaded_documents.extend(
-                SimpleDirectoryReader(input_files=input_docs).load_data()                          
+                SimpleDirectoryReader(input_files=input_docs).load_data()
             )
 
         if input_contents:
@@ -200,7 +200,7 @@ class MongoDBRetriever(RAGRetriever):
             input_contents=document_contents,
         )
         for doc in documents:
-            self.index.insert(doc)                            
+            self.index.insert(doc)
 
     def query(self, question: str, *args: Any, **kwargs: Any) -> List[Dict[str, Any]]:
         """Queries the indexed documents using the provided question."""

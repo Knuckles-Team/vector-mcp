@@ -1,5 +1,5 @@
 #!/usr/bin/python
-               
+
 
 import logging
 import os
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 class CouchbaseRetriever(RAGRetriever):
     """A query engine backed by Couchbase that supports document insertion and querying."""
 
-    def __init__(                                   
+    def __init__(
         self,
         connection_string: str = Field(
             description="Connection string of Couchbase instance",
@@ -93,9 +93,9 @@ class CouchbaseRetriever(RAGRetriever):
         self.embed_model = create_embedding_model()
 
         self.vector_db: CouchbaseVectorDB | None = None
-        self.vector_store: CouchbaseVectorStore | None = None                                   
-        self.storage_context: StorageContext | None = None                                   
-        self.index: VectorStoreIndex | None = None                                   
+        self.vector_store: CouchbaseVectorStore | None = None
+        self.storage_context: StorageContext | None = None
+        self.index: VectorStoreIndex | None = None
 
     def _set_up(self, overwrite: bool) -> None:
         """Sets up the Couchbase database via VectorDBFactory."""

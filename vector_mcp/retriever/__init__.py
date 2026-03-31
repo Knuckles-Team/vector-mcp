@@ -1,5 +1,5 @@
 #!/usr/bin/python
-               
+
 
 from typing import TYPE_CHECKING
 

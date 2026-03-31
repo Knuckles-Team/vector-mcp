@@ -1,5 +1,5 @@
 #!/usr/bin/python
-               
+
 
 from collections.abc import Sequence
 from pathlib import Path

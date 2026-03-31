@@ -1,5 +1,5 @@
 #!/usr/bin/python
-               
+
 
 import logging
 import os
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 class ChromaDBRetriever(RAGRetriever):
     """This engine leverages Chromadb to persist document embeddings."""
 
-    def __init__(                                   
+    def __init__(
         self,
         host: str | None = None,
         port: int | None = None,
@@ -94,8 +94,8 @@ class ChromaDBRetriever(RAGRetriever):
                     host=self.host,
                     port=self.port,
                     settings=self.settings,
-                    tenant=self.tenant if self.tenant else DEFAULT_TENANT,                
-                    database=self.database if self.database else DEFAULT_DATABASE,                
+                    tenant=self.tenant if self.tenant else DEFAULT_TENANT,
+                    database=self.database if self.database else DEFAULT_DATABASE,
                 )
             except Exception as e:
                 logger.info(f"Unable to retrieve toolset: {e}")

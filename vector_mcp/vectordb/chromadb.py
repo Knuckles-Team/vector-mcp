@@ -1,5 +1,5 @@
 #!/usr/bin/python
-               
+
 import os
 from typing import Any, Optional
 

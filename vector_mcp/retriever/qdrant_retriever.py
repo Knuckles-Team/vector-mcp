@@ -1,5 +1,5 @@
 #!/usr/bin/python
-               
+
 
 import logging
 import os
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 class QdrantRetriever(RAGRetriever):
     """A query engine backed by Qdrant that supports document insertion and querying."""
 
-    def __init__(                                   
+    def __init__(
         self,
         location: str = Field(
             description="Location of Qdrant instance (e.g., ':memory:', 'localhost:6333', or URL)",
@@ -76,9 +76,9 @@ class QdrantRetriever(RAGRetriever):
         self.embed_model = create_embedding_model()
 
         self.vector_db: QdrantVectorDB | None = None
-        self.vector_store: QdrantVectorStore | None = None                                   
-        self.storage_context: StorageContext | None = None                                   
-        self.index: VectorStoreIndex | None = None                                   
+        self.vector_store: QdrantVectorStore | None = None
+        self.storage_context: StorageContext | None = None
+        self.index: VectorStoreIndex | None = None
 
     def _set_up(self, overwrite: bool) -> None:
         """Sets up the Qdrant database via VectorDBFactory."""

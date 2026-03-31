@@ -1,5 +1,5 @@
 #!/usr/bin/python
-               
+
 from .base import Document, VectorDB
 from agent_utilities import get_logger
 from typing import TYPE_CHECKING

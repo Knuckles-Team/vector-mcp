@@ -1,5 +1,5 @@
 #!/usr/bin/python
-               
+
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol, TypedDict, runtime_checkable
 
