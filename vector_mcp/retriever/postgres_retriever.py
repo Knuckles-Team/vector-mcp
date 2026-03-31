@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# coding: utf-8
+               
 
 import logging
 import os
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 class PGVectorRetriever(RAGRetriever):
     """A query engine backed by PGVector that supports document insertion and querying."""
 
-    def __init__(  # type: ignore[no-any-unimported]
+    def __init__(                                   
         self,
         connection_string: Optional[str] = None,
         host: Optional[Union[str, int]] = None,
@@ -145,7 +145,7 @@ class PGVectorRetriever(RAGRetriever):
                 "Query index is not initialized. Please call initialize_collection or connect_database first."
             )
 
-    def _load_doc(  # type: ignore[no-any-unimported]
+    def _load_doc(                                   
         self,
         input_dir: Path | str | None = None,
         input_docs: Sequence[Path | str] | None = None,

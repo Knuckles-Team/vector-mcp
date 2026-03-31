@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# coding: utf-8
+               
 from typing import Any, Optional, Union
 
 from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB

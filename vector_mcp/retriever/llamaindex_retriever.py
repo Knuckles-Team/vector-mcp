@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# coding: utf-8
+               
 
 import logging
 import os
@@ -41,7 +41,7 @@ class LlamaIndexRetriever:
     By default the engine will use OpenAI's GPT-4o model (use the `llm` parameter to change that).
     """
 
-    def __init__(  # type: ignore[no-any-unimported]
+    def __init__(                                   
         self,
         vector_store: "BasePydanticVectorStore",
         file_reader_class: type["SimpleDirectoryReader"] | None = None,
@@ -128,23 +128,23 @@ class LlamaIndexRetriever:
                 "Query index is not initialized. Please call init_db or connect_database first."
             )
 
-    def _load_doc(  # type: ignore[no-any-unimported]
+    def _load_doc(                                   
         self, input_dir: Path | str | None, input_docs: Sequence[Path | str] | None
     ) -> Sequence["LlamaDocument"]:
         """Load documents from a directory and/or a sequence of file paths."""
-        loaded_documents: list[LlamaDocument] = []  # type: ignore[no-any-unimported]
+        loaded_documents: list[LlamaDocument] = []                                   
         if input_dir:
             logger.info(f"Loading docs from directory: {input_dir}")
             if not os.path.exists(input_dir):
                 raise ValueError(f"Input directory not found: {input_dir}")
-            loaded_documents.extend(self.file_reader_class(input_dir=input_dir).load_data())  # type: ignore[operator]
+            loaded_documents.extend(self.file_reader_class(input_dir=input_dir).load_data())                          
 
         if input_docs:
             for doc in input_docs:
                 logger.info(f"Loading input doc: {doc}")
                 if not os.path.exists(doc):
                     raise ValueError(f"Document file not found: {doc}")
-            loaded_documents.extend(self.file_reader_class(input_files=input_docs).load_data())  # type: ignore[operator, arg-type]
+            loaded_documents.extend(self.file_reader_class(input_files=input_docs).load_data())                                    
 
         if not input_dir and not input_docs:
             raise ValueError("No input directory or docs provided!")

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "vector": {
+      "command": "vector-mcp",
+      "args": ["--transport", "stdio"],
+      "env": {
+        "VECTOR_URL": "${VECTOR_URL:-http://localhost:8080}",
+        "VECTOR_TOKEN": "${VECTOR_TOKEN}"
+      }
+    }
+  }
+}

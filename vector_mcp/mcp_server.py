@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# coding: utf-8
+
 from dotenv import load_dotenv, find_dotenv
 from agent_utilities.base_utilities import to_boolean
 import os
@@ -20,7 +20,7 @@ from agent_utilities.mcp_utilities import (
 )
 from vector_mcp.retriever.retriever import RAGRetriever
 
-__version__ = "1.1.52"
+__version__ = "1.1.53"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -44,7 +44,7 @@ DEFAULT_MODEL_ID = os.getenv("MODEL_ID", "text-embedding-nomic-embed-text-v2-moe
 DEFAULT_LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://host.docker.internal:1234/v1")
 DEFAULT_LLM_API_KEY = os.getenv("LLM_API_KEY", "llama")
 
-# Set global chunk size
+
 from llama_index.core import Settings
 
 chunk_size = to_integer(os.getenv("CHUNK_SIZE", "1024"))
@@ -375,7 +375,7 @@ def register_collection_management_tools(mcp: FastMCP):
         if document_directory:
             doc_dir_path = Path(document_directory)
             if doc_dir_path.exists() and doc_dir_path.is_dir():
-                # check if it has any files
+
                 files = [f for f in doc_dir_path.iterdir() if f.is_file()]
                 if not files and not document_paths and not document_contents:
                     logger.warning(f"No files found in {document_directory}")

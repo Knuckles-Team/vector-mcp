@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# coding: utf-8
+               
 import inspect
 import re
 from abc import ABC, abstractmethod
@@ -340,7 +340,7 @@ class PatchObject(ABC, Generic[T]):
         if hasattr(o, "__doc__"):
             retval.__doc__ = o.__doc__
         if hasattr(o, "__name__"):
-            retval.__name__ = o.__name__  # type: ignore[attr-defined]
+            retval.__name__ = o.__name__                              
         if hasattr(o, "__module__"):
             retval.__module__ = o.__module__
 
@@ -380,14 +380,14 @@ class PatchCallable(PatchObject[F]):
 
         f: Callable[..., Any] = self.o
 
-        # @wraps(f.__call__)  # type: ignore[operator]
+                                                      
         @wraps(f)
         def _call(*args: Any, **kwargs: Any) -> Any:
             raise ImportError(self.msg)
 
-        self.copy_metadata(_call)  # type: ignore[arg-type]
+        self.copy_metadata(_call)                          
 
-        return _call  # type: ignore[return-value]
+        return _call                              
 
 
 @PatchObject.register()
@@ -406,18 +406,18 @@ class PatchStatic(PatchObject[F]):
         if name in except_for:
             return self.o
 
-        f: Callable[..., Any] = self.o.__func__  # type: ignore[attr-defined]
+        f: Callable[..., Any] = self.o.__func__                              
 
         @wraps(f)
         def _call(*args: Any, **kwargs: Any) -> Any:
             raise ImportError(self.msg)
 
-        self.copy_metadata(_call)  # type: ignore[arg-type]
+        self.copy_metadata(_call)                          
 
-        return staticmethod(_call)  # type: ignore[return-value]
+        return staticmethod(_call)                              
 
     def get_object_with_metadata(self) -> Any:
-        return self.o.__func__  # type: ignore[attr-defined]
+        return self.o.__func__                              
 
 
 @PatchObject.register()
@@ -436,9 +436,9 @@ class PatchInit(PatchObject[F]):
         def _call(*args: Any, **kwargs: Any) -> Any:
             raise ImportError(self.msg)
 
-        self.copy_metadata(_call)  # type: ignore[arg-type]
+        self.copy_metadata(_call)                          
 
-        return staticmethod(_call)  # type: ignore[return-value]
+        return staticmethod(_call)                              
 
     def get_object_with_metadata(self) -> Any:
         return self.o
@@ -456,7 +456,7 @@ class PatchProperty(PatchObject[Any]):
         f: Callable[..., Any] = self.o.fget
 
         if f.__name__ in except_for:
-            return self.o  # type: ignore[no-any-return]
+            return self.o                               
 
         @wraps(f)
         def _call(*args: Any, **kwargs: Any) -> Any:
