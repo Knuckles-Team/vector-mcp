@@ -1,4 +1,18 @@
 #!/usr/bin/python
+import warnings
+
+# Filter RequestsDependencyWarning early to prevent log spam
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    try:
+        from requests.exceptions import RequestsDependencyWarning
+        warnings.filterwarnings("ignore", category=RequestsDependencyWarning)
+    except ImportError:
+        pass
+
+# General urllib3/chardet mismatch warnings
+warnings.filterwarnings("ignore", message=".*urllib3.*or chardet.*")
+warnings.filterwarnings("ignore", message=".*urllib3.*or charset_normalizer.*")
 
 from dotenv import load_dotenv, find_dotenv
 from agent_utilities.base_utilities import to_boolean
@@ -269,7 +283,7 @@ def register_collection_management_tools(mcp: FastMCP):
         )
 
         logger.debug(
-            f"Creating collection: {collection_name}, overwrite: {overwrite},\n"
+            f"Creating collection: {collection_name}, overwrite: {overwrite}, "
             f"document directory: {document_directory}, document urls: {document_paths}"
         )
         response = {
@@ -717,7 +731,7 @@ def register_search_tools(mcp: FastMCP):
                 await ctx.report_progress(progress=0, total=100)
             logger.debug(f"Querying collection: {question}")
             results = retriever.query(question=question, number_results=number_results)
-            texts = "\n\n".join([r["text"] for r in results])
+            texts = "\n".join([r["text"] for r in results])
             if ctx:
                 await ctx.report_progress(progress=100, total=100)
             response = {
@@ -816,7 +830,7 @@ def register_search_tools(mcp: FastMCP):
             results = retriever.bm25_query(
                 question=question, number_results=number_results
             )
-            texts = "\n\n".join([r["text"] for r in results])
+            texts = "\n".join([r["text"] for r in results])
             if ctx:
                 await ctx.report_progress(progress=100, total=100)
             response = {
@@ -1010,7 +1024,7 @@ def get_mcp_instance() -> tuple[Any, Any, Any, Any]:
 
 def mcp_server() -> None:
     mcp, args, middlewares, registered_tags = get_mcp_instance()
-    print(f"{args.name or 'vector-mcp'} MCP v{__version__}", file=sys.stderr)
+    print(f"{'vector-mcp'} MCP v{__version__}", file=sys.stderr)
     print("\nStarting MCP Server", file=sys.stderr)
     print(f"  Transport: {args.transport.upper()}", file=sys.stderr)
     print(f"  Auth: {args.auth_type}", file=sys.stderr)

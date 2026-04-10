@@ -33,6 +33,13 @@ repos:
         types_or: [ python, pyi, jupyter ]
         args: ["--fix", "--ignore=E402"]
         exclude: ^(tests/|test/|scripts/|script/)
+  - repo: https://github.com/jendrikseipp/vulture
+    rev: v2.16
+    hooks:
+      - id: vulture
+        pass_filenames: false
+        args: [ ".", "--min-confidence", "95" ]   # or 100 if you want very high confidence only
+        require_serial: true
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.2
     hooks:

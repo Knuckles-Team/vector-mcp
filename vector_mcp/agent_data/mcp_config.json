@@ -1,26 +1,31 @@
 {
-    "mcpServers": {
-        "vector-mcp": {
-            "command": "vector-mcp",
-            "args": [
-                "--transport",
-                "stdio"
-            ],
-            "env": {
-                "DATABASE_TYPE": "${DATABASE_TYPE:-chromadb}",
-                "DATABASE_PATH": "${DATABASE_PATH}",
-                "COLLECTION_NAME": "${COLLECTION_NAME:-memory}",
-                "API_TOKEN": "${API_TOKEN}",
-                "DBNAME": "${DBNAME:-memory}",
-                "USERNAME": "${USERNAME}",
-                "PASSWORD": "${PASSWORD}",
-                "DB_HOST": "${DB_HOST}",
-                "DB_PORT": "${DB_PORT}",
-                "DOCUMENT_DIRECTORY": "${DOCUMENT_DIRECTORY:-/documents}",
-                "SEARCHTOOL": "${ SEARCHTOOL:-True }",
-                "MISCTOOL": "${ MISCTOOL:-True }",
-                "COLLECTION_MANAGEMENTTOOL": "${ COLLECTION_MANAGEMENTTOOL:-True }"
-            }
-        }
+  "mcpServers": {
+    "vector-mcp": {
+      "command": "vector-mcp",
+      "args": [
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "DATABASE_TYPE": "${DATABASE_TYPE:-chromadb}",
+        "DATABASE_PATH": "${DATABASE_PATH}",
+        "COLLECTION_NAME": "${COLLECTION_NAME:-memory}",
+        "API_TOKEN": "${API_TOKEN}",
+        "DBNAME": "${DBNAME:-memory}",
+        "USERNAME": "${USERNAME}",
+        "PASSWORD": "${PASSWORD}",
+        "DB_HOST": "${DB_HOST}",
+        "DB_PORT": "${DB_PORT}",
+        "DOCUMENT_DIRECTORY": "${DOCUMENT_DIRECTORY:-/documents}",
+        "SEARCHTOOL": "${ SEARCHTOOL:-True }",
+        "MISCTOOL": "${ MISCTOOL:-True }",
+        "COLLECTION_MANAGEMENTTOOL": "${ COLLECTION_MANAGEMENTTOOL:-True }",
+        "CHUNK_SIZE": "${CHUNK_SIZE}",
+        "LLM_API_KEY": "${LLM_API_KEY}",
+        "LLM_BASE_URL": "${LLM_BASE_URL}",
+        "MODEL_ID": "${MODEL_ID}",
+        "PROVIDER": "${PROVIDER}"
+      }
     }
+  }
 }

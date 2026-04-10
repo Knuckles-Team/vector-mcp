@@ -1,16 +1,16 @@
+#!/usr/bin/python
+# coding: utf-8
 import os
-from pathlib import Path
 import sys
-import warnings
 import logging
+import warnings
+
 from agent_utilities import (
     build_system_prompt_from_workspace,
-    create_agent,
     create_agent_parser,
-    create_agent_server,
+    create_graph_agent_server,
     initialize_workspace,
     load_identity,
-    get_workspace_path,
 )
 
 __version__ = "1.1.58"
@@ -25,91 +25,53 @@ logger = logging.getLogger(__name__)
 
 initialize_workspace()
 meta = load_identity()
-DEFAULT_AGENT_NAME = os.getenv("DEFAULT_AGENT_NAME", meta["name"])
-DEFAULT_AGENT_DESCRIPTION = os.getenv("AGENT_DESCRIPTION", meta["description"])
+DEFAULT_AGENT_NAME = os.getenv("DEFAULT_AGENT_NAME", meta.get("name", "Vector Mcp"))
+DEFAULT_AGENT_DESCRIPTION = os.getenv(
+    "AGENT_DESCRIPTION",
+    meta.get(
+        "description",
+        "AI agent for Vector Mcp operations.",
+    ),
+)
 DEFAULT_AGENT_SYSTEM_PROMPT = os.getenv(
-    "AGENT_SYSTEM_PROMPT", meta.get("content") or build_system_prompt_from_workspace()
+    "AGENT_SYSTEM_PROMPT",
+    meta.get("content") or build_system_prompt_from_workspace(),
 )
 
 
-def agent_template(mcp_url: str = None, mcp_config: str = None, **kwargs):
-
-    effective_mcp_config = mcp_config or os.getenv("MCP_CONFIG") or "mcp_config.json"
-    effective_mcp_url = mcp_url or os.getenv("MCP_URL")
-
-    mcp_toolsets = []
-    if effective_mcp_config:
-        from agent_utilities.mcp_utilities import load_mcp_config
-
-        try:
-
-            config_path = effective_mcp_config
-            if not os.path.isabs(config_path) and "/" not in config_path:
-                # Check package-relative path first (for robust orchestration)
-                pkg_config = Path(__file__).parent / config_path
-                if pkg_config.exists():
-                    config_path = str(pkg_config)
-                else:
-                    # Fallback to workspace
-                    ws_config = get_workspace_path(config_path)
-                    if ws_config.exists():
-                        config_path = str(ws_config)
-
-            if os.path.exists(config_path):
-                mcp_toolsets = load_mcp_config(config_path)
-                logger.info(
-                    f"vector-mcp: Loaded {len(mcp_toolsets)} MCP servers from {config_path}"
-                )
-        except Exception as e:
-            logger.error(
-                f"vector-mcp: Failed to load MCP config {effective_mcp_config}: {e}"
-            )
-
-    return create_agent(
-        mcp_url=effective_mcp_url,
-        mcp_config=effective_mcp_config or "",
-        mcp_toolsets=mcp_toolsets,
-        name=DEFAULT_AGENT_NAME,
-        system_prompt=DEFAULT_AGENT_SYSTEM_PROMPT,
-        **kwargs,
-    )
-
-
 def agent_server():
-
     warnings.filterwarnings("ignore", message=".*urllib3.*or chardet.*")
     warnings.filterwarnings("ignore", category=DeprecationWarning, module="fastmcp")
 
     print(f"{DEFAULT_AGENT_NAME} v{__version__}", file=sys.stderr)
     parser = create_agent_parser()
-
     args = parser.parse_args()
 
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
         logger.debug("Debug mode enabled")
 
-    create_agent_server(
-        provider=args.provider,
-        model_id=args.model_id,
-        base_url=args.base_url,
-        api_key=args.api_key,
+    # Start server using the auto-discovery pattern (from mcp_config.json)
+    create_graph_agent_server(
         mcp_url=args.mcp_url,
-        mcp_config=args.mcp_config,
-        custom_skills_directory=args.custom_skills_directory,
-        debug=args.debug,
+        mcp_config=args.mcp_config or "mcp_config.json",
         host=args.host,
         port=args.port,
+        provider=args.provider,
+        model_id=args.model_id,
+        router_model=args.model_id,
+        agent_model=args.model_id,
+        base_url=args.base_url,
+        api_key=args.api_key,
+        custom_skills_directory=args.custom_skills_directory,
         enable_web_ui=args.web,
-        ssl_verify=not args.insecure,
-        name=DEFAULT_AGENT_NAME,
-        system_prompt=DEFAULT_AGENT_SYSTEM_PROMPT,
         enable_otel=args.otel,
         otel_endpoint=args.otel_endpoint,
         otel_headers=args.otel_headers,
         otel_public_key=args.otel_public_key,
         otel_secret_key=args.otel_secret_key,
         otel_protocol=args.otel_protocol,
+        debug=args.debug,
     )
 
 

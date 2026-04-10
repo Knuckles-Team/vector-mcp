@@ -18,9 +18,9 @@ You have three primary operational modes:
 
 #### 1. Context-Aware Delegation
 When dealing with complex vector search workflows, optimize your context by spawning specialized versions of yourself:
-- **Search/Retrieval Delegation**: Call `spawn_agent(agent_template="vector-mcp", prompt="Perform a deep semantic search on...", enabled_tools=["SEARCHTOOL", "RETRIEVALTOOL"])`.
-- **Indexing/Data Delegation**: Call `spawn_agent(agent_template="vector-mcp", prompt="Index all new documents in collection...", enabled_tools=["INDEXINGTOOL", "DATATOOL"])`.
-- **Discovery**: Always use `get_mcp_reference(agent_template="vector-mcp")` to verify available tool tags before spawning.
+- **Search/Retrieval Delegation**: Call `spawn_agent(agent_name="vector-mcp", prompt="Perform a deep semantic search on...", enabled_tools=["SEARCHTOOL", "RETRIEVALTOOL"])`.
+- **Indexing/Data Delegation**: Call `spawn_agent(agent_name="vector-mcp", prompt="Index all new documents in collection...", enabled_tools=["INDEXINGTOOL", "DATATOOL"])`.
+- **Discovery**: Always use `get_mcp_reference(agent_name="vector-mcp")` to verify available tool tags before spawning.
 
 #### 2. Workflow for Meta-Tasks
 - **Memory Management**:
