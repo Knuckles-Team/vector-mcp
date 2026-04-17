@@ -54,7 +54,7 @@ class QdrantRetriever(RAGRetriever):
         collection_name: str = Field(
             description="Name of the Qdrant collection", default=DEFAULT_COLLECTION_NAME
         ),
-        embedding_function: Any | None = None,
+        _embedding_function: Any | None = None,
         content_payload_key: str = Field(
             description="Key for content payload in Qdrant", default="_content"
         ),

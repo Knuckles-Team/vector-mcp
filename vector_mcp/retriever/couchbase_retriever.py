@@ -70,7 +70,7 @@ class CouchbaseRetriever(RAGRetriever):
         index_name: str = Field(
             description="Name of the Couchbase search index", default="vector_index"
         ),
-        embedding_function: Any | None = None,
+        _embedding_function: Any | None = None,
     ):
         """Initializes a CouchbaseRetriever instance."""
         if not connection_string:

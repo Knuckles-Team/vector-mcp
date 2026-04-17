@@ -53,7 +53,7 @@ class PGVectorRetriever(RAGRetriever):
         username: Optional[str] = None,
         password: Optional[str] = None,
         database_name: str | None = None,
-        embedding_function: Any | None = None,
+        _embedding_function: Any | None = None,
         collection_name: str | None = None,
     ):
         """Initializes a PGVectorRetriever instance."""
@@ -97,7 +97,7 @@ class PGVectorRetriever(RAGRetriever):
     def connect_database(
         self,
         collection_name=None,
-        ensure_exists: bool = True,
+        _ensure_exists: bool = True,
         *args: Any,
         **kwargs: Any,
     ) -> bool:

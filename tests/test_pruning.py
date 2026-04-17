@@ -1,11 +1,3 @@
-import sys
-import unittest
-from dataclasses import dataclass
-
-sys.path.insert(0, "/home/genius/Workspace/vector-mcp")
-from vector_mcp.vector_agent import prune_large_messages
-
-
 @dataclass
 class MockMessage:
     role: str

@@ -41,7 +41,7 @@ class VectorDB(Protocol):
     """
 
     def create_collection(
-        self, collection_name: str, overwrite: bool = False, get_or_create: bool = True
+        self, collection_name: str, overwrite: bool = False, _get_or_create: bool = True
     ) -> Any:
         """Create a collection in the vector database.
         Case 1. if the collection does not exist, create the collection.
@@ -52,7 +52,7 @@ class VectorDB(Protocol):
         Args:
             collection_name: str | The name of the collection.
             overwrite: bool | Whether to overwrite the collection if it exists. Default is False.
-            get_or_create: bool | Whether to get the collection if it exists. Default is True.
+            _get_or_create: bool | Whether to get the collection if it exists. Default is True.
 
         Returns:
             Any | The collection object.
@@ -95,7 +95,7 @@ class VectorDB(Protocol):
         self,
         docs: list[Document],
         collection_name: str = None,
-        upsert: bool = False,
+        _upsert: bool = False,
         **kwargs,
     ) -> None:
         """Insert documents into the collection of the vector database.
@@ -103,7 +103,7 @@ class VectorDB(Protocol):
         Args:
             docs: List[Document] | A list of documents. Each document is a TypedDict `Document`.
             collection_name: str | The name of the collection. Default is None.
-            upsert: bool | Whether to update the document if it exists. Default is False.
+            _upsert: bool | Whether to update the document if it exists. Default is False.
             kwargs: Dict | Additional keyword arguments.
 
         Returns:

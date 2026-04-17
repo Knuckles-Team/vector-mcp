@@ -6,6 +6,7 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     try:
         from requests.exceptions import RequestsDependencyWarning
+
         warnings.filterwarnings("ignore", category=RequestsDependencyWarning)
     except ImportError:
         pass
@@ -34,7 +35,7 @@ from agent_utilities.mcp_utilities import (
 )
 from vector_mcp.retriever.retriever import RAGRetriever
 
-__version__ = "1.1.58"
+__version__ = "1.1.59"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -111,7 +112,7 @@ def initialize_retriever(
     db_name: Optional[str] = DEFAULT_DBNAME,
     username: Optional[str] = DEFAULT_USERNAME,
     password: Optional[str] = DEFAULT_PASSWORD,
-    api_token: Optional[str] = DEFAULT_API_TOKEN,
+    _api_token: Optional[str] = DEFAULT_API_TOKEN,
     collection_name: str = DEFAULT_COLLECTION_NAME,
     ensure_collection_exists: bool = True,
 ) -> RAGRetriever:
@@ -203,7 +204,10 @@ def initialize_retriever(
 
 
 def register_misc_tools(mcp: FastMCP):
-    async def health_check(request: Request) -> JSONResponse:
+    pass
+    pass
+
+    async def health_check(_request: Request) -> JSONResponse:
         return JSONResponse({"status": "OK"})
 
 

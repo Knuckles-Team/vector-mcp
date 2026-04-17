@@ -55,7 +55,7 @@ class ChromaDBRetriever(RAGRetriever):
         settings: Optional["Settings"] = None,
         tenant: str | None = None,
         database: str | None = None,
-        embedding_function: Any | None = None,
+        _embedding_function: Any | None = None,
         metadata: dict[str, Any] | None = None,
         collection_name: str | None = None,
     ) -> None:

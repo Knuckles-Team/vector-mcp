@@ -83,7 +83,7 @@ class MongoDBAtlasVectorDB(VectorDB):
         return self._index
 
     def create_collection(
-        self, collection_name: str, overwrite: bool = False, get_or_create: bool = True
+        self, collection_name: str, overwrite: bool = False, _get_or_create: bool = True
     ) -> Any:
         self.collection_name = collection_name
         if overwrite:
@@ -110,7 +110,7 @@ class MongoDBAtlasVectorDB(VectorDB):
         self,
         docs: list[Document],
         collection_name: str = None,
-        upsert: bool = False,
+        _upsert: bool = False,
         **kwargs,
     ) -> None:
         if collection_name:

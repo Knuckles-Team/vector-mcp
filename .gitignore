@@ -136,3 +136,4 @@ dmypy.json
 .pyre/
 /tmp/
 /mcp/
+**/agent_data/chats/

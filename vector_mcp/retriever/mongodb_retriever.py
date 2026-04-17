@@ -49,8 +49,8 @@ class MongoDBRetriever(RAGRetriever):
         self,
         connection_string: str,
         database_name: str | None = None,
-        embedding_function: Any | None = None,
-        embedding_model: Union["BaseEmbedding", str] | None = None,
+        _embedding_function: Any | None = None,
+        _embedding_model: Union["BaseEmbedding", str] | None = None,
         collection_name: str | None = None,
     ):
         """Initializes a MongoDBRetriever instance."""
