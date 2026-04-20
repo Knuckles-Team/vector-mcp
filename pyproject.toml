@@ -57,6 +57,7 @@ all = [
 
 [project.scripts]
 vector-mcp = "vector_mcp.mcp_server:mcp_server"
+vector-agent = "vector_mcp.agent_server:agent_server"
 
 [tool.setuptools]
 include-package-data = true

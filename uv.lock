@@ -6072,7 +6072,7 @@ wheels = [
 
 [[package]]
 name = "vector-mcp"
-version = "1.1.58"
+version = "1.1.59"
 source = { editable = "." }
 dependencies = [
     { name = "agent-utilities", extra = ["embeddings-openai", "mcp"] },
@@ -6175,7 +6175,7 @@ requires-dist = [
     { name = "pypdf", specifier = ">=6.7.2" },
     { name = "qdrant-client", marker = "extra == 'qdrant'", specifier = ">=1.16.2" },
     { name = "sentence-transformers", marker = "extra == 'huggingface'", specifier = ">=5.2.2" },
-    { name = "vector-mcp", extras = ["postgres", "chromadb", "couchbase", "qdrant", "mongodb", "huggingface", "agent"], marker = "extra == 'all'", specifier = ">=1.1.58" },
+    { name = "vector-mcp", extras = ["postgres", "chromadb", "couchbase", "qdrant", "mongodb", "huggingface", "agent"], marker = "extra == 'all'", specifier = ">=1.1.59" },
 ]
 provides-extras = ["postgres", "chromadb", "couchbase", "qdrant", "mongodb", "huggingface", "agent", "all"]
 
