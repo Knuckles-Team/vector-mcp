@@ -3,11 +3,10 @@
 
 import importlib
 import inspect
-from typing import List
 
-__all__: List[str] = []
+__all__: list[str] = []
 
-CORE_MODULES = []
+CORE_MODULES: list[str] = []
 
 OPTIONAL_MODULES = {
     "vector_mcp.agent_server": "agent",

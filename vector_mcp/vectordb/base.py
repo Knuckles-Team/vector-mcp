@@ -8,7 +8,7 @@ Vector = Sequence[float] | Sequence[int]
 ItemID = str | int
 
 
-class Document(TypedDict):
+class Document(TypedDict, total=False):
     """A Document is a record in the vector database.
 
     id: ItemID | the unique identifier of the document.
@@ -59,7 +59,7 @@ class VectorDB(Protocol):
         """
         ...
 
-    def get_collection(self, collection_name: str = None) -> Any:
+    def get_collection(self, collection_name: str | None = None) -> Any:
         """Get the collection from the vector database.
 
         Args:
@@ -94,7 +94,7 @@ class VectorDB(Protocol):
     def insert_documents(
         self,
         docs: list[Document],
-        collection_name: str = None,
+        collection_name: str | None = None,
         _upsert: bool = False,
         **kwargs,
     ) -> None:
@@ -112,7 +112,7 @@ class VectorDB(Protocol):
         ...
 
     def update_documents(
-        self, docs: list[Document], collection_name: str = None, **kwargs
+        self, docs: list[Document], collection_name: str | None = None, **kwargs
     ) -> None:
         """Update documents in the collection of the vector database.
 
@@ -127,7 +127,7 @@ class VectorDB(Protocol):
         ...
 
     def delete_documents(
-        self, ids: list[ItemID], collection_name: str = None, **kwargs
+        self, ids: list[ItemID], collection_name: str | None = None, **kwargs
     ) -> None:
         """Delete documents from the collection of the vector database.
 
@@ -144,7 +144,7 @@ class VectorDB(Protocol):
     def semantic_search(
         self,
         queries: list[str],
-        collection_name: str = None,
+        collection_name: str | None = None,
         n_results: int = 10,
         distance_threshold: float = -1,
         **kwargs: Any,
@@ -165,10 +165,30 @@ class VectorDB(Protocol):
         """
         ...
 
+    def lexical_search(
+        self,
+        queries: list[str],
+        collection_name: str | None = None,
+        n_results: int = 10,
+        **kwargs: Any,
+    ) -> QueryResults:
+        """Search for documents in the collection of the vector database using lexical search.
+
+        Args:
+            queries: List[str] | A list of queries.
+            collection_name: str | The name of the collection. Default is None.
+            n_results: int | The number of results to return. Default is 10.
+            kwargs: Dict | Additional keyword arguments.
+
+        Returns:
+            QueryResults | A list of query results.
+        """
+        ...
+
     def get_documents_by_ids(
         self,
-        ids: list[ItemID] = None,
-        collection_name: str = None,
+        ids: list[ItemID] | None = None,
+        collection_name: str | None = None,
         include: list[str] | None = None,
         **kwargs: Any,
     ) -> list[Document]:

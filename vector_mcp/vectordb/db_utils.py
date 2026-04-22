@@ -12,11 +12,11 @@ from typing import (
     Generic,
     Optional,
     TypeVar,
+    cast,
 )
 
-from packaging import version
-
 from agent_utilities import get_logger
+from packaging import version
 
 from .base import QueryResults
 
@@ -115,7 +115,7 @@ def chroma_results_to_query_results(
             sub_result.append((sub_dict, distance))
         result.append(sub_result)
 
-    return result
+    return cast(QueryResults, result)
 
 
 @dataclass
@@ -134,12 +134,14 @@ class ModuleInfo:
 
         """
         import importlib.util
-        from importlib.metadata import version as get_version, PackageNotFoundError
+        from importlib.metadata import PackageNotFoundError
+        from importlib.metadata import version as get_version
 
         if not importlib.util.find_spec(self.name):
             return f"'{self.name}' is not installed."
 
         if self.min_version or self.max_version:
+            installed_version: str | None = None
             try:
                 installed_version = get_version(self.name)
             except PackageNotFoundError:
@@ -322,7 +324,9 @@ class PatchObject(ABC, Generic[T]):
     def msg(self) -> str:
         o = self.get_object_with_metadata()
         plural = len(self.missing_modules) > 1
-        fqn = f"{o.__module__}.{o.__name__}" if hasattr(o, "__module__") else o.__name__
+        name = getattr(o, "__name__", "unknown")
+        module = getattr(o, "__module__", None)
+        fqn = f"{module}.{name}" if module else name
         msg = f"{'Modules' if plural else 'A module'} needed for {fqn} {'are' if plural else 'is'} missing:\n"
         for _, status in self.missing_modules.items():
             msg += f" - {status}\n"
@@ -337,12 +341,16 @@ class PatchObject(ABC, Generic[T]):
 
         """
         o = self.o
-        if hasattr(o, "__doc__"):
-            retval.__doc__ = o.__doc__
-        if hasattr(o, "__name__"):
-            retval.__name__ = o.__name__
-        if hasattr(o, "__module__"):
-            retval.__module__ = o.__module__
+        target: Any = retval
+        doc = getattr(o, "__doc__", None)
+        if doc:
+            target.__doc__ = doc
+        name = getattr(o, "__name__", None)
+        if name:
+            target.__name__ = name
+        module = getattr(o, "__module__", None)
+        if module:
+            target.__module__ = module
 
     _registry: list[type["PatchObject[Any]"]] = []
 
@@ -384,9 +392,9 @@ class PatchCallable(PatchObject[F]):
         def _call(*args: Any, **kwargs: Any) -> Any:
             raise ImportError(self.msg)
 
-        self.copy_metadata(_call)
+        self.copy_metadata(cast(F, _call))
 
-        return _call
+        return cast(F, _call)
 
 
 @PatchObject.register()
@@ -411,12 +419,12 @@ class PatchStatic(PatchObject[F]):
         def _call(*args: Any, **kwargs: Any) -> Any:
             raise ImportError(self.msg)
 
-        self.copy_metadata(_call)
+        self.copy_metadata(cast(F, _call))
 
-        return staticmethod(_call)
+        return cast(F, staticmethod(_call))
 
     def get_object_with_metadata(self) -> Any:
-        return self.o.__func__
+        return getattr(self.o, "__func__", self.o)
 
 
 @PatchObject.register()
@@ -435,9 +443,9 @@ class PatchInit(PatchObject[F]):
         def _call(*args: Any, **kwargs: Any) -> Any:
             raise ImportError(self.msg)
 
-        self.copy_metadata(_call)
+        self.copy_metadata(cast(F, _call))
 
-        return staticmethod(_call)
+        return cast(F, staticmethod(_call))
 
     def get_object_with_metadata(self) -> Any:
         return self.o
@@ -461,7 +469,7 @@ class PatchProperty(PatchObject[Any]):
         def _call(*args: Any, **kwargs: Any) -> Any:
             raise ImportError(self.msg)
 
-        self.copy_metadata(_call)
+        self.copy_metadata(cast(Any, _call))
 
         return property(_call)
 

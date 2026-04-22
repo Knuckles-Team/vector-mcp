@@ -17,7 +17,7 @@ def temp_db_path(tmp_path):
 @pytest.fixture
 def chromadb_instance(temp_db_path):
     """Fixture to initialize a ChromaDB instance."""
-    with patch("vector_mcp.vectordb.chromadb.get_embedding_model") as mock_embed:
+    with patch("vector_mcp.vectordb.chromadb.create_embedding_model") as mock_embed:
         mock_embed.return_value = MagicMock()
         mock_embed.return_value.get_text_embedding.return_value = [0.1, 0.2, 0.3]
 

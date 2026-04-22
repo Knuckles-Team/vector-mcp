@@ -1,9 +1,9 @@
 import sys
 
-sys.modules["llama_index.embeddings.huggingface"] = None
-sys.modules["llama_index.vector_stores.postgres"] = None
-sys.modules["qdrant_client"] = None
-sys.modules["llama_index.vector_stores.qdrant"] = None
+sys.modules["llama_index.embeddings.huggingface"] = None  # type: ignore
+sys.modules["llama_index.vector_stores.postgres"] = None  # type: ignore
+sys.modules["qdrant_client"] = None  # type: ignore
+sys.modules["llama_index.vector_stores.qdrant"] = None  # type: ignore
 
 print("Checking vector_mcp.vector_mcp import...")
 try:

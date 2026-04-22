@@ -1,15 +1,17 @@
 #!/usr/bin/python
 
-from .base import Document, VectorDB
-from agent_utilities import get_logger
 from typing import TYPE_CHECKING
 
+from agent_utilities import get_logger
+
+from .base import Document, VectorDB
+
 if TYPE_CHECKING:
-    from .postgres import PostgreSQL
-    from .qdrant import QdrantVectorDB
+    from .chromadb import ChromaVectorDB
     from .couchbase import CouchbaseVectorDB
     from .mongodb import MongoDBAtlasVectorDB
-    from .chromadb import ChromaVectorDB
+    from .postgres import PostgreSQL
+    from .qdrant import QdrantVectorDB
 
 __all__ = [
     "get_logger",

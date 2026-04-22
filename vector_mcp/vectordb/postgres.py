@@ -1,6 +1,17 @@
 #!/usr/bin/python
 
-from typing import Any, Optional, Union
+import os
+from typing import Any
+
+from agent_utilities import create_embedding_model
+from llama_index.core import (
+    Document as LIDocument,
+)
+from llama_index.core import (
+    SimpleDirectoryReader,
+    StorageContext,
+    VectorStoreIndex,
+)
 
 from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
 from vector_mcp.vectordb.db_utils import (
@@ -8,16 +19,6 @@ from vector_mcp.vectordb.db_utils import (
     optional_import_block,
     require_optional_import,
 )
-
-from agent_utilities import create_embedding_model
-
-from llama_index.core import (
-    VectorStoreIndex,
-    StorageContext,
-    Document as LIDocument,
-    SimpleDirectoryReader,
-)
-import os
 
 with optional_import_block():
     from llama_index.vector_stores.postgres import PGVectorStore
@@ -35,15 +36,15 @@ class PostgreSQL(VectorDB):
     def __init__(
         self,
         *,
-        connection_string: Optional[str] = None,
-        host: Optional[Union[str, int]] = None,
-        port: Optional[Union[str, int]] = None,
-        dbname: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        connection_string: str | None = None,
+        host: str | int | None = None,
+        port: str | int | None = None,
+        dbname: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
         embed_model: Any | None = None,
         collection_name: str = "memory",
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
     ) -> None:
         """Initialize the vector database with LlamaIndex PGVectorStore.
@@ -164,7 +165,7 @@ class PostgreSQL(VectorDB):
         self.active_collection = collection_name
         return self.vector_store
 
-    def get_collection(self, collection_name: str = None) -> Any:
+    def get_collection(self, collection_name: str | None = None) -> Any:
         name = collection_name or self.active_collection
         if name != self.collection_name:
             self.create_collection(name)
@@ -176,7 +177,7 @@ class PostgreSQL(VectorDB):
     def insert_documents(
         self,
         docs: list[Document],
-        collection_name: str = None,
+        collection_name: str | None = None,
         _upsert: bool = False,
         **kwargs,
     ) -> None:
@@ -197,7 +198,7 @@ class PostgreSQL(VectorDB):
     def semantic_search(
         self,
         queries: list[str],
-        collection_name: str = None,
+        collection_name: str | None = None,
         n_results: int = 10,
         distance_threshold: float = -1,
         **kwargs: Any,
@@ -228,20 +229,20 @@ class PostgreSQL(VectorDB):
 
     def get_documents_by_ids(
         self,
-        ids: list[ItemID] = None,
-        collection_name: str = None,
+        ids: list[ItemID] | None = None,
+        collection_name: str | None = None,
         include: list[str] | None = None,
         **kwargs: Any,
     ) -> list[Document]:
         return []
 
     def update_documents(
-        self, docs: list[Document], collection_name: str = None, **kwargs
+        self, docs: list[Document], collection_name: str | None = None, **kwargs
     ) -> None:
         self.insert_documents(docs, collection_name, upsert=True)
 
     def delete_documents(
-        self, ids: list[ItemID], collection_name: str = None, **kwargs
+        self, ids: list[ItemID], collection_name: str | None = None, **kwargs
     ) -> None:
         if collection_name:
             self.create_collection(collection_name)
@@ -290,7 +291,7 @@ class PostgreSQL(VectorDB):
     def lexical_search(
         self,
         queries: list[str],
-        collection_name: str = None,
+        collection_name: str | None = None,
         n_results: int = 10,
         **kwargs: Any,
     ) -> QueryResults:
@@ -306,7 +307,6 @@ class PostgreSQL(VectorDB):
         results = []
         with self.vector_store._engine.connect() as connection:
             for query in queries:
-
                 table_name = f"data_{self.collection_name}"
 
                 try:

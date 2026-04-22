@@ -5,26 +5,26 @@ import logging
 import os
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, List, Dict
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     pass
 
+from agent_utilities import create_embedding_model
+from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
+from llama_index.core.schema import Document as LlamaDocument
 from pydantic import Field
+
 from vector_mcp.retriever.retriever import RAGRetriever
+from vector_mcp.vectordb.base import VectorDB, VectorDBFactory
 from vector_mcp.vectordb.db_utils import (
     optional_import_block,
     require_optional_import,
 )
 
-from agent_utilities import create_embedding_model
-from vector_mcp.vectordb.base import VectorDBFactory
-
-from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
-from llama_index.core.schema import Document as LlamaDocument
-
 with optional_import_block():
     from llama_index.vector_stores.qdrant import QdrantVectorStore
+
     from vector_mcp.vectordb.qdrant import QdrantVectorDB
 
 __all__ = ["QdrantRetriever"]
@@ -63,7 +63,7 @@ class QdrantRetriever(RAGRetriever):
         ),
         collection_options: dict = Field(
             description="Options for creating the Qdrant collection",
-            default=None,
+            default_factory=dict,
         ),
     ):
         """Initializes a QdrantRetriever instance."""
@@ -75,7 +75,7 @@ class QdrantRetriever(RAGRetriever):
 
         self.embed_model = create_embedding_model()
 
-        self.vector_db: QdrantVectorDB | None = None
+        self.vector_db: VectorDB | None = None
         self.vector_store: QdrantVectorStore | None = None
         self.storage_context: StorageContext | None = None
         self.index: VectorStoreIndex | None = None
@@ -92,6 +92,7 @@ class QdrantRetriever(RAGRetriever):
             collection_options=self.collection_options,
             collection_name=self.collection_name,
         )
+        assert isinstance(self.vector_db, QdrantVectorDB)
         self.vector_db.create_collection(
             collection_name=self.collection_name, overwrite=overwrite
         )
@@ -102,7 +103,10 @@ class QdrantRetriever(RAGRetriever):
     def _check_existing_collection(self) -> bool:
         """Checks if the specified collection exists in the Qdrant database."""
         try:
-            return self.vector_db.client.collection_exists(self.collection_name)
+            assert self.vector_db is not None
+            return cast(QdrantVectorDB, self.vector_db).client.collection_exists(
+                self.collection_name
+            )
         except Exception as e:
             logger.error(f"Error checking collection existence: {e}")
             return False
@@ -116,7 +120,8 @@ class QdrantRetriever(RAGRetriever):
         try:
             self._set_up(overwrite=False)
 
-            self.vector_db.client.get_collections()
+            assert self.vector_db is not None
+            cast(QdrantVectorDB, self.vector_db).client.get_collections()
             logger.info("Connected to Qdrant successfully.")
             return True
         except Exception as error:
@@ -128,14 +133,15 @@ class QdrantRetriever(RAGRetriever):
         document_directory: Path | str | None = None,
         document_paths: Sequence[Path | str] | None = None,
         document_contents: Sequence[str] | None = None,
-        overwrite: Optional[bool] | None = True,
+        overwrite: bool | None = True,
         *args: Any,
         **kwargs: Any,
     ) -> bool:
         """Initializes the Qdrant database by creating or overwriting the collection and indexing documents."""
         try:
-            self._set_up(overwrite=overwrite)
-            self.vector_db.client.get_collections()
+            self._set_up(overwrite=True if overwrite is None else overwrite)
+            assert self.vector_db is not None
+            cast(QdrantVectorDB, self.vector_db).client.get_collections()
 
             if document_directory or document_paths or document_contents:
                 logger.info("Setting up the database with documents.")
@@ -145,6 +151,7 @@ class QdrantRetriever(RAGRetriever):
                     input_contents=document_contents,
                 )
                 for doc in documents:
+                    assert self.index is not None
                     self.index.insert(doc)
                 logger.info("Database initialized with %d documents.", len(documents))
             return True
@@ -212,14 +219,16 @@ class QdrantRetriever(RAGRetriever):
             input_contents=document_contents,
         )
         for doc in documents:
+            assert self.index is not None
             self.index.insert(doc)
         return documents
 
     def query(
         self, question: str, number_results: int, *args: Any, **kwargs: Any
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Queries the indexed documents using the provided question."""
         self._validate_query_index()
+        assert self.index is not None
         similarity_top_k = kwargs.get("number_results", number_results)
         retriever = self.index.as_retriever(similarity_top_k=similarity_top_k)
         response = retriever.retrieve(str_or_query_bundle=question)
@@ -238,8 +247,9 @@ class QdrantRetriever(RAGRetriever):
 
     def bm25_query(
         self, question: str, number_results: int, *args: Any, **kwargs: Any
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         self._validate_query_index()
+        assert self.vector_db is not None
         results = self.vector_db.lexical_search(
             queries=[question],
             collection_name=self.collection_name,
@@ -252,16 +262,10 @@ class QdrantRetriever(RAGRetriever):
         for doc, score in doc_scores:
             formatted_results.append(
                 {
-                    "text": (
-                        doc.content if hasattr(doc, "content") else doc.get("content")
-                    ),
+                    "text": doc.get("content", ""),
                     "score": score,
-                    "id": doc.id if hasattr(doc, "id") else doc.get("id"),
-                    "metadata": (
-                        doc.metadata
-                        if hasattr(doc, "metadata")
-                        else doc.get("metadata")
-                    ),
+                    "id": doc.get("id", ""),
+                    "metadata": doc.get("metadata"),
                 }
             )
         return formatted_results
@@ -275,7 +279,7 @@ class QdrantRetriever(RAGRetriever):
 
 
 if TYPE_CHECKING:
-    from .retriever import RAGQueryEngine
+    from .retriever import RAGRetriever as RAGQueryEngine
 
     def _check_implement_protocol(o: QdrantRetriever) -> RAGQueryEngine:
         return o

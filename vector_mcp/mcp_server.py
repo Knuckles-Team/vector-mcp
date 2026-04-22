@@ -15,24 +15,24 @@ with warnings.catch_warnings():
 warnings.filterwarnings("ignore", message=".*urllib3.*or chardet.*")
 warnings.filterwarnings("ignore", message=".*urllib3.*or charset_normalizer.*")
 
-from dotenv import load_dotenv, find_dotenv
-from agent_utilities.base_utilities import to_boolean
+import hashlib
+import logging
 import os
 import sys
-import logging
-import hashlib
 from pathlib import Path
-from typing import Any, Optional, List, Dict, Union
+from typing import Any
 
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from pydantic import Field
-from fastmcp import FastMCP, Context
-from fastmcp.utilities.logging import get_logger
-from agent_utilities.base_utilities import to_integer
+from agent_utilities.base_utilities import to_boolean, to_integer
 from agent_utilities.mcp_utilities import (
     create_mcp_server,
 )
+from dotenv import find_dotenv, load_dotenv
+from fastmcp import Context, FastMCP
+from fastmcp.utilities.logging import get_logger
+from pydantic import Field
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+
 from vector_mcp.retriever.retriever import RAGRetriever
 
 __version__ = "1.1.59"
@@ -80,11 +80,11 @@ DEFAULT_COLLECTIONS = [
 def create_default_collections(
     db_type: str = DEFAULT_DATABASE_TYPE,
     db_path: str = DEFAULT_DATABASE_PATH,
-    host: Optional[str] = DEFAULT_DB_HOST,
-    port: Optional[str] = DEFAULT_DB_PORT,
-    db_name: Optional[str] = DEFAULT_DBNAME,
-    username: Optional[str] = DEFAULT_USERNAME,
-    password: Optional[str] = DEFAULT_PASSWORD,
+    host: str | None = DEFAULT_DB_HOST,
+    port: str | None = DEFAULT_DB_PORT,
+    db_name: str | None = DEFAULT_DBNAME,
+    username: str | None = DEFAULT_USERNAME,
+    password: str | None = DEFAULT_PASSWORD,
 ):
     for collection in DEFAULT_COLLECTIONS:
         try:
@@ -107,37 +107,39 @@ def create_default_collections(
 def initialize_retriever(
     db_type: str = DEFAULT_DATABASE_TYPE,
     db_path: str = DEFAULT_DATABASE_PATH,
-    host: Optional[str] = DEFAULT_DB_HOST,
-    port: Optional[str] = DEFAULT_DB_PORT,
-    db_name: Optional[str] = DEFAULT_DBNAME,
-    username: Optional[str] = DEFAULT_USERNAME,
-    password: Optional[str] = DEFAULT_PASSWORD,
-    _api_token: Optional[str] = DEFAULT_API_TOKEN,
+    host: str | None = DEFAULT_DB_HOST,
+    port: str | None = DEFAULT_DB_PORT,
+    db_name: str | None = DEFAULT_DBNAME,
+    username: str | None = DEFAULT_USERNAME,
+    password: str | None = DEFAULT_PASSWORD,
+    _api_token: str | None = DEFAULT_API_TOKEN,
     collection_name: str = DEFAULT_COLLECTION_NAME,
     ensure_collection_exists: bool = True,
 ) -> RAGRetriever:
     try:
         db_type_lower = db_type.strip().lower()
+        retriever: RAGRetriever
         if db_type_lower == "chromadb":
             from vector_mcp.retriever.chromadb_retriever import ChromaDBRetriever
 
             if host and port:
-                retriever: RAGRetriever = ChromaDBRetriever(
+                retriever = ChromaDBRetriever(
                     host=host, port=int(port), collection_name=collection_name
                 )
             else:
-                retriever: RAGRetriever = ChromaDBRetriever(
-                    path=os.path.join(db_path, db_name), collection_name=collection_name
+                retriever = ChromaDBRetriever(
+                    path=os.path.join(db_path, db_name or ""),
+                    collection_name=collection_name,
                 )
         elif db_type_lower == "postgres":
-            from vector_mcp.retriever.pgvector_retriever import PGVectorRetriever
+            from vector_mcp.retriever.postgres_retriever import PGVectorRetriever
 
-            retriever: RAGRetriever = PGVectorRetriever(
+            retriever = PGVectorRetriever(
                 host=host,
                 port=port,
-                dbname=db_name,
-                username=username,
-                password=password,
+                dbname=db_name or "",
+                username=username or "",
+                password=password or "",
                 collection_name=collection_name,
             )
         elif db_type_lower == "qdrant":
@@ -154,7 +156,7 @@ def initialize_retriever(
                         f"http://{host}:{port}" if port else f"http://{host}:6333"
                     )
 
-            retriever: RAGRetriever = QdrantRetriever(
+            retriever = QdrantRetriever(
                 location=location, collection_name=collection_name
             )
         elif db_type_lower == "couchbase":
@@ -165,11 +167,11 @@ def initialize_retriever(
             )
             if port:
                 connection_string += f":{port}"
-            retriever: RAGRetriever = CouchbaseRetriever(
+            retriever = CouchbaseRetriever(
                 connection_string=connection_string,
-                username=username,
-                password=password,
-                bucket_name=db_name,
+                username=username or "Administrator",
+                password=password or "password",
+                bucket_name=db_name or "vector_db",
                 collection_name=collection_name,
             )
         elif db_type_lower == "mongodb":
@@ -182,7 +184,7 @@ def initialize_retriever(
                     if username and password
                     else f"mongodb://{host}:{port or '27017'}/{db_name}"
                 )
-            retriever: RAGRetriever = MongoDBRetriever(
+            retriever = MongoDBRetriever(
                 connection_string=connection_string,
                 database_name=db_name,
                 collection_name=collection_name,
@@ -231,46 +233,46 @@ def register_collection_management_tools(mcp: FastMCP):
             description="The path to store chromadb files",
             default=DEFAULT_DATABASE_PATH,
         ),
-        host: Optional[str] = Field(
+        host: str | None = Field(
             description="Hostname or IP address of the database server",
             default=DEFAULT_DB_HOST,
         ),
-        port: Optional[str] = Field(
+        port: str | None = Field(
             description="Port number of the database server", default=DEFAULT_DB_PORT
         ),
-        db_name: Optional[str] = Field(
+        db_name: str | None = Field(
             description="Name of the database or path (depending on DB type)",
             default=DEFAULT_DBNAME,
         ),
-        username: Optional[str] = Field(
+        username: str | None = Field(
             description="Username for database authentication", default=DEFAULT_USERNAME
         ),
-        password: Optional[str] = Field(
+        password: str | None = Field(
             description="Password for database authentication", default=DEFAULT_PASSWORD
         ),
         collection_name: str = Field(
             description="Name of the collection to create or retrieve",
             default=DEFAULT_COLLECTION_NAME,
         ),
-        overwrite: Optional[bool] = Field(
+        overwrite: bool | None = Field(
             description="Whether to overwrite the collection if it exists",
             default=False,
         ),
-        document_directory: Optional[Union[Path, str]] = Field(
+        document_directory: Path | str | None = Field(
             description="Document directory to read documents from",
             default=DEFAULT_DOCUMENT_DIRECTORY,
         ),
-        document_paths: Optional[Union[Path, str]] = Field(
+        document_paths: Path | str | None = Field(
             description="Document paths on the file system or URLs to read from",
             default=None,
         ),
-        document_contents: Optional[List[str]] = Field(
+        document_contents: list[str] | None = Field(
             description="List of string contents to ingest directly", default=None
         ),
         ctx: Context = Field(
             description="FastMCP context for progress reporting", default=None
         ),
-    ) -> Dict:
+    ) -> dict:
         """Creates a new collection or retrieves an existing one in the vector database."""
         if not collection_name:
             raise ValueError("collection_name must not be empty")
@@ -311,14 +313,13 @@ def register_collection_management_tools(mcp: FastMCP):
                 collection_name=collection_name,
                 overwrite=overwrite,
                 document_directory=document_directory,
-                document_paths=document_paths,
+                document_paths=[document_paths]
+                if isinstance(document_paths, (str, Path))
+                else document_paths,
                 document_contents=document_contents,
             )
             if ctx:
                 await ctx.report_progress(progress=100, total=100)
-            else:
-                response["message"] = "Collection failed to be created."
-                response["status"] = 403
             response["completion"] = coll
             return response
         except ValueError as e:
@@ -326,7 +327,7 @@ def register_collection_management_tools(mcp: FastMCP):
             raise
         except Exception as e:
             logger.error(f"Failed to create collection: {str(e)}")
-            raise RuntimeError(f"Failed to create collection: {str(e)}")
+            raise RuntimeError(f"Failed to create collection: {str(e)}") from e
 
     @mcp.tool(
         annotations={
@@ -347,41 +348,42 @@ def register_collection_management_tools(mcp: FastMCP):
             description="The path to store chromadb files",
             default=DEFAULT_DATABASE_PATH,
         ),
-        host: Optional[str] = Field(
+        host: str | None = Field(
             description="Hostname or IP address of the database server",
             default=DEFAULT_DB_HOST,
         ),
-        port: Optional[str] = Field(
+        port: str | None = Field(
             description="Port number of the database server", default=DEFAULT_DB_PORT
         ),
-        db_name: Optional[str] = Field(
+        db_name: str | None = Field(
             description="Name of the database or path (depending on DB type)",
             default=DEFAULT_DBNAME,
         ),
-        username: Optional[str] = Field(
+        username: str | None = Field(
             description="Username for database authentication", default=DEFAULT_USERNAME
         ),
-        password: Optional[str] = Field(
+        password: str | None = Field(
             description="Password for database authentication", default=DEFAULT_PASSWORD
         ),
         collection_name: str = Field(
-            description="Name of the target collection.", default=None
+            description="Name of the target collection.",
+            default=DEFAULT_COLLECTION_NAME,
         ),
-        document_directory: Optional[Union[Path, str]] = Field(
+        document_directory: Path | str | None = Field(
             description="Document directory to read documents from",
             default=DEFAULT_DOCUMENT_DIRECTORY,
         ),
-        document_paths: Optional[Union[Path, str]] = Field(
+        document_paths: Path | str | None = Field(
             description="Document paths on the file system or URLs to read from",
             default=None,
         ),
-        document_contents: Optional[List[str]] = Field(
+        document_contents: list[str] | None = Field(
             description="List of string contents to ingest directly", default=None
         ),
         ctx: Context = Field(
             description="FastMCP context for progress reporting", default=None
         ),
-    ) -> Dict:
+    ) -> dict:
         """Adds documents to an existing collection in the vector database.
         This can be used to extend collections with additional documents"""
 
@@ -393,7 +395,6 @@ def register_collection_management_tools(mcp: FastMCP):
         if document_directory:
             doc_dir_path = Path(document_directory)
             if doc_dir_path.exists() and doc_dir_path.is_dir():
-
                 files = [f for f in doc_dir_path.iterdir() if f.is_file()]
                 if not files and not document_paths and not document_contents:
                     logger.warning(f"No files found in {document_directory}")
@@ -429,7 +430,9 @@ def register_collection_management_tools(mcp: FastMCP):
                 await ctx.report_progress(progress=0, total=100)
             texts = retriever.add_documents(
                 document_directory=document_directory,
-                document_paths=document_paths,
+                document_paths=[document_paths]
+                if isinstance(document_paths, (str, Path))
+                else document_paths,
                 document_contents=document_contents,
             )
             if ctx:
@@ -455,7 +458,7 @@ def register_collection_management_tools(mcp: FastMCP):
             raise
         except Exception as e:
             logger.error(f"Failed to insert documents: {str(e)}")
-            raise RuntimeError(f"Failed to insert documents: {str(e)}")
+            raise RuntimeError(f"Failed to insert documents: {str(e)}") from e
 
     @mcp.tool(
         annotations={
@@ -476,25 +479,26 @@ def register_collection_management_tools(mcp: FastMCP):
             description="The path to store chromadb files",
             default=DEFAULT_DATABASE_PATH,
         ),
-        host: Optional[str] = Field(
+        host: str | None = Field(
             description="Hostname or IP address of the database server",
             default=DEFAULT_DB_HOST,
         ),
-        port: Optional[str] = Field(
+        port: str | None = Field(
             description="Port number of the database server", default=DEFAULT_DB_PORT
         ),
-        db_name: Optional[str] = Field(
+        db_name: str | None = Field(
             description="Name of the database or path (depending on DB type)",
             default=DEFAULT_DBNAME,
         ),
-        username: Optional[str] = Field(
+        username: str | None = Field(
             description="Username for database authentication", default=DEFAULT_USERNAME
         ),
-        password: Optional[str] = Field(
+        password: str | None = Field(
             description="Password for database authentication", default=DEFAULT_PASSWORD
         ),
         collection_name: str = Field(
-            description="Name of the target collection.", default=None
+            description="Name of the target collection.",
+            default=DEFAULT_COLLECTION_NAME,
         ),
         confirm: bool = Field(
             description="Explicitly confirm deletion without interactive prompt",
@@ -503,7 +507,7 @@ def register_collection_management_tools(mcp: FastMCP):
         ctx: Context = Field(
             description="FastMCP context for progress reporting", default=None
         ),
-    ) -> Dict:
+    ) -> dict:
         """Deletes a collection from the vector database."""
 
         if not confirm:
@@ -543,6 +547,7 @@ def register_collection_management_tools(mcp: FastMCP):
         try:
             if ctx:
                 await ctx.report_progress(progress=0, total=100)
+            assert retriever.vector_db is not None
             retriever.vector_db.delete_collection(collection_name=collection_name)
             if ctx:
                 await ctx.report_progress(progress=100, total=100)
@@ -562,7 +567,7 @@ def register_collection_management_tools(mcp: FastMCP):
             raise
         except Exception as e:
             logger.error(f"Failed to delete collection: {str(e)}")
-            raise RuntimeError(f"Failed to delete collection: {str(e)}")
+            raise RuntimeError(f"Failed to delete collection: {str(e)}") from e
 
     @mcp.tool(
         annotations={
@@ -577,36 +582,34 @@ def register_collection_management_tools(mcp: FastMCP):
     async def list_collections(
         db_type: str = Field(
             description="Type of vector database (chromadb, postgres, qdrant, couchbase, mongodb)",
+            default=DEFAULT_DATABASE_TYPE,
         ),
         db_path: str = Field(
             description="The path to store chromadb files",
             default=DEFAULT_DATABASE_PATH,
         ),
-        host: Optional[str] = Field(
+        host: str | None = Field(
             description="Hostname or IP address of the database server",
             default=DEFAULT_DB_HOST,
         ),
-        port: Optional[str] = Field(
+        port: str | None = Field(
             description="Port number of the database server", default=DEFAULT_DB_PORT
         ),
-        db_name: Optional[str] = Field(
+        db_name: str | None = Field(
             description="Name of the database or path (depending on DB type)",
             default=DEFAULT_DBNAME,
         ),
-        username: Optional[str] = Field(
+        username: str | None = Field(
             description="Username for database authentication", default=DEFAULT_USERNAME
         ),
-        password: Optional[str] = Field(
+        password: str | None = Field(
             description="Password for database authentication", default=DEFAULT_PASSWORD
         ),
         ctx: Context = Field(
             description="FastMCP context for progress reporting", default=None
         ),
-    ) -> Dict:
+    ) -> dict:
         """Lists all collections in the vector database."""
-
-        if db_type == "chromadb" and os.environ.get("DATABASE_TYPE"):
-            db_type = os.environ.get("DATABASE_TYPE")
 
         try:
             retriever = initialize_retriever(
@@ -624,6 +627,7 @@ def register_collection_management_tools(mcp: FastMCP):
             if ctx:
                 await ctx.report_progress(progress=0, total=100)
 
+            assert retriever.vector_db is not None
             collections = retriever.vector_db.get_collections()
             collection_names = []
             if isinstance(collections, list) or isinstance(collections, tuple):
@@ -633,7 +637,7 @@ def register_collection_management_tools(mcp: FastMCP):
                     else:
                         collection_names.append(str(c))
             else:
-                collection_names = str(collections)
+                collection_names = [str(collections)]
 
             if ctx:
                 await ctx.report_progress(progress=100, total=100)
@@ -656,7 +660,7 @@ def register_collection_management_tools(mcp: FastMCP):
             import traceback
 
             logger.error(traceback.format_exc())
-            raise RuntimeError(f"Failed to list collections: {str(e)}")
+            raise RuntimeError(f"Failed to list collections: {str(e)}") from e
 
 
 def register_search_tools(mcp: FastMCP):
@@ -679,21 +683,21 @@ def register_search_tools(mcp: FastMCP):
             description="The path to store chromadb files",
             default=DEFAULT_DATABASE_PATH,
         ),
-        host: Optional[str] = Field(
+        host: str | None = Field(
             description="Hostname or IP address of the database server",
             default=DEFAULT_DB_HOST,
         ),
-        port: Optional[str] = Field(
+        port: str | None = Field(
             description="Port number of the database server", default=DEFAULT_DB_PORT
         ),
-        db_name: Optional[str] = Field(
+        db_name: str | None = Field(
             description="Name of the database or path (depending on DB type)",
             default=DEFAULT_DBNAME,
         ),
-        username: Optional[str] = Field(
+        username: str | None = Field(
             description="Username for database authentication", default=DEFAULT_USERNAME
         ),
-        password: Optional[str] = Field(
+        password: str | None = Field(
             description="Password for database authentication", default=DEFAULT_PASSWORD
         ),
         collection_name: str = Field(
@@ -702,7 +706,7 @@ def register_search_tools(mcp: FastMCP):
         ),
         question: str = Field(
             description="The question or phrase to similarity search in the vector database",
-            default=None,
+            default="",
         ),
         number_results: int = Field(
             description="The total number of searched document texts to provide",
@@ -711,7 +715,7 @@ def register_search_tools(mcp: FastMCP):
         ctx: Context = Field(
             description="FastMCP context for progress reporting", default=None
         ),
-    ) -> Dict:
+    ) -> dict:
         """Retrieves and gathers related knowledge from the vector database instance using the question variable.
         This can be used as a primary source of knowledge retrieval.
         It will return relevant text(s) which should be parsed for the most
@@ -757,7 +761,7 @@ def register_search_tools(mcp: FastMCP):
             raise
         except Exception as e:
             logger.error(f"Failed to get collection: {str(e)}")
-            raise RuntimeError(f"Failed to get collection: {str(e)}")
+            raise RuntimeError(f"Failed to get collection: {str(e)}") from e
 
     @mcp.tool(
         annotations={
@@ -778,21 +782,21 @@ def register_search_tools(mcp: FastMCP):
             description="The path to store chromadb files",
             default=DEFAULT_DATABASE_PATH,
         ),
-        host: Optional[str] = Field(
+        host: str | None = Field(
             description="Hostname or IP address of the database server",
             default=DEFAULT_DB_HOST,
         ),
-        port: Optional[str] = Field(
+        port: str | None = Field(
             description="Port number of the database server", default=DEFAULT_DB_PORT
         ),
-        db_name: Optional[str] = Field(
+        db_name: str | None = Field(
             description="Name of the database or path (depending on DB type)",
             default=DEFAULT_DBNAME,
         ),
-        username: Optional[str] = Field(
+        username: str | None = Field(
             description="Username for database authentication", default=DEFAULT_USERNAME
         ),
-        password: Optional[str] = Field(
+        password: str | None = Field(
             description="Password for database authentication", default=DEFAULT_PASSWORD
         ),
         collection_name: str = Field(
@@ -801,7 +805,7 @@ def register_search_tools(mcp: FastMCP):
         ),
         question: str = Field(
             description="The question or keyword to search in the vector database using BM25 or keyword matching",
-            default=None,
+            default="",
         ),
         number_results: int = Field(
             description="The total number of searched document texts to provide",
@@ -810,7 +814,7 @@ def register_search_tools(mcp: FastMCP):
         ctx: Context = Field(
             description="FastMCP context for progress reporting", default=None
         ),
-    ) -> Dict:
+    ) -> dict:
         """This is a lexical or term based search that retrieves and gathers related knowledge from the database instance using the question variable via BM25.
         This provides a complementary search method to vector search, useful for exact keyword matching.
         """
@@ -856,7 +860,7 @@ def register_search_tools(mcp: FastMCP):
             raise
         except Exception as e:
             logger.error(f"Failed to lexical_search: {str(e)}")
-            raise RuntimeError(f"Failed to lexical_search: {str(e)}")
+            raise RuntimeError(f"Failed to lexical_search: {str(e)}") from e
 
     @mcp.tool(
         annotations={
@@ -877,21 +881,21 @@ def register_search_tools(mcp: FastMCP):
             description="The path to store chromadb files",
             default=DEFAULT_DATABASE_PATH,
         ),
-        host: Optional[str] = Field(
+        host: str | None = Field(
             description="Hostname or IP address of the database server",
             default=DEFAULT_DB_HOST,
         ),
-        port: Optional[str] = Field(
+        port: str | None = Field(
             description="Port number of the database server", default=DEFAULT_DB_PORT
         ),
-        db_name: Optional[str] = Field(
+        db_name: str | None = Field(
             description="Name of the database or path (depending on DB type)",
             default=DEFAULT_DBNAME,
         ),
-        username: Optional[str] = Field(
+        username: str | None = Field(
             description="Username for database authentication", default=DEFAULT_USERNAME
         ),
-        password: Optional[str] = Field(
+        password: str | None = Field(
             description="Password for database authentication", default=DEFAULT_PASSWORD
         ),
         collection_name: str = Field(
@@ -900,7 +904,7 @@ def register_search_tools(mcp: FastMCP):
         ),
         question: str = Field(
             description="The question or phrase to hybrid search in the vector database",
-            default=None,
+            default="",
         ),
         number_results: int = Field(
             description="The total number of hybrid searched document texts to provide",
@@ -921,7 +925,7 @@ def register_search_tools(mcp: FastMCP):
         ctx: Context = Field(
             description="FastMCP context for progress reporting", default=None
         ),
-    ) -> Dict:
+    ) -> dict:
         """Performs a hybrid search combining semantic (vector) and lexical (BM25) methods.
         Retrieves results from both, merges them using weighted Reciprocal Rank Fusion (RRF),
         and returns the top combined results.
@@ -943,12 +947,12 @@ def register_search_tools(mcp: FastMCP):
             if ctx:
                 await ctx.report_progress(progress=0, total=100)
 
-            semantic_results: List[Dict] = retriever.query(
+            semantic_results: list[dict] = retriever.query(
                 question=question,
                 number_results=number_results * 2,
             )
 
-            bm25_results: List[Dict] = retriever.bm25_query(
+            bm25_results: list[dict] = retriever.bm25_query(
                 question=question, number_results=number_results * 2
             )
 
@@ -995,7 +999,7 @@ def register_search_tools(mcp: FastMCP):
             raise
         except Exception as e:
             logger.error(f"Failed to search: {str(e)}")
-            raise RuntimeError(f"Failed to search: {str(e)}")
+            raise RuntimeError(f"Failed to search: {str(e)}") from e
 
 
 def get_mcp_instance() -> tuple[Any, Any, Any, Any]:
@@ -1022,7 +1026,7 @@ def get_mcp_instance() -> tuple[Any, Any, Any, Any]:
 
     for mw in middlewares:
         mcp.add_middleware(mw)
-    registered_tags = []
+    registered_tags: list[str] = []
     return mcp, args, middlewares, registered_tags
 
 

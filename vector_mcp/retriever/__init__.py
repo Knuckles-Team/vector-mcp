@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .chromadb_retriever import ChromaDBRetriever
+    from .couchbase_retriever import CouchbaseRetriever
     from .llamaindex_retriever import LlamaIndexRetriever
     from .mongodb_retriever import MongoDBRetriever
     from .postgres_retriever import PGVectorRetriever
-    from .couchbase_retriever import CouchbaseRetriever
     from .qdrant_retriever import QdrantRetriever
     from .retriever import RAGRetriever
 

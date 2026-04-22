@@ -7,12 +7,13 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from agent_utilities import create_embedding_model
+
+from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.vectordb.db_utils import (
     optional_import_block,
     require_optional_import,
 )
-
-from agent_utilities import create_embedding_model
 
 with optional_import_block():
     from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
@@ -34,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 @require_optional_import("llama_index", "rag")
-class LlamaIndexRetriever:
+class LlamaIndexRetriever(RAGRetriever):
     """This engine leverages LlamaIndex's VectorStoreIndex to efficiently index and retrieve documents, and generate an answer in response
     to natural language queries. It use any LlamaIndex [vector store](https://docs.llamaindex.ai/en/stable/module_guides/storing/vector_stores/).
 
@@ -60,10 +61,12 @@ class LlamaIndexRetriever:
 
         self.embed_model = create_embedding_model()
 
-    def init_db(
+    def initialize_collection(
         self,
         document_directory: Path | str | None = None,
         document_paths: Sequence[Path | str] | None = None,
+        document_contents: Sequence[str] | None = None,
+        overwrite: bool | None = True,
         *args: Any,
         **kwargs: Any,
     ) -> bool:
@@ -72,7 +75,9 @@ class LlamaIndexRetriever:
             vector_store=self.vector_store
         )
         documents = self._load_doc(
-            input_dir=document_directory, input_docs=document_paths
+            input_dir=document_directory,
+            input_docs=document_paths,
+            input_contents=document_contents,
         )
         self.index = VectorStoreIndex.from_documents(
             documents=documents,
@@ -98,28 +103,48 @@ class LlamaIndexRetriever:
         self,
         document_directory: Path | str | None = None,
         document_paths: Sequence[Path | str] | None = None,
+        document_contents: Sequence[str] | None = None,
         *args: Any,
         **kwargs: Any,
-    ) -> None:
+    ) -> Sequence["LlamaDocument"]:
         """Add new documents to the underlying database and add to the index."""
         self._validate_query_index()
         documents = self._load_doc(
-            input_dir=document_directory, input_docs=document_paths
+            input_dir=document_directory,
+            input_docs=document_paths,
+            input_contents=document_contents,
         )
         for doc in documents:
             self.index.insert(doc)
+        return documents
 
-    def query(self, question: str, **kwargs: Any) -> str:
+    def query(
+        self, question: str, number_results: int, *args: Any, **kwargs: Any
+    ) -> list[dict[str, Any]]:
         """Retrieve information from indexed documents by processing a query using the engine's LLM."""
         self._validate_query_index()
-        similarity_top_k = kwargs.get("n_results", 10)
+        similarity_top_k = kwargs.get("number_results", number_results)
         retriever = self.index.as_retriever(similarity_top_k=similarity_top_k)
         response = retriever.retrieve(str_or_query_bundle=question)
 
-        if str(response) == EMPTY_RESPONSE_TEXT:
-            return EMPTY_RESPONSE_REPLY
+        results = []
+        for node_with_score in response:
+            results.append(
+                {
+                    "text": node_with_score.node.get_content(),
+                    "score": node_with_score.score,
+                    "id": node_with_score.node.node_id,
+                    "metadata": node_with_score.node.metadata,
+                }
+            )
+        return results
 
-        return "\n\n".join([n.node.get_content() for n in response])
+    def bm25_query(
+        self, question: str, number_results: int, *args: Any, **kwargs: Any
+    ) -> list[dict[str, Any]]:
+        # LlamaIndexRetriever doesn't seem to have a specific BM25 implementation here,
+        # fallback to regular query for now or raise NotImplementedError.
+        return self.query(question, number_results, *args, **kwargs)
 
     def _validate_query_index(self) -> None:
         """Ensures an index exists"""
@@ -129,7 +154,10 @@ class LlamaIndexRetriever:
             )
 
     def _load_doc(
-        self, input_dir: Path | str | None, input_docs: Sequence[Path | str] | None
+        self,
+        input_dir: Path | str | None = None,
+        input_docs: Sequence[Path | str] | None = None,
+        input_contents: Sequence[str] | None = None,
     ) -> Sequence["LlamaDocument"]:
         """Load documents from a directory and/or a sequence of file paths."""
         loaded_documents: list[LlamaDocument] = []
@@ -150,14 +178,19 @@ class LlamaIndexRetriever:
                 self.file_reader_class(input_files=input_docs).load_data()
             )
 
-        if not input_dir and not input_docs:
-            raise ValueError("No input directory or docs provided!")
+        if input_contents:
+            logger.info(f"Loading {len(input_contents)} strings as documents")
+            for content in input_contents:
+                loaded_documents.append(LlamaDocument(text=content))
+
+        if not input_dir and not input_docs and not input_contents:
+            raise ValueError("No input directory, docs, or content provided!")
 
         return loaded_documents
 
 
 if TYPE_CHECKING:
-    from .retriever import RAGQueryEngine
+    from .retriever import RAGRetriever as RAGQueryEngine
 
     def _check_implement_protocol(o: LlamaIndexRetriever) -> RAGQueryEngine:
         return o

@@ -3,7 +3,7 @@
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from llama_index.core.schema import Document as LlamaDocument
@@ -18,13 +18,16 @@ class RAGRetriever(Protocol):
     This interface defines the basic methods for RAG.
     """
 
+    active_collection: Any | None = None
+    vector_db: Any | None = None
+
     def initialize_collection(
         self,
         document_directory: Path | str | None = None,
         document_paths: Sequence[Path | str] | None = None,
         document_contents: Sequence[str] | None = None,
-        overwrite: Optional[bool] | None = True,
-        collection_name: Optional[str] | None = "memory",
+        overwrite: bool | None = True,
+        collection_name: str | None = "memory",
         *args: Any,
         **kwargs: Any,
     ) -> bool:
@@ -73,7 +76,7 @@ class RAGRetriever(Protocol):
 
     def query(
         self, question: str, number_results: int, *args: Any, **kwargs: Any
-    ) -> str:
+    ) -> list[dict[str, Any]]:
         """Transform a string format question into database query and return the result.
 
         Args:
@@ -86,7 +89,7 @@ class RAGRetriever(Protocol):
 
     def bm25_query(
         self, question: str, number_results: int, *args: Any, **kwargs: Any
-    ) -> str:
+    ) -> list[dict[str, Any]]:
         """Transform a string format question into database query and return the result using BM25.
 
         Args:

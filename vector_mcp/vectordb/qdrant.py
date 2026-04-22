@@ -1,27 +1,27 @@
 #!/usr/bin/python
 
-from typing import Any, Optional, Union
+from typing import Any
+
+from agent_utilities import create_embedding_model
+from llama_index.core import (
+    Document as LIDocument,
+)
+from llama_index.core import (
+    StorageContext,
+    VectorStoreIndex,
+)
 
 from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
-
 from vector_mcp.vectordb.db_utils import (
     get_logger,
     optional_import_block,
     require_optional_import,
 )
 
-from agent_utilities import create_embedding_model
-
-from llama_index.core import (
-    VectorStoreIndex,
-    StorageContext,
-    Document as LIDocument,
-)
-
 with optional_import_block():
     import qdrant_client
-    from qdrant_client import models
     from llama_index.vector_stores.qdrant import QdrantVectorStore
+    from qdrant_client import models
 
 logger = get_logger(__name__)
 
@@ -33,14 +33,14 @@ class QdrantVectorDB(VectorDB):
     def __init__(
         self,
         *,
-        location: Optional[str] = None,
-        url: Optional[str] = None,
-        host: Optional[Union[str, int]] = None,
-        port: Optional[Union[str, int]] = None,
-        api_key: Optional[str] = None,
+        location: str | None = None,
+        url: str | None = None,
+        host: str | int | None = None,
+        port: str | int | None = None,
+        api_key: str | None = None,
         embed_model: Any | None = None,
         collection_name: str = "memory",
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         **kwargs,
     ) -> None:
         """Initialize the vector database."""
@@ -91,13 +91,13 @@ class QdrantVectorDB(VectorDB):
         self._index = None
         return self.vector_store
 
-    def get_collection(self, collection_name: str = None) -> Any:
+    def get_collection(self, collection_name: str | None = None) -> Any:
         return self.client.get_collection(collection_name or self.collection_name)
 
     def insert_documents(
         self,
         docs: list[Document],
-        collection_name: str = None,
+        collection_name: str | None = None,
         _upsert: bool = False,
         **kwargs,
     ) -> None:
@@ -118,7 +118,7 @@ class QdrantVectorDB(VectorDB):
     def semantic_search(
         self,
         queries: list[str],
-        collection_name: str = None,
+        collection_name: str | None = None,
         n_results: int = 10,
         distance_threshold: float = -1,
         **kwargs: Any,
@@ -149,8 +149,8 @@ class QdrantVectorDB(VectorDB):
 
     def get_documents_by_ids(
         self,
-        ids: list[ItemID] = None,
-        collection_name: str = None,
+        ids: list[ItemID] | None = None,
+        collection_name: str | None = None,
         include=None,
         **kwargs,
     ) -> list[Document]:
@@ -172,12 +172,12 @@ class QdrantVectorDB(VectorDB):
         return docs
 
     def update_documents(
-        self, docs: list[Document], collection_name: str = None
+        self, docs: list[Document], collection_name: str | None = None, **kwargs
     ) -> None:
-        self.insert_documents(docs, collection_name, upsert=True)
+        self.insert_documents(docs, collection_name, upsert=True, **kwargs)
 
     def delete_documents(
-        self, ids: list[ItemID], collection_name: str = None, **kwargs
+        self, ids: list[ItemID], collection_name: str | None = None, **kwargs
     ) -> None:
         if collection_name:
             self.create_collection(collection_name)
@@ -186,7 +186,7 @@ class QdrantVectorDB(VectorDB):
     def delete_collection(self, collection_name: str) -> None:
         self.client.delete_collection(collection_name)
         if self.active_collection == collection_name:
-            self.active_collection = None
+            self.active_collection = ""
 
     def get_collections(self) -> Any:
         return self.client.get_collections()
@@ -194,7 +194,7 @@ class QdrantVectorDB(VectorDB):
     def lexical_search(
         self,
         queries: list[str],
-        collection_name: str = None,
+        collection_name: str | None = None,
         n_results: int = 10,
         **kwargs: Any,
     ) -> QueryResults:
@@ -202,7 +202,6 @@ class QdrantVectorDB(VectorDB):
         results = []
         for query in queries:
             try:
-
                 result_points = []
                 scroll_result, _ = self.client.scroll(
                     collection_name=collection_name,

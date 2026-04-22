@@ -5,23 +5,21 @@ import logging
 import os
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Union, List, Dict
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     pass
 
-from vector_mcp.retriever.retriever import RAGRetriever
+from agent_utilities import create_embedding_model
+from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
+from llama_index.core.schema import Document as LlamaDocument
 
+from vector_mcp.retriever.retriever import RAGRetriever
+from vector_mcp.vectordb.base import VectorDB, VectorDBFactory
 from vector_mcp.vectordb.db_utils import (
     optional_import_block,
     require_optional_import,
 )
-
-from agent_utilities import create_embedding_model
-from vector_mcp.vectordb.base import VectorDBFactory
-
-from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
-from llama_index.core.schema import Document as LlamaDocument
 
 with optional_import_block():
     from vector_mcp.vectordb.postgres import PostgreSQL
@@ -46,12 +44,12 @@ class PGVectorRetriever(RAGRetriever):
 
     def __init__(
         self,
-        connection_string: Optional[str] = None,
-        host: Optional[Union[str, int]] = None,
-        port: Optional[Union[str, int]] = None,
-        dbname: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        connection_string: str | None = None,
+        host: str | int | None = None,
+        port: str | int | None = None,
+        dbname: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
         database_name: str | None = None,
         _embedding_function: Any | None = None,
         collection_name: str | None = None,
@@ -70,13 +68,13 @@ class PGVectorRetriever(RAGRetriever):
 
         self.embed_model = create_embedding_model()
 
-        self.vector_db: PostgreSQL | None = None
+        self.vector_db: VectorDB | None = None
         self.index: VectorStoreIndex | None = None
 
     def _set_up(self, overwrite: bool) -> None:
         """Sets up the PGVector database via PostgreSQL."""
         logger.info("Setting up the database.")
-        self.vector_db: PostgreSQL = VectorDBFactory.create_vector_database(
+        self.vector_db = VectorDBFactory.create_vector_database(
             db_type="postgres",
             connection_string=self.connection_string,
             host=self.host,
@@ -87,6 +85,7 @@ class PGVectorRetriever(RAGRetriever):
             embed_model=self.embed_model,
             collection_name=self.collection_name,
         )
+        assert isinstance(self.vector_db, PostgreSQL)
         self.vector_db.create_collection(
             collection_name=self.collection_name, overwrite=overwrite
         )
@@ -116,12 +115,12 @@ class PGVectorRetriever(RAGRetriever):
         document_directory: Path | str | None = None,
         document_paths: Sequence[Path | str] | None = None,
         document_contents: Sequence[str] | None = None,
-        overwrite: Optional[bool] | None = True,
+        overwrite: bool | None = True,
         *args: Any,
         **kwargs: Any,
     ) -> bool:
         try:
-            self._set_up(overwrite=overwrite)
+            self._set_up(overwrite=True if overwrite is None else overwrite)
 
             if document_directory or document_paths or document_contents:
                 logger.info("Setting up the database with documents.")
@@ -131,6 +130,7 @@ class PGVectorRetriever(RAGRetriever):
                     input_contents=document_contents,
                 )
                 for doc in documents:
+                    assert self.index is not None
                     self.index.insert(doc)
 
                 logger.info("Database initialized with %d documents.", len(documents))
@@ -196,13 +196,15 @@ class PGVectorRetriever(RAGRetriever):
             input_contents=document_contents,
         )
         for doc in documents:
+            assert self.index is not None
             self.index.insert(doc)
         return documents
 
     def query(
         self, question: str, number_results: int, *args: Any, **kwargs: Any
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         self._validate_query_index()
+        assert self.index is not None
         similarity_top_k = kwargs.get("number_results", number_results)
         retriever = self.index.as_retriever(similarity_top_k=similarity_top_k)
         response = retriever.retrieve(str_or_query_bundle=question)
@@ -221,8 +223,9 @@ class PGVectorRetriever(RAGRetriever):
 
     def bm25_query(
         self, question: str, number_results: int, *args: Any, **kwargs: Any
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         self._validate_query_index()
+        assert self.vector_db is not None
         results = self.vector_db.lexical_search(
             queries=[question],
             collection_name=self.collection_name,
@@ -235,16 +238,10 @@ class PGVectorRetriever(RAGRetriever):
         for doc, score in doc_scores:
             formatted_results.append(
                 {
-                    "text": (
-                        doc.content if hasattr(doc, "content") else doc.get("content")
-                    ),
+                    "text": doc.get("content", ""),
                     "score": score,
-                    "id": doc.id if hasattr(doc, "id") else doc.get("id"),
-                    "metadata": (
-                        doc.metadata
-                        if hasattr(doc, "metadata")
-                        else doc.get("metadata")
-                    ),
+                    "id": doc.get("id", ""),
+                    "metadata": doc.get("metadata"),
                 }
             )
 
@@ -258,7 +255,7 @@ class PGVectorRetriever(RAGRetriever):
 
 
 if TYPE_CHECKING:
-    from .retriever import RAGQueryEngine
+    from .retriever import RAGRetriever as RAGQueryEngine
 
     def _check_implement_protocol(o: PGVectorRetriever) -> RAGQueryEngine:
         return o
