@@ -136,3 +136,8 @@ dmypy.json
 .pyre/
 /tmp/
 /mcp/
+
+# Graph Database
+knowledge_graph.db*
+.repo_graph/
+.ladybug/

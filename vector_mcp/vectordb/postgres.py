@@ -1,6 +1,17 @@
 #!/usr/bin/python
 
-from typing import Any, Optional, Union
+import os
+from typing import Any
+
+from agent_utilities import create_embedding_model
+from llama_index.core import (
+    Document as LIDocument,
+)
+from llama_index.core import (
+    SimpleDirectoryReader,
+    StorageContext,
+    VectorStoreIndex,
+)
 
 from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
 from vector_mcp.vectordb.db_utils import (
@@ -8,16 +19,6 @@ from vector_mcp.vectordb.db_utils import (
     optional_import_block,
     require_optional_import,
 )
-
-from agent_utilities import create_embedding_model
-
-from llama_index.core import (
-    VectorStoreIndex,
-    StorageContext,
-    Document as LIDocument,
-    SimpleDirectoryReader,
-)
-import os
 
 with optional_import_block():
     from llama_index.vector_stores.postgres import PGVectorStore
@@ -27,7 +28,7 @@ logger = get_logger(__name__)
 
 
 @require_optional_import(
-    ["postgres", "psycopg", "llama_index"], "retrievechat-postgres"
+    ["llama_index.vector_stores.postgres", "psycopg", "llama_index"], "postgres"
 )
 class PostgreSQL(VectorDB):
     """A vector database that uses PGVector as the backend via LlamaIndex."""
@@ -35,15 +36,15 @@ class PostgreSQL(VectorDB):
     def __init__(
         self,
         *,
-        connection_string: Optional[str] = None,
-        host: Optional[Union[str, int]] = None,
-        port: Optional[Union[str, int]] = None,
-        dbname: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        connection_string: str | None = None,
+        host: str | int | None = None,
+        port: str | int | None = None,
+        dbname: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
         embed_model: Any | None = None,
         collection_name: str = "memory",
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
     ) -> None:
         """Initialize the vector database with LlamaIndex PGVectorStore.
@@ -108,7 +109,7 @@ class PostgreSQL(VectorDB):
         return self._index
 
     def create_collection(
-        self, collection_name: str, overwrite: bool = False, get_or_create: bool = True
+        self, collection_name: str, overwrite: bool = False, _get_or_create: bool = True
     ) -> Any:
         self.collection_name = collection_name
         if collection_name != self.vector_store.table_name:
@@ -164,7 +165,7 @@ class PostgreSQL(VectorDB):
         self.active_collection = collection_name
         return self.vector_store
 
-    def get_collection(self, collection_name: str = None) -> Any:
+    def get_collection(self, collection_name: str | None = None) -> Any:
         name = collection_name or self.active_collection
         if name != self.collection_name:
             self.create_collection(name)
@@ -176,8 +177,8 @@ class PostgreSQL(VectorDB):
     def insert_documents(
         self,
         docs: list[Document],
-        collection_name: str = None,
-        upsert: bool = False,
+        collection_name: str | None = None,
+        _upsert: bool = False,
         **kwargs,
     ) -> None:
         if collection_name:
@@ -197,7 +198,7 @@ class PostgreSQL(VectorDB):
     def semantic_search(
         self,
         queries: list[str],
-        collection_name: str = None,
+        collection_name: str | None = None,
         n_results: int = 10,
         distance_threshold: float = -1,
         **kwargs: Any,
@@ -213,7 +214,9 @@ class PostgreSQL(VectorDB):
             nodes = retriever.retrieve(query)
             query_result = []
             for node_match in nodes:
-                if distance_threshold >= 0 and node_match.score < distance_threshold:
+                # node_match.score is already a distance from PGVector (COSINE distance)
+                distance = node_match.score or 0.0
+                if distance_threshold >= 0 and distance > distance_threshold:
                     continue
 
                 doc = Document(
@@ -222,26 +225,115 @@ class PostgreSQL(VectorDB):
                     metadata=node_match.node.metadata,
                     embedding=node_match.node.embedding,
                 )
-                query_result.append((doc, 1.0 - (node_match.score or 0.0)))
+                query_result.append((doc, 1.0 - distance))
             results.append(query_result)
         return results
 
     def get_documents_by_ids(
         self,
-        ids: list[ItemID] = None,
-        collection_name: str = None,
+        ids: list[ItemID] | None = None,
+        collection_name: str | None = None,
         include: list[str] | None = None,
         **kwargs: Any,
     ) -> list[Document]:
-        return []
+        # LlamaIndex stores our original IDs in metadata as 'doc_id'
+        # PostgreSQL/PGVectorStore stores metadata in JSONB format in the metadata_ column
+        # Table name is 'data_' + collection_name
+        collection_name = collection_name or self.collection_name
+
+        try:
+            # Get the database connection from the vector store
+
+            # Get the engine from the vector store
+            engine = self.vector_store._engine
+
+            # The table name is 'data_' + collection_name
+            table_name = f"data_{collection_name}"
+
+            with engine.connect() as conn:
+                if ids:
+                    # Build query to find documents where metadata_->>'doc_id' is in our ids list
+                    # Use DISTINCT ON to get only one row per doc_id
+                    query = text(f"""
+                        SELECT DISTINCT ON (metadata_->>'doc_id') id, text, metadata_
+                        FROM {table_name} # nosec B608
+                        WHERE metadata_->>'doc_id' = ANY(:ids)
+                    """)
+
+                    result = conn.execute(query, {"ids": ids})
+                else:
+                    # Get all documents
+                    query = text(f"""
+                        SELECT DISTINCT ON (metadata_->>'doc_id') id, text, metadata_
+                        FROM {table_name} # nosec B608
+                    """)
+
+                    result = conn.execute(query)
+
+                rows = result.fetchall()
+
+            docs = []
+            for row in rows:
+                # row[0]: id (BIGINT), row[1]: text (VARCHAR), row[2]: metadata_ (JSON)
+                metadata_json = row[2] or {}
+                doc_id = metadata_json.get("doc_id", "")
+                doc_text = row[1] or ""
+
+                # Extract metadata from the metadata_ JSON, filtering out LlamaIndex internal fields
+                doc_metadata = {
+                    k: v
+                    for k, v in metadata_json.items()
+                    if not k.startswith("_")
+                    and k not in ["doc_id", "ref_doc_id", "document_id"]
+                }
+
+                docs.append(
+                    Document(
+                        id=doc_id,
+                        content=doc_text,
+                        metadata=doc_metadata,
+                    )
+                )
+
+            return docs
+
+        except Exception as e:
+            logger.error(f"Error in get_documents_by_ids: {e}")
+            # Fallback: try using LlamaIndex's ref_doc info if available
+            try:
+                # Try to get documents through the index
+                index = self._get_index()
+                # This might not work directly, but let's try
+
+                # Alternative: use docstore if available
+                if hasattr(index, "docstore") and index.docstore and ids:
+                    docs = []
+                    for doc_id in ids:
+                        try:
+                            ref_doc = index.docstore.get_ref_document(doc_id)
+                            if ref_doc:
+                                docs.append(
+                                    Document(
+                                        id=doc_id,
+                                        content=ref_doc.text,
+                                        metadata=ref_doc.metadata or {},
+                                    )
+                                )
+                        except Exception: # nosec B112
+                            continue
+                    return docs
+            except Exception as fallback_error:
+                logger.warning(f"Fallback also failed: {fallback_error}")
+
+            return []
 
     def update_documents(
-        self, docs: list[Document], collection_name: str = None, **kwargs
+        self, docs: list[Document], collection_name: str | None = None, **kwargs
     ) -> None:
         self.insert_documents(docs, collection_name, upsert=True)
 
     def delete_documents(
-        self, ids: list[ItemID], collection_name: str = None, **kwargs
+        self, ids: list[ItemID], collection_name: str | None = None, **kwargs
     ) -> None:
         if collection_name:
             self.create_collection(collection_name)
@@ -290,7 +382,7 @@ class PostgreSQL(VectorDB):
     def lexical_search(
         self,
         queries: list[str],
-        collection_name: str = None,
+        collection_name: str | None = None,
         n_results: int = 10,
         **kwargs: Any,
     ) -> QueryResults:
@@ -306,13 +398,12 @@ class PostgreSQL(VectorDB):
         results = []
         with self.vector_store._engine.connect() as connection:
             for query in queries:
-
                 table_name = f"data_{self.collection_name}"
 
                 try:
                     sql = text(f"""
                         SELECT id, text, metadata_, paradedb.bm25(text, :q) as score
-                        FROM {table_name}
+                        FROM {table_name} # nosec B608
                         WHERE paradedb.bm25(text, :q) > 0
                         ORDER BY score DESC
                         LIMIT :k
@@ -337,7 +428,7 @@ class PostgreSQL(VectorDB):
                     try:
                         sql_fallback = text(f"""
                             SELECT id, text, metadata_, ts_rank(to_tsvector('english', text), plainto_tsquery('english', :q)) as score
-                            FROM {table_name}
+                            FROM {table_name} # nosec B608
                             WHERE to_tsvector('english', text) @@ plainto_tsquery('english', :q)
                             ORDER BY score DESC
                             LIMIT :k

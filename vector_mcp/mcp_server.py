@@ -6,6 +6,7 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     try:
         from requests.exceptions import RequestsDependencyWarning
+
         warnings.filterwarnings("ignore", category=RequestsDependencyWarning)
     except ImportError:
         pass
@@ -31,6 +32,7 @@ from fastmcp.utilities.logging import get_logger
 from agent_utilities.base_utilities import to_integer
 from agent_utilities.mcp_utilities import (
     create_mcp_server,
+    ctx_log,
 )
 from vector_mcp.retriever.retriever import RAGRetriever
 
@@ -282,7 +284,7 @@ def register_collection_management_tools(mcp: FastMCP):
             collection_name=collection_name,
         )
 
-        logger.debug(
+        ctx_log(ctx, logger, "debug",
             f"Creating collection: {collection_name}, overwrite: {overwrite}, "
             f"document directory: {document_directory}, document urls: {document_paths}"
         )
@@ -318,10 +320,10 @@ def register_collection_management_tools(mcp: FastMCP):
             response["completion"] = coll
             return response
         except ValueError as e:
-            logger.error(f"Invalid input for create_collection: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Invalid input for create_collection: {str(e)}")
             raise
         except Exception as e:
-            logger.error(f"Failed to create collection: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Failed to create collection: {str(e)}")
             raise RuntimeError(f"Failed to create collection: {str(e)}")
 
     @mcp.tool(
@@ -392,7 +394,7 @@ def register_collection_management_tools(mcp: FastMCP):
 
                 files = [f for f in doc_dir_path.iterdir() if f.is_file()]
                 if not files and not document_paths and not document_contents:
-                    logger.warning(f"No files found in {document_directory}")
+                    ctx_log(ctx, logger, "warning", f"No files found in {document_directory}")
                     return {
                         "added_texts": [],
                         "message": "No documents found to ingest.",
@@ -415,7 +417,7 @@ def register_collection_management_tools(mcp: FastMCP):
             password=password,
             collection_name=collection_name,
         )
-        logger.debug(
+        ctx_log(ctx, logger, "debug",
             f"Inserting documents into collection: {collection_name}. "
             f"Directory: {document_directory}, Paths: {document_paths}, Contents: {'Yes' if document_contents else 'No'}"
         )
@@ -447,10 +449,10 @@ def register_collection_management_tools(mcp: FastMCP):
             }
             return response
         except ValueError as e:
-            logger.error(f"Invalid input for insert_documents: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Invalid input for insert_documents: {str(e)}")
             raise
         except Exception as e:
-            logger.error(f"Failed to insert documents: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Failed to insert documents: {str(e)}")
             raise RuntimeError(f"Failed to insert documents: {str(e)}")
 
     @mcp.tool(
@@ -513,7 +515,7 @@ def register_collection_management_tools(mcp: FastMCP):
                             "message": "Operation cancelled by user.",
                         }
                 except Exception as e:
-                    logger.warning(f"Elicitation failed: {str(e)}")
+                    ctx_log(ctx, logger, "warning", f"Elicitation failed: {str(e)}")
                     return {
                         "status": "error",
                         "message": "Elicitation not supported by client. Please set 'confirm=True' to force deletion.",
@@ -534,7 +536,7 @@ def register_collection_management_tools(mcp: FastMCP):
             password=password,
             collection_name=collection_name,
         )
-        logger.debug(f"Deleting collection: {collection_name} from: {db_type}")
+        ctx_log(ctx, logger, "debug", f"Deleting collection: {collection_name} from: {db_type}")
 
         try:
             if ctx:
@@ -554,10 +556,10 @@ def register_collection_management_tools(mcp: FastMCP):
             }
             return response
         except ValueError as e:
-            logger.error(f"Invalid input for delete collection: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Invalid input for delete collection: {str(e)}")
             raise
         except Exception as e:
-            logger.error(f"Failed to delete collection: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Failed to delete collection: {str(e)}")
             raise RuntimeError(f"Failed to delete collection: {str(e)}")
 
     @mcp.tool(
@@ -615,7 +617,7 @@ def register_collection_management_tools(mcp: FastMCP):
                 password=password,
                 ensure_collection_exists=False,
             )
-            logger.debug(f"Listing collections for: {db_type}")
+            ctx_log(ctx, logger, "debug", f"Listing collections for: {db_type}")
 
             if ctx:
                 await ctx.report_progress(progress=0, total=100)
@@ -645,13 +647,13 @@ def register_collection_management_tools(mcp: FastMCP):
             }
             return response
         except ValueError as e:
-            logger.error(f"Invalid input for list_collections: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Invalid input for list_collections: {str(e)}")
             raise
         except Exception as e:
-            logger.error(f"Failed to list collections: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Failed to list collections: {str(e)}")
             import traceback
 
-            logger.error(traceback.format_exc())
+            ctx_log(ctx, logger, "error", traceback.format_exc())
             raise RuntimeError(f"Failed to list collections: {str(e)}")
 
 
@@ -713,7 +715,7 @@ def register_search_tools(mcp: FastMCP):
         It will return relevant text(s) which should be parsed for the most
         relevant information pertaining to the question and summarized as the final output
         """
-        logger.debug(f"Initializing collection: {collection_name}")
+        ctx_log(ctx, logger, "debug", f"Initializing collection: {collection_name}")
 
         retriever = initialize_retriever(
             db_type=db_type,
@@ -729,7 +731,7 @@ def register_search_tools(mcp: FastMCP):
         try:
             if ctx:
                 await ctx.report_progress(progress=0, total=100)
-            logger.debug(f"Querying collection: {question}")
+            ctx_log(ctx, logger, "debug", f"Querying collection: {question}")
             results = retriever.query(question=question, number_results=number_results)
             texts = "\n".join([r["text"] for r in results])
             if ctx:
@@ -749,10 +751,10 @@ def register_search_tools(mcp: FastMCP):
             }
             return response
         except ValueError as e:
-            logger.error(f"Invalid input for get_collection: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Invalid input for get_collection: {str(e)}")
             raise
         except Exception as e:
-            logger.error(f"Failed to get collection: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Failed to get collection: {str(e)}")
             raise RuntimeError(f"Failed to get collection: {str(e)}")
 
     @mcp.tool(
@@ -810,7 +812,7 @@ def register_search_tools(mcp: FastMCP):
         """This is a lexical or term based search that retrieves and gathers related knowledge from the database instance using the question variable via BM25.
         This provides a complementary search method to vector search, useful for exact keyword matching.
         """
-        logger.debug(f"Initializing collection for BM25: {collection_name}")
+        ctx_log(ctx, logger, "debug", f"Initializing collection for BM25: {collection_name}")
 
         retriever = initialize_retriever(
             db_type=db_type,
@@ -826,7 +828,7 @@ def register_search_tools(mcp: FastMCP):
         try:
             if ctx:
                 await ctx.report_progress(progress=0, total=100)
-            logger.debug(f"BM25 Querying collection: {question}")
+            ctx_log(ctx, logger, "debug", f"BM25 Querying collection: {question}")
             results = retriever.bm25_query(
                 question=question, number_results=number_results
             )
@@ -848,10 +850,10 @@ def register_search_tools(mcp: FastMCP):
             }
             return response
         except ValueError as e:
-            logger.error(f"Invalid input for lexical_search: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Invalid input for lexical_search: {str(e)}")
             raise
         except Exception as e:
-            logger.error(f"Failed to lexical_search: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Failed to lexical_search: {str(e)}")
             raise RuntimeError(f"Failed to lexical_search: {str(e)}")
 
     @mcp.tool(
@@ -922,7 +924,7 @@ def register_search_tools(mcp: FastMCP):
         Retrieves results from both, merges them using weighted Reciprocal Rank Fusion (RRF),
         and returns the top combined results.
         """
-        logger.debug(f"Initializing collection for hybrid: {collection_name}")
+        ctx_log(ctx, logger, "debug", f"Initializing collection for hybrid: {collection_name}")
 
         retriever = initialize_retriever(
             db_type=db_type,
@@ -987,10 +989,10 @@ def register_search_tools(mcp: FastMCP):
             }
             return response
         except ValueError as e:
-            logger.error(f"Invalid input for search: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Invalid input for search: {str(e)}")
             raise
         except Exception as e:
-            logger.error(f"Failed to search: {str(e)}")
+            ctx_log(ctx, logger, "error", f"Failed to search: {str(e)}")
             raise RuntimeError(f"Failed to search: {str(e)}")
 
 

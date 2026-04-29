@@ -1,46 +1,46 @@
 #!/usr/bin/python
 
-from typing import Any, Optional, Union
+from typing import Any
+
+from agent_utilities import create_embedding_model
+from llama_index.core import (
+    Document as LIDocument,
+)
+from llama_index.core import (
+    StorageContext,
+    VectorStoreIndex,
+)
 
 from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
-
 from vector_mcp.vectordb.db_utils import (
     get_logger,
     optional_import_block,
     require_optional_import,
 )
 
-from agent_utilities import create_embedding_model
-
-from llama_index.core import (
-    VectorStoreIndex,
-    StorageContext,
-    Document as LIDocument,
-)
-
 with optional_import_block():
     import qdrant_client
-    from qdrant_client import models
     from llama_index.vector_stores.qdrant import QdrantVectorStore
+    from qdrant_client import models
 
 logger = get_logger(__name__)
 
 
-@require_optional_import(["qdrant_client", "llama_index"], "retrievechat-qdrant")
+@require_optional_import(["qdrant_client", "llama_index"], "qdrant")
 class QdrantVectorDB(VectorDB):
     """A vector database that uses Qdrant as the backend via LlamaIndex."""
 
     def __init__(
         self,
         *,
-        location: Optional[str] = None,
-        url: Optional[str] = None,
-        host: Optional[Union[str, int]] = None,
-        port: Optional[Union[str, int]] = None,
-        api_key: Optional[str] = None,
+        location: str | None = None,
+        url: str | None = None,
+        host: str | int | None = None,
+        port: str | int | None = None,
+        api_key: str | None = None,
         embed_model: Any | None = None,
         collection_name: str = "memory",
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         **kwargs,
     ) -> None:
         """Initialize the vector database."""
@@ -73,12 +73,26 @@ class QdrantVectorDB(VectorDB):
         return self._index
 
     def create_collection(
-        self, collection_name: str, overwrite: bool = False, get_or_create: bool = True
+        self, collection_name: str, overwrite: bool = False, _get_or_create: bool = True
     ) -> Any:
         self.collection_name = collection_name
 
         if overwrite:
             self.client.delete_collection(collection_name)
+
+        # Check if collection exists, if not and _get_or_create is True, create it
+        collection_exists = self.client.collection_exists(collection_name)
+        if not collection_exists and _get_or_create:
+            from qdrant_client.models import Distance, VectorParams
+
+            # Get embedding dimension from the model
+            sample_embedding = self.embed_model.get_query_embedding("test")
+            vector_size = len(sample_embedding)
+
+            self.client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+            )
 
         self.vector_store = QdrantVectorStore(
             client=self.client,
@@ -91,14 +105,14 @@ class QdrantVectorDB(VectorDB):
         self._index = None
         return self.vector_store
 
-    def get_collection(self, collection_name: str = None) -> Any:
+    def get_collection(self, collection_name: str | None = None) -> Any:
         return self.client.get_collection(collection_name or self.collection_name)
 
     def insert_documents(
         self,
         docs: list[Document],
-        collection_name: str = None,
-        upsert: bool = False,
+        collection_name: str | None = None,
+        _upsert: bool = False,
         **kwargs,
     ) -> None:
         if collection_name:
@@ -118,13 +132,13 @@ class QdrantVectorDB(VectorDB):
     def semantic_search(
         self,
         queries: list[str],
-        collection_name: str = None,
+        collection_name: str | None = None,
         n_results: int = 10,
         distance_threshold: float = -1,
         **kwargs: Any,
     ) -> QueryResults:
         if collection_name:
-            self.create_collection(collection_name)
+            self.create_collection(collection_name, _get_or_create=True)
 
         index = self._get_index()
         results = []
@@ -134,7 +148,9 @@ class QdrantVectorDB(VectorDB):
             nodes = retriever.retrieve(query)
             query_result = []
             for node_match in nodes:
-                if distance_threshold >= 0 and node_match.score < distance_threshold:
+                # node_match.score is already a distance from Qdrant (COSINE distance)
+                distance = node_match.score or 0.0
+                if distance_threshold >= 0 and distance > distance_threshold:
                     continue
 
                 doc = Document(
@@ -149,35 +165,102 @@ class QdrantVectorDB(VectorDB):
 
     def get_documents_by_ids(
         self,
-        ids: list[ItemID] = None,
-        collection_name: str = None,
+        ids: list[ItemID] | None = None,
+        collection_name: str | None = None,
         include=None,
         **kwargs,
     ) -> list[Document]:
-        records = self.client.retrieve(
-            collection_name=collection_name or self.collection_name,
-            ids=ids,
-            with_vectors=True,
-            with_payload=True,
-        )
-        docs = []
-        for record in records:
-            docs.append(
-                Document(
-                    id=record.id,
-                    content=record.payload.get("text", ""),
-                    metadata=record.payload.get("metadata", {}),
-                )
+        # LlamaIndex stores our original IDs in payload metadata as 'doc_id'
+        # Qdrant requires UUID/integer IDs, so we need to search by metadata
+        collection_name = collection_name or self.collection_name
+
+        if ids:
+            # Get all documents and filter by metadata
+            records, _ = self.client.scroll(
+                collection_name=collection_name,
+                limit=1000,  # Adjust based on expected collection size
+                with_payload=True,
+                with_vectors=False,
             )
-        return docs
+            docs = []
+            for record in records:
+                payload = record.payload or {}
+                doc_id = payload.get("doc_id")
+                if doc_id in ids:
+                    # Extract metadata from payload (metadata fields are stored at top level)
+                    # Filter out LlamaIndex internal fields
+                    metadata = {
+                        k: v
+                        for k, v in payload.items()
+                        if not k.startswith("_")
+                        and k not in ["doc_id", "ref_doc_id", "document_id"]
+                    }
+                    # Extract content from _node_content if not available at top level
+                    content = payload.get("text", "")
+                    if not content and "_node_content" in payload:
+                        import json
+
+                        try:
+                            node_content = json.loads(payload["_node_content"])
+                            content = node_content.get("text", "")
+                        except (json.JSONDecodeError, KeyError):
+                            content = ""
+                    docs.append(
+                        Document(
+                            id=doc_id,  # Return the original ID
+                            content=content,
+                            metadata=metadata,
+                        )
+                    )
+            return docs
+        else:
+            # Return all documents
+            records, _ = self.client.scroll(
+                collection_name=collection_name,
+                limit=1000,
+                with_payload=True,
+                with_vectors=False,
+            )
+            docs = []
+            for record in records:
+                payload = record.payload or {}
+                doc_id = payload.get(
+                    "doc_id", str(record.id)
+                )  # Use doc_id from metadata or fall back to UUID
+                # Extract metadata from payload (metadata fields are stored at top level)
+                # Filter out LlamaIndex internal fields
+                metadata = {
+                    k: v
+                    for k, v in payload.items()
+                    if not k.startswith("_")
+                    and k not in ["doc_id", "ref_doc_id", "document_id"]
+                }
+                # Extract content from _node_content if not available at top level
+                content = payload.get("text", "")
+                if not content and "_node_content" in payload:
+                    import json
+
+                    try:
+                        node_content = json.loads(payload["_node_content"])
+                        content = node_content.get("text", "")
+                    except (json.JSONDecodeError, KeyError):
+                        content = ""
+                docs.append(
+                    Document(
+                        id=doc_id,
+                        content=content,
+                        metadata=metadata,
+                    )
+                )
+            return docs
 
     def update_documents(
-        self, docs: list[Document], collection_name: str = None
+        self, docs: list[Document], collection_name: str | None = None, **kwargs
     ) -> None:
-        self.insert_documents(docs, collection_name, upsert=True)
+        self.insert_documents(docs, collection_name, upsert=True, **kwargs)
 
     def delete_documents(
-        self, ids: list[ItemID], collection_name: str = None, **kwargs
+        self, ids: list[ItemID], collection_name: str | None = None, **kwargs
     ) -> None:
         if collection_name:
             self.create_collection(collection_name)
@@ -186,7 +269,7 @@ class QdrantVectorDB(VectorDB):
     def delete_collection(self, collection_name: str) -> None:
         self.client.delete_collection(collection_name)
         if self.active_collection == collection_name:
-            self.active_collection = None
+            self.active_collection = ""
 
     def get_collections(self) -> Any:
         return self.client.get_collections()
@@ -194,7 +277,7 @@ class QdrantVectorDB(VectorDB):
     def lexical_search(
         self,
         queries: list[str],
-        collection_name: str = None,
+        collection_name: str | None = None,
         n_results: int = 10,
         **kwargs: Any,
     ) -> QueryResults:
@@ -202,7 +285,6 @@ class QdrantVectorDB(VectorDB):
         results = []
         for query in queries:
             try:
-
                 result_points = []
                 scroll_result, _ = self.client.scroll(
                     collection_name=collection_name,
