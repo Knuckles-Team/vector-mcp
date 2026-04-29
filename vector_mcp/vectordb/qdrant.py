@@ -26,7 +26,7 @@ with optional_import_block():
 logger = get_logger(__name__)
 
 
-@require_optional_import(["qdrant_client", "llama_index"], "retrievechat-qdrant")
+@require_optional_import(["qdrant_client", "llama_index"], "qdrant")
 class QdrantVectorDB(VectorDB):
     """A vector database that uses Qdrant as the backend via LlamaIndex."""
 
@@ -80,6 +80,20 @@ class QdrantVectorDB(VectorDB):
         if overwrite:
             self.client.delete_collection(collection_name)
 
+        # Check if collection exists, if not and _get_or_create is True, create it
+        collection_exists = self.client.collection_exists(collection_name)
+        if not collection_exists and _get_or_create:
+            from qdrant_client.models import Distance, VectorParams
+
+            # Get embedding dimension from the model
+            sample_embedding = self.embed_model.get_query_embedding("test")
+            vector_size = len(sample_embedding)
+
+            self.client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+            )
+
         self.vector_store = QdrantVectorStore(
             client=self.client,
             collection_name=self.collection_name,
@@ -124,7 +138,7 @@ class QdrantVectorDB(VectorDB):
         **kwargs: Any,
     ) -> QueryResults:
         if collection_name:
-            self.create_collection(collection_name)
+            self.create_collection(collection_name, _get_or_create=True)
 
         index = self._get_index()
         results = []
@@ -134,7 +148,9 @@ class QdrantVectorDB(VectorDB):
             nodes = retriever.retrieve(query)
             query_result = []
             for node_match in nodes:
-                if distance_threshold >= 0 and node_match.score < distance_threshold:
+                # node_match.score is already a distance from Qdrant (COSINE distance)
+                distance = node_match.score or 0.0
+                if distance_threshold >= 0 and distance > distance_threshold:
                     continue
 
                 doc = Document(
@@ -154,22 +170,89 @@ class QdrantVectorDB(VectorDB):
         include=None,
         **kwargs,
     ) -> list[Document]:
-        records = self.client.retrieve(
-            collection_name=collection_name or self.collection_name,
-            ids=ids,
-            with_vectors=True,
-            with_payload=True,
-        )
-        docs = []
-        for record in records:
-            docs.append(
-                Document(
-                    id=record.id,
-                    content=record.payload.get("text", ""),
-                    metadata=record.payload.get("metadata", {}),
-                )
+        # LlamaIndex stores our original IDs in payload metadata as 'doc_id'
+        # Qdrant requires UUID/integer IDs, so we need to search by metadata
+        collection_name = collection_name or self.collection_name
+
+        if ids:
+            # Get all documents and filter by metadata
+            records, _ = self.client.scroll(
+                collection_name=collection_name,
+                limit=1000,  # Adjust based on expected collection size
+                with_payload=True,
+                with_vectors=False,
             )
-        return docs
+            docs = []
+            for record in records:
+                payload = record.payload or {}
+                doc_id = payload.get("doc_id")
+                if doc_id in ids:
+                    # Extract metadata from payload (metadata fields are stored at top level)
+                    # Filter out LlamaIndex internal fields
+                    metadata = {
+                        k: v
+                        for k, v in payload.items()
+                        if not k.startswith("_")
+                        and k not in ["doc_id", "ref_doc_id", "document_id"]
+                    }
+                    # Extract content from _node_content if not available at top level
+                    content = payload.get("text", "")
+                    if not content and "_node_content" in payload:
+                        import json
+
+                        try:
+                            node_content = json.loads(payload["_node_content"])
+                            content = node_content.get("text", "")
+                        except (json.JSONDecodeError, KeyError):
+                            content = ""
+                    docs.append(
+                        Document(
+                            id=doc_id,  # Return the original ID
+                            content=content,
+                            metadata=metadata,
+                        )
+                    )
+            return docs
+        else:
+            # Return all documents
+            records, _ = self.client.scroll(
+                collection_name=collection_name,
+                limit=1000,
+                with_payload=True,
+                with_vectors=False,
+            )
+            docs = []
+            for record in records:
+                payload = record.payload or {}
+                doc_id = payload.get(
+                    "doc_id", str(record.id)
+                )  # Use doc_id from metadata or fall back to UUID
+                # Extract metadata from payload (metadata fields are stored at top level)
+                # Filter out LlamaIndex internal fields
+                metadata = {
+                    k: v
+                    for k, v in payload.items()
+                    if not k.startswith("_")
+                    and k not in ["doc_id", "ref_doc_id", "document_id"]
+                }
+                # Extract content from _node_content if not available at top level
+                content = payload.get("text", "")
+                if not content and "_node_content" in payload:
+                    import json
+
+                    try:
+                        node_content = json.loads(payload["_node_content"])
+                        content = node_content.get("text", "")
+                    except (json.JSONDecodeError, KeyError):
+                        content = ""
+                docs.append(
+                    Document(
+                        id=doc_id,
+                        content=content,
+                        metadata=metadata,
+                    )
+                )
+            return docs
 
     def update_documents(
         self, docs: list[Document], collection_name: str | None = None, **kwargs

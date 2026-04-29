@@ -123,11 +123,10 @@ class CouchbaseRetriever(RAGRetriever):
         """Checks if the specified collection exists in the Couchbase database."""
         try:
             assert self.vector_db is not None
-            collection_mgr = (
-                cast(CouchbaseVectorDB, self.vector_db)
-                .cluster.bucket(self.bucket_name)
-                .collections()
-            )
+            vector_db = cast(CouchbaseVectorDB, self.vector_db)
+            if not vector_db.cluster:
+                return False
+            collection_mgr = vector_db.cluster.bucket(self.bucket_name).collections()
             collections = collection_mgr.get_all_collections(self.scope_name)
             return any(
                 collection.name == self.collection_name for collection in collections
@@ -146,7 +145,9 @@ class CouchbaseRetriever(RAGRetriever):
             self._set_up(overwrite=False)
 
             assert self.vector_db is not None
-            cast(CouchbaseVectorDB, self.vector_db).cluster.ping()
+            vector_db = cast(CouchbaseVectorDB, self.vector_db)
+            if vector_db.cluster:
+                vector_db.cluster.ping()
             logger.info("Connected to Couchbase successfully.")
             return True
         except Exception as error:
@@ -166,7 +167,9 @@ class CouchbaseRetriever(RAGRetriever):
         try:
             self._set_up(overwrite=True if overwrite is None else overwrite)
             assert self.vector_db is not None
-            cast(CouchbaseVectorDB, self.vector_db).cluster.ping()
+            vector_db = cast(CouchbaseVectorDB, self.vector_db)
+            if vector_db.cluster:
+                vector_db.cluster.ping()
 
             if document_directory or document_paths or document_contents:
                 logger.info("Setting up the database with documents.")

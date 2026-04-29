@@ -4,10 +4,6 @@ from typing import Any
 
 from agent_utilities import create_embedding_model
 from llama_index.core import (
-    Document as LIDocument,
-)
-from llama_index.core import (
-    StorageContext,
     VectorStoreIndex,
 )
 
@@ -19,13 +15,12 @@ from vector_mcp.vectordb.db_utils import (
 )
 
 with optional_import_block():
-    from llama_index.vector_stores.mongodb import MongoDBVectorStore
     from pymongo import MongoClient
 
 logger = get_logger(__name__)
 
 
-@require_optional_import(["pymongo", "llama_index"], "retrievechat-mongodb")
+@require_optional_import(["pymongo", "llama_index"], "mongodb")
 class MongoDBAtlasVectorDB(VectorDB):
     """A vector database that uses MongoDB Atlas as the backend via LlamaIndex."""
 
@@ -61,51 +56,36 @@ class MongoDBAtlasVectorDB(VectorDB):
         self.dbname = dbname or "default_db"
         self.mongo_client = MongoClient(self.connection_string)
 
-        self.vector_store = MongoDBVectorStore(
-            mongo_client=self.mongo_client,
-            db_name=self.dbname,
-            collection_name=self.collection_name,
-            **kwargs,
-        )
-        self.storage_context = StorageContext.from_defaults(
-            vector_store=self.vector_store
-        )
+        # For local MongoDB testing, we'll use a simpler approach
+        # MongoDBAtlasVectorSearch is designed for MongoDB Atlas cloud, not local instances
+        # For now, we'll implement basic vector operations using the raw client
+        # This is a temporary solution for testing purposes
+        self._use_simple_client = True
+        self.storage_context = None
+        self.vector_store = None
         self.active_collection = collection_name
         self.type = "mongodb"
         self._index = None
 
+    def _get_collection(self, collection_name: str):
+        """Get MongoDB collection for a given name."""
+        return self.mongo_client[self.dbname][collection_name]
+
     def _get_index(self) -> "VectorStoreIndex":
-        if self._index is None:
-            self._index = VectorStoreIndex.from_vector_store(
-                self.vector_store,
-                storage_context=self.storage_context,
-                embed_model=self.embed_model,
-            )
-        return self._index
+        # For simple client approach, we'll implement basic operations without LlamaIndex index
+        return None
 
     def create_collection(
         self, collection_name: str, overwrite: bool = False, _get_or_create: bool = True
     ) -> Any:
         self.collection_name = collection_name
         if overwrite:
-            db = self.mongo_client[self.dbname]
-            db.drop_collection(collection_name)
-
-        self.vector_store = MongoDBVectorStore(
-            mongo_client=self.mongo_client,
-            db_name=self.dbname,
-            collection_name=self.collection_name,
-        )
-        self.storage_context = StorageContext.from_defaults(
-            vector_store=self.vector_store
-        )
+            self._get_collection(collection_name).drop()
         self.active_collection = collection_name
-        self._index = None
-        return self.vector_store
+        return self._get_collection(collection_name)
 
     def get_collection(self, collection_name: str | None = None) -> Any:
-        db = self.mongo_client[self.dbname]
-        return db[collection_name or self.collection_name]
+        return self._get_collection(collection_name or self.collection_name)
 
     def insert_documents(
         self,
@@ -114,19 +94,27 @@ class MongoDBAtlasVectorDB(VectorDB):
         _upsert: bool = False,
         **kwargs,
     ) -> None:
-        if collection_name:
-            self.create_collection(collection_name)
-
-        li_docs = []
+        collection = self._get_collection(collection_name or self.collection_name)
         for doc in docs:
-            metadata = doc.get("metadata", {}) or {}
-            li_docs.append(
-                LIDocument(text=doc["content"], doc_id=doc["id"], metadata=metadata)
-            )
+            doc_id = doc.get("id")
+            text = doc.get("content")
+            metadata = doc.get("metadata", {})
+            embedding = doc.get("embedding")
 
-        index = self._get_index()
-        for li_doc in li_docs:
-            index.insert(li_doc)
+            if embedding is None:
+                embedding = self.embed_model.get_text_embedding(text)
+
+            document = {
+                "id": doc_id,
+                "text": text,
+                "metadata": metadata,
+                "embedding": embedding,
+            }
+
+            if _upsert:
+                collection.update_one({"id": doc_id}, {"$set": document}, upsert=True)
+            else:
+                collection.insert_one(document)
 
     def semantic_search(
         self,
@@ -136,28 +124,59 @@ class MongoDBAtlasVectorDB(VectorDB):
         distance_threshold: float = -1,
         **kwargs: Any,
     ) -> QueryResults:
-        if collection_name:
-            self.create_collection(collection_name)
-
-        index = self._get_index()
+        collection = self._get_collection(collection_name or self.collection_name)
         results = []
-        retriever = index.as_retriever(similarity_top_k=n_results)
+
+        import math
 
         for query in queries:
-            nodes = retriever.retrieve(query)
+            query_embedding = self.embed_model.get_query_embedding(query)
             query_result = []
-            for node_match in nodes:
-                if distance_threshold >= 0 and node_match.score < distance_threshold:
+
+            # Get all documents and calculate cosine similarity
+            documents = list(
+                collection.find({}, {"embedding": 1, "text": 1, "metadata": 1, "id": 1})
+            )
+
+            for doc in documents:
+                doc_embedding = doc.get("embedding", [])
+                if not doc_embedding:
                     continue
 
-                doc = Document(
-                    id=node_match.node.node_id,
-                    content=node_match.node.text,
-                    metadata=node_match.node.metadata,
-                    embedding=node_match.node.embedding,
+                # Calculate cosine similarity
+                dot_product = sum(
+                    q * d for q, d in zip(query_embedding, doc_embedding, strict=True)
                 )
-                query_result.append((doc, 1.0 - (node_match.score or 0.0)))
+                magnitude_q = math.sqrt(sum(q * q for q in query_embedding))
+                magnitude_d = math.sqrt(sum(d * d for d in doc_embedding))
+
+                if magnitude_q == 0 or magnitude_d == 0:
+                    continue
+
+                similarity = dot_product / (magnitude_q * magnitude_d)
+                distance = 1.0 - similarity  # Convert similarity to distance
+
+                if distance_threshold >= 0 and distance > distance_threshold:
+                    continue
+
+                query_result.append(
+                    (
+                        Document(
+                            id=doc.get("id"),
+                            content=doc.get("text"),
+                            metadata=doc.get("metadata", {}),
+                            embedding=doc.get("embedding"),
+                        ),
+                        similarity,
+                    )
+                )
+
+            # Sort by similarity (descending) and limit results
+            query_result.sort(key=lambda x: x[1], reverse=True)
+            query_result = query_result[:n_results]
+
             results.append(query_result)
+
         return results
 
     def get_documents_by_ids(
@@ -192,19 +211,16 @@ class MongoDBAtlasVectorDB(VectorDB):
     def delete_documents(
         self, ids: list[ItemID], collection_name: str | None = None, **kwargs
     ) -> None:
-        if collection_name:
-            self.create_collection(collection_name)
-        self.vector_store.delete_nodes(ids)
+        collection = self._get_collection(collection_name or self.collection_name)
+        collection.delete_many({"id": {"$in": ids}})
 
     def delete_collection(self, collection_name: str) -> None:
-        db = self.mongo_client[self.dbname]
-        db.drop_collection(collection_name)
+        self._get_collection(collection_name).drop()
         if self.active_collection == collection_name:
             self.active_collection = ""
 
     def get_collections(self) -> Any:
-        db = self.mongo_client[self.dbname]
-        return db.list_collection_names()
+        return self.mongo_client[self.dbname].list_collection_names()
 
     def lexical_search(
         self,

@@ -1,0 +1,62 @@
+---
+# Docker Compose file for testing all vector database backends
+# Compatible with docker-compose and podman-compose
+# Usage: docker-compose -f docker-compose.test.yml up -d
+# Or: podman-compose -f docker-compose.test.yml up -d
+
+services:
+  # PostgreSQL with PGVector ( ParadeDB for vector + BM25)
+  postgres:
+    image: docker.io/paradedb/paradedb:latest-pg16
+    container_name: vector-test-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: vectordb
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # MongoDB
+  mongodb:
+    image: docker.io/mongo:latest
+    container_name: vector-test-mongodb
+    command: mongod --noauth
+    ports:
+      - "27017:27017"
+
+  # Qdrant
+  qdrant:
+    image: docker.io/qdrant/qdrant:latest
+    container_name: vector-test-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Couchbase
+  couchbase:
+    image: docker.io/couchbase:latest
+    container_name: vector-test-couchbase
+    environment:
+      COUCHBASE_ADMINISTRATOR_USERNAME: Administrator
+      COUCHBASE_ADMINISTRATOR_PASSWORD: password
+      COUCHBASE_BUCKET: vector_db
+      COUCHBASE_BUCKET_RAMSIZE: 256
+    ports:
+      - "8091:8091"
+      - "8092:8092"
+      - "8093:8093"
+      - "11210:11210"
+
+networks:
+  default:
+    name: vector-test-network

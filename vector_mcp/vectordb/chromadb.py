@@ -26,7 +26,7 @@ with optional_import_block():
 logger = get_logger(__name__)
 
 
-@require_optional_import(["chromadb", "llama_index"], "retrievechat")
+@require_optional_import(["chromadb", "llama_index"], "chromadb")
 class ChromaVectorDB(VectorDB):
     """A vector database that uses ChromaDB as the backend via LlamaIndex."""
 
@@ -169,20 +169,50 @@ class ChromaVectorDB(VectorDB):
         **kwargs,
     ) -> list[Document]:
         collection = self.get_collection(collection_name)
-        results = collection.get(ids=ids, include=include or ["metadatas", "documents"])
-        docs = []
-        if results and results["ids"]:
-            for i, _id in enumerate(results["ids"]):
-                docs.append(
-                    Document(
-                        id=_id,
-                        content=results["documents"][i] if results["documents"] else "",
-                        metadata=(
-                            results["metadatas"][i] if results["metadatas"] else {}
-                        ),
+
+        # LlamaIndex stores our original IDs in metadata as 'doc_id'
+        # So we need to query by metadata instead of primary IDs
+        if ids:
+            # Get all documents and filter by metadata
+            results = collection.get(include=include or ["metadatas", "documents"])
+            docs = []
+            if results and results["ids"]:
+                for i, _id in enumerate(results["ids"]):
+                    metadata = results["metadatas"][i] if results["metadatas"] else {}
+                    doc_id = metadata.get("doc_id")
+                    if doc_id in ids:
+                        docs.append(
+                            Document(
+                                id=doc_id,  # Return the original ID
+                                content=(
+                                    results["documents"][i]
+                                    if results["documents"]
+                                    else ""
+                                ),
+                                metadata=metadata,
+                            )
+                        )
+            return docs
+        else:
+            # Return all documents
+            results = collection.get(include=include or ["metadatas", "documents"])
+            docs = []
+            if results and results["ids"]:
+                for i, _id in enumerate(results["ids"]):
+                    metadata = results["metadatas"][i] if results["metadatas"] else {}
+                    doc_id = metadata.get(
+                        "doc_id", _id
+                    )  # Use doc_id from metadata or fall back to UUID
+                    docs.append(
+                        Document(
+                            id=doc_id,
+                            content=(
+                                results["documents"][i] if results["documents"] else ""
+                            ),
+                            metadata=metadata,
+                        )
                     )
-                )
-        return docs
+            return docs
 
     def update_documents(
         self, docs: list[Document], collection_name: str | None = None, **kwargs
