@@ -8,7 +8,7 @@ print(f"Python: {sys.version}")
 
 try:
     from vector_mcp.vectordb.postgres import PostgreSQL
-    from agent_utilities.embedding_utilities import create_embedding_model
+    from agent_utilities.core.embedding_utilities import create_embedding_model
 
     print("SUCCESS: Imported PostgreSQL")
 except ImportError as e:
