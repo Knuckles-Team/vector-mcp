@@ -21,7 +21,7 @@
 ![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
 ![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
 
-*Version: 1.1.59*
+*Version: 1.2.0*
 
 ## Overview
 

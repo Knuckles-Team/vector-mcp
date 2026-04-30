@@ -36,7 +36,7 @@ from starlette.responses import JSONResponse
 
 from vector_mcp.retriever.retriever import RAGRetriever
 
-__version__ = "1.1.59"
+__version__ = "1.2.0"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
