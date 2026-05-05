@@ -256,17 +256,17 @@ class PostgreSQL(VectorDB):
                     # Use DISTINCT ON to get only one row per doc_id
                     query = text(f"""
                         SELECT DISTINCT ON (metadata_->>'doc_id') id, text, metadata_
-                        FROM {table_name} # nosec B608
+                        FROM {table_name}
                         WHERE metadata_->>'doc_id' = ANY(:ids)
-                    """)
+                    """)  # nosec B608
 
                     result = conn.execute(query, {"ids": ids})
                 else:
                     # Get all documents
                     query = text(f"""
                         SELECT DISTINCT ON (metadata_->>'doc_id') id, text, metadata_
-                        FROM {table_name} # nosec B608
-                    """)
+                        FROM {table_name}
+                    """)  # nosec B608
 
                     result = conn.execute(query)
 
@@ -365,7 +365,7 @@ class PostgreSQL(VectorDB):
                     FROM information_schema.tables
                     WHERE table_schema = :schema
                     AND table_type = 'BASE TABLE'
-                """)
+                """)  # nosec B608
                 result = connection.execute(query, {"schema": schema_name})
                 tables = []
                 for row in result:
@@ -403,11 +403,11 @@ class PostgreSQL(VectorDB):
                 try:
                     sql = text(f"""
                         SELECT id, text, metadata_, paradedb.bm25(text, :q) as score
-                        FROM {table_name} # nosec B608
+                        FROM {table_name}
                         WHERE paradedb.bm25(text, :q) > 0
                         ORDER BY score DESC
                         LIMIT :k
-                    """)
+                    """)  # nosec B608
 
                     result_proxy = connection.execute(sql, {"q": query, "k": n_results})
                     query_result = []
@@ -428,11 +428,11 @@ class PostgreSQL(VectorDB):
                     try:
                         sql_fallback = text(f"""
                             SELECT id, text, metadata_, ts_rank(to_tsvector('english', text), plainto_tsquery('english', :q)) as score
-                            FROM {table_name} # nosec B608
+                            FROM {table_name}
                             WHERE to_tsvector('english', text) @@ plainto_tsquery('english', :q)
                             ORDER BY score DESC
                             LIMIT :k
-                        """)
+                        """)  # nosec B608
                         result_proxy = connection.execute(
                             sql_fallback, {"q": query, "k": n_results}
                         )

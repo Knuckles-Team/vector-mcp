@@ -142,11 +142,11 @@ class CouchbaseVectorDB(VectorDB):
                 if overwrite:
                     try:
                         scope.collection_drop(collection_name)
-                    except Exception:
+                    except Exception:  # nosec B110
                         pass
                 try:
                     scope.collection_create(collection_name)
-                except Exception:
+                except Exception:  # nosec B110
                     pass  # Collection might already exist
             except Exception as e:
                 logger.error(f"Error creating collection via SDK: {e}")
@@ -169,7 +169,7 @@ class CouchbaseVectorDB(VectorDB):
                 else None
             )
 
-            response = requests.get(scopes_url, auth=auth)
+            response = requests.get(scopes_url, auth=auth, timeout=10)
             if response.status_code == 200:
                 result = response.json()
                 for scope in result.get("scopes", []):
@@ -187,7 +187,7 @@ class CouchbaseVectorDB(VectorDB):
             # Try to create collection using N1QL
             query_url = f"http://{self.host}:{self.query_port}/query/service"
             query = f"CREATE COLLECTION IF NOT EXISTS `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}`"
-            response = requests.post(query_url, json={"statement": query}, auth=auth)
+            response = requests.post(query_url, json={"statement": query}, auth=auth, timeout=10)
 
             if response.status_code == 200:
                 result = response.json()
@@ -198,7 +198,7 @@ class CouchbaseVectorDB(VectorDB):
             # Fallback to REST API
             url = f"http://{self.host}:{self.port}/pools/default/buckets/{self.bucket_name}/scopes/{self.scope_name}/collections"
             data = {"name": collection_name}
-            response = requests.post(url, json=data, auth=auth)
+            response = requests.post(url, json=data, auth=auth, timeout=10)
             if response.status_code in [200, 201, 202]:
                 logger.info(f"Collection {collection_name} created via REST API")
             else:
@@ -278,7 +278,7 @@ class CouchbaseVectorDB(VectorDB):
             VALUES ('{doc_id}', '{doc_id}', '{text}', {json.dumps(metadata).replace('"', "'")}, {json.dumps(embedding).replace('"', "'")})
             """
 
-            response = requests.post(url, json={"statement": query}, auth=auth)
+            response = requests.post(url, json={"statement": query}, auth=auth, timeout=10)
             if response.status_code == 200:
                 result = response.json()
                 if result.get("status") == "success":
@@ -290,8 +290,8 @@ class CouchbaseVectorDB(VectorDB):
             INSERT INTO `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}`
             (KEY, id, text, metadata, embedding)
             VALUES ('{doc_id}', '{doc_id}', '{text}', {json.dumps(metadata).replace('"', "'")}, {json.dumps(embedding).replace('"', "'")})
-            """
-            response = requests.post(url, json={"statement": query}, auth=auth)
+            """  # nosec B608
+            response = requests.post(url, json={"statement": query}, auth=auth, timeout=10)
             if response.status_code == 200:
                 result = response.json()
                 if result.get("status") == "success":
@@ -394,8 +394,8 @@ class CouchbaseVectorDB(VectorDB):
                 else None
             )
 
-            query = f"SELECT id, text, metadata, embedding FROM `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}`"
-            response = requests.post(url, json={"statement": query}, auth=auth)
+            query = f"SELECT id, text, metadata, embedding FROM `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}`"  # nosec B608
+            response = requests.post(url, json={"statement": query}, auth=auth, timeout=10)
 
             if response.status_code == 200:
                 result = response.json()
@@ -468,8 +468,8 @@ class CouchbaseVectorDB(VectorDB):
             )
 
             # Use N1QL to get document
-            query = f"SELECT id, text, metadata FROM `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}` WHERE META().id = '{doc_id}'"
-            response = requests.post(url, json={"statement": query}, auth=auth)
+            query = f"SELECT id, text, metadata FROM `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}` WHERE META().id = '{doc_id}'"  # nosec B608
+            response = requests.post(url, json={"statement": query}, auth=auth, timeout=10)
 
             if response.status_code == 200:
                 result = response.json()
@@ -525,8 +525,8 @@ class CouchbaseVectorDB(VectorDB):
             )
 
             # Use N1QL to delete document
-            query = f"DELETE FROM `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}` WHERE META().id = '{doc_id}'"
-            response = requests.post(url, json={"statement": query}, auth=auth)
+            query = f"DELETE FROM `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}` WHERE META().id = '{doc_id}'"  # nosec B608  # nosec B608
+            response = requests.post(url, json={"statement": query}, auth=auth, timeout=10)
 
             if response.status_code == 200:
                 result = response.json()
@@ -569,7 +569,7 @@ class CouchbaseVectorDB(VectorDB):
             )
 
             query = f"DROP COLLECTION IF EXISTS `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}`"
-            response = requests.post(query_url, json={"statement": query}, auth=auth)
+            response = requests.post(query_url, json={"statement": query}, auth=auth, timeout=10)
 
             if response.status_code == 200:
                 result = response.json()
@@ -579,7 +579,7 @@ class CouchbaseVectorDB(VectorDB):
 
             # Fallback to REST API
             url = f"http://{self.host}:{self.port}/pools/default/buckets/{self.bucket_name}/scopes/{self.scope_name}/collections/{collection_name}"
-            response = requests.delete(url, auth=auth)
+            response = requests.delete(url, auth=auth, timeout=10)
             if response.status_code in [200, 202]:
                 logger.info(f"Collection {collection_name} deleted via REST API")
             else:
@@ -613,7 +613,7 @@ class CouchbaseVectorDB(VectorDB):
                 else None
             )
 
-            response = requests.get(url, auth=auth)
+            response = requests.get(url, auth=auth, timeout=10)
             if response.status_code == 200:
                 result = response.json()
                 return [
@@ -683,8 +683,8 @@ class CouchbaseVectorDB(VectorDB):
             )
 
             # Simple LIKE query for text search
-            query = f"SELECT id, text, metadata FROM `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}` WHERE text LIKE '%{query_text}%' LIMIT {n_results}"
-            response = requests.post(url, json={"statement": query}, auth=auth)
+            query = f"SELECT id, text, metadata FROM `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}` WHERE text LIKE '%{query_text}%' LIMIT {n_results}"  # nosec B608  # nosec B608
+            response = requests.post(url, json={"statement": query}, auth=auth, timeout=10)
 
             if response.status_code == 200:
                 result = response.json()

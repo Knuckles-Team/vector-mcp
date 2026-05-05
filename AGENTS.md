@@ -251,3 +251,12 @@ See `tests/TEST_RESULTS.md` for detailed test results and known issues.
 - Review `tests/TEST_RESULTS.md` for known issues and solutions.
 - Check the implementation of working backends for patterns to follow.
 - Run the comprehensive test suite to validate changes.
+
+
+## Testing with Timeout
+
+To run tests with a timeout to prevent hanging, use the `pytest-timeout` plugin. You can combine it with the `-k` flag to run specific tests:
+
+```bash
+uv run pytest --timeout=60 -k "test_name_pattern"
+```

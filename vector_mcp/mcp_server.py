@@ -36,7 +36,7 @@ from starlette.responses import JSONResponse
 
 from vector_mcp.retriever.retriever import RAGRetriever
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -962,13 +962,13 @@ def register_search_tools(mcp: FastMCP):
 
             combined = {}
             for rank, res in enumerate(semantic_results, 1):
-                doc_id = res.get("id") or hashlib.md5(res["text"].encode()).hexdigest()
+                doc_id = res.get("id") or hashlib.md5(res["text"].encode(), usedforsecurity=False).hexdigest()
                 if doc_id not in combined:
                     combined[doc_id] = {"text": res["text"], "rrf_score": 0}
                 combined[doc_id]["rrf_score"] += semantic_weight / (rank + rrf_k)
 
             for rank, res in enumerate(bm25_results, 1):
-                doc_id = res.get("id") or hashlib.md5(res["text"].encode()).hexdigest()
+                doc_id = res.get("id") or hashlib.md5(res["text"].encode(), usedforsecurity=False).hexdigest()
                 if doc_id not in combined:
                     combined[doc_id] = {"text": res["text"], "rrf_score": 0}
                 combined[doc_id]["rrf_score"] += bm25_weight / (rank + rrf_k)
