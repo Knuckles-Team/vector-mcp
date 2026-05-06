@@ -1,10 +1,10 @@
 {
   "mcpServers": {
     "vector-mcp": {
-      "command": "vector-mcp",
+      "command": "uv",
       "args": [
-        "--transport",
-        "stdio"
+        "run",
+        "vector-mcp"
       ],
       "env": {
         "DATABASE_TYPE": "${DATABASE_TYPE:-chromadb}",
@@ -24,7 +24,10 @@
         "LLM_API_KEY": "${LLM_API_KEY}",
         "LLM_BASE_URL": "${LLM_BASE_URL}",
         "MODEL_ID": "${MODEL_ID}",
-        "PROVIDER": "${PROVIDER}"
+        "PROVIDER": "${PROVIDER}",
+        "AGENT_DESCRIPTION": "<YOUR_AGENT_DESCRIPTION>",
+        "AGENT_SYSTEM_PROMPT": "<YOUR_AGENT_SYSTEM_PROMPT>",
+        "DEFAULT_AGENT_NAME": "<YOUR_DEFAULT_AGENT_NAME>"
       }
     }
   }

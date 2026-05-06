@@ -21,7 +21,7 @@
 ![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
 ![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
 
-*Version: 1.5.0*
+*Version: 1.6.0*
 
 ## Overview
 
@@ -371,3 +371,90 @@ uv pip install --upgrade vector-mcp[all]
 ![GitHub User's stars](https://img.shields.io/github/stars/Knucklessg1)
 
 Special shoutouts to Microsoft Autogen V1 ♥️
+
+
+## MCP Configuration Examples
+
+### 1. Standard IO (stdio) Deployment
+
+```json
+{
+  "mcpServers": {
+    "vector-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "vector-mcp"
+      ],
+      "env": {
+        "AGENT_DESCRIPTION": "<YOUR_AGENT_DESCRIPTION>",
+        "AGENT_SYSTEM_PROMPT": "<YOUR_AGENT_SYSTEM_PROMPT>",
+        "API_TOKEN": "<YOUR_API_TOKEN>",
+        "CHUNK_SIZE": "<YOUR_CHUNK_SIZE>",
+        "COLLECTION_MANAGEMENTTOOL": "True",
+        "COLLECTION_NAME": "<YOUR_COLLECTION_NAME>",
+        "DATABASE_PATH": "<YOUR_DATABASE_PATH>",
+        "DATABASE_TYPE": "<YOUR_DATABASE_TYPE>",
+        "DBNAME": "<YOUR_DBNAME>",
+        "DB_HOST": "<YOUR_DB_HOST>",
+        "DB_PORT": "<YOUR_DB_PORT>",
+        "DEFAULT_AGENT_NAME": "<YOUR_DEFAULT_AGENT_NAME>",
+        "DOCUMENT_DIRECTORY": "<YOUR_DOCUMENT_DIRECTORY>",
+        "LLM_API_KEY": "<YOUR_LLM_API_KEY>",
+        "LLM_BASE_URL": "<YOUR_LLM_BASE_URL>",
+        "MISCTOOL": "True",
+        "MODEL_ID": "<YOUR_MODEL_ID>",
+        "PASSWORD": "<YOUR_PASSWORD>",
+        "PROVIDER": "<YOUR_PROVIDER>",
+        "SEARCHTOOL": "True",
+        "USERNAME": "<YOUR_USERNAME>"
+      }
+    }
+  }
+}
+```
+
+### 2. Streamable HTTP (SSE) Deployment
+
+```json
+{
+  "mcpServers": {
+    "vector-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "vector-mcp",
+        "--transport",
+        "http",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000"
+      ],
+      "env": {
+        "AGENT_DESCRIPTION": "<YOUR_AGENT_DESCRIPTION>",
+        "AGENT_SYSTEM_PROMPT": "<YOUR_AGENT_SYSTEM_PROMPT>",
+        "API_TOKEN": "<YOUR_API_TOKEN>",
+        "CHUNK_SIZE": "<YOUR_CHUNK_SIZE>",
+        "COLLECTION_MANAGEMENTTOOL": "True",
+        "COLLECTION_NAME": "<YOUR_COLLECTION_NAME>",
+        "DATABASE_PATH": "<YOUR_DATABASE_PATH>",
+        "DATABASE_TYPE": "<YOUR_DATABASE_TYPE>",
+        "DBNAME": "<YOUR_DBNAME>",
+        "DB_HOST": "<YOUR_DB_HOST>",
+        "DB_PORT": "<YOUR_DB_PORT>",
+        "DEFAULT_AGENT_NAME": "<YOUR_DEFAULT_AGENT_NAME>",
+        "DOCUMENT_DIRECTORY": "<YOUR_DOCUMENT_DIRECTORY>",
+        "LLM_API_KEY": "<YOUR_LLM_API_KEY>",
+        "LLM_BASE_URL": "<YOUR_LLM_BASE_URL>",
+        "MISCTOOL": "True",
+        "MODEL_ID": "<YOUR_MODEL_ID>",
+        "PASSWORD": "<YOUR_PASSWORD>",
+        "PROVIDER": "<YOUR_PROVIDER>",
+        "SEARCHTOOL": "True",
+        "USERNAME": "<YOUR_USERNAME>"
+      }
+    }
+  }
+}
+```

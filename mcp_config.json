@@ -1,0 +1,36 @@
+{
+  "mcpServers": {
+    "vector-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "vector-mcp"
+      ],
+      "env": {
+        "EMBEDDING_MODEL": "<YOUR_EMBEDDING_MODEL>",
+        "EMBEDDING_PROVIDER": "<YOUR_EMBEDDING_PROVIDER>",
+        "LLM_API_KEY": "<YOUR_LLM_API_KEY>",
+        "LLM_BASE_URL": "<YOUR_LLM_BASE_URL>",
+        "AGENT_DESCRIPTION": "<YOUR_AGENT_DESCRIPTION>",
+        "AGENT_SYSTEM_PROMPT": "<YOUR_AGENT_SYSTEM_PROMPT>",
+        "API_TOKEN": "<YOUR_API_TOKEN>",
+        "CHUNK_SIZE": "<YOUR_CHUNK_SIZE>",
+        "COLLECTION_MANAGEMENTTOOL": "True",
+        "COLLECTION_NAME": "<YOUR_COLLECTION_NAME>",
+        "DATABASE_PATH": "<YOUR_DATABASE_PATH>",
+        "DATABASE_TYPE": "<YOUR_DATABASE_TYPE>",
+        "DBNAME": "<YOUR_DBNAME>",
+        "DB_HOST": "<YOUR_DB_HOST>",
+        "DB_PORT": "<YOUR_DB_PORT>",
+        "DEFAULT_AGENT_NAME": "<YOUR_DEFAULT_AGENT_NAME>",
+        "DOCUMENT_DIRECTORY": "<YOUR_DOCUMENT_DIRECTORY>",
+        "MISCTOOL": "True",
+        "MODEL_ID": "<YOUR_MODEL_ID>",
+        "PASSWORD": "<YOUR_PASSWORD>",
+        "PROVIDER": "<YOUR_PROVIDER>",
+        "SEARCHTOOL": "True",
+        "USERNAME": "<YOUR_USERNAME>"
+      }
+    }
+  }
+}
