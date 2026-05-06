@@ -57,7 +57,7 @@ RUN apt-get update \
      && curl -sS https://starship.rs/install.sh | sh -s -- --yes \
     && mkdir -p /root/.config \
     && echo 'eval "$(starship init bash)"' >> /root/.bashrc \ \
-    uv pip install --system --upgrade --verbose --no-cache --break-system-packages --prerelease=allow vector-mcp[postgres,chromadb,couchbase,qdrant,mongodb,huggingface,agent]>=1.6.0
+    uv pip install --system --upgrade --verbose --no-cache --break-system-packages --prerelease=allow vector-mcp[postgres,chromadb,couchbase,qdrant,mongodb,huggingface,agent]>=1.7.0
 
 COPY starship.toml /root/.config/starship.toml
 
