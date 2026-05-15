@@ -3,16 +3,14 @@ services:
   vector-agent-chromadb:
     # image: docker.io/knucklessg1/vector-mcp:latest
     build:
-      context: . # Debug
-      dockerfile: debug.Dockerfile
+      context: .. # Debug
+      dockerfile: docker/debug.Dockerfile
     container_name: vector-agent-chromadb
     hostname: vector-agent-chromadb
     command: [ "vector-agent" ]
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    depends_on:
-      vector-mcp-chromadb:
-        condition: service_healthy
+
     logging:
       driver: json-file
       options:
@@ -20,7 +18,7 @@ services:
         max-file: "3"
     restart: always
     env_file:
-      - .env
+      - ../.env
     environment:
       - "PYTHONUNBUFFERED=1"
       - "HOST=0.0.0.0"
@@ -48,7 +46,7 @@ services:
     image: paradedb/paradedb:latest-pg16 # Changed to ParadeDB with PG16 support
     container_name: postgres
     env_file:
-      - .env
+      - ../.env
     environment:
       PYTHONUNBUFFERED: 1
       POSTGRES_USER: postgres
@@ -58,7 +56,7 @@ services:
       - "5432:5432"
     restart: always
     volumes:
-      - ./mcp/pgdata:/var/lib/postgresql/data
+      - ../mcp/pgdata:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
@@ -68,16 +66,14 @@ services:
   vector-agent-postgres:
     # image: docker.io/knucklessg1/vector-mcp:latest
     build:
-      context: . # Debug
-      dockerfile: debug.Dockerfile
+      context: .. # Debug
+      dockerfile: docker/debug.Dockerfile
     container_name: vector-agent-postgres
     hostname: vector-agent-postgres
     command: [ "vector-agent" ]
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    depends_on:
-      vector-mcp-postgres:
-        condition: service_healthy
+
     logging:
       driver: json-file
       options:
@@ -85,7 +81,7 @@ services:
         max-file: "3"
     restart: always
     env_file:
-      - .env
+      - ../.env
     environment:
       - "PYTHONUNBUFFERED=1"
       - "HOST=0.0.0.0"
@@ -119,7 +115,7 @@ services:
   #    - "27017:27017"
   #   restart: always
   #   env_file:
-  #     - .env
+  #     - ../.env
 
   # vector-agent-mongo:
   #  image: docker.io/knucklessg1/vector-mcp:latest
@@ -137,7 +133,7 @@ services:
   #      max-file: "3"
   #  restart: always
   #  env_file:
-  #    - .env
+  #    - ../.env
   #  environment:
   #    - "HOST=0.0.0.0"
   #    - "PORT=9025"
@@ -169,7 +165,7 @@ services:
   #    - "11210:11210"
   #   restart: always
   #   env_file:
-  #     - .env
+  #     - ../.env
 
   # vector-agent-couchbase:
   #  image: docker.io/knucklessg1/vector-mcp:latest
@@ -187,7 +183,7 @@ services:
   #      max-file: "3"
   #  restart: always
   #  env_file:
-  #    - .env
+  #    - ../.env
   #  environment:
   #    - "HOST=0.0.0.0"
   #    - "PORT=9026"
@@ -216,7 +212,7 @@ services:
   #    - "6333:6333"
   #   restart: always
   #   env_file:
-  #     - .env
+  #     - ../.env
 
   # vector-agent-qdrant:
   #   image: docker.io/knucklessg1/vector-mcp:latest
@@ -234,7 +230,7 @@ services:
   #      max-file: "3"
   #   restart: always
   #   env_file:
-  #     - .env
+  #     - ../.env
   #   environment:
   #     - "PYTHONUNBUFFERED=1"
   #     - "HOST=0.0.0.0"

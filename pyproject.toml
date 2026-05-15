@@ -26,7 +26,7 @@ mongodb = [ "pymongo>=4.16.0", "llama-index-vector-stores-mongodb>=0.9.1",]
 huggingface = [ "llama-index-embeddings-huggingface>=0.6.1", "sentence_transformers>=5.2.2",]
 agent = [ "agent-utilities[agent,logfire]>=0.9.0",]
 all = [ "vector-mcp[postgres,chromadb,couchbase,qdrant,mongodb,huggingface,agent]>=1.8.0",]
-test = [ "pytest", "pytest-asyncio",]
+test = [ "pytest", "pytest-asyncio", "pytest-cov",]
 
 [project.scripts]
 vector-mcp = "vector_mcp.mcp_server:mcp_server"
@@ -58,3 +58,6 @@ ignore = [ "E402", "E501", "B008",]
 
 [tool.setuptools.packages.find]
 where = [ ".",]
+
+[tool.vulture]
+ignore_names = ["request", "config"]

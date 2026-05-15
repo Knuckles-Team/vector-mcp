@@ -1,0 +1,292 @@
+{
+  "feature_id": "code-enhancement-20260512",
+  "title": "Code Enhancement: vector-mcp",
+  "created": "2026-05-12T14:14:41.046400+00:00",
+  "overview": "Automated code enhancement review for vector-mcp. Covers 17 analysis domains.",
+  "user_stories": [
+    {
+      "role": "developer",
+      "action": "address Dependency Audit findings (grade: F, score: 50)",
+      "value": "improve project dependency audit from F to at least B (80+)"
+    },
+    {
+      "role": "developer",
+      "action": "address Codebase Optimization findings (grade: F, score: 56)",
+      "value": "improve project codebase optimization from F to at least B (80+)"
+    },
+    {
+      "role": "developer",
+      "action": "address Test Coverage findings (grade: C, score: 70)",
+      "value": "improve project test coverage from C to at least B (80+)"
+    },
+    {
+      "role": "developer",
+      "action": "address Documentation & Governance findings (grade: C, score: 76)",
+      "value": "improve project documentation & governance from C to at least B (80+)"
+    },
+    {
+      "role": "developer",
+      "action": "address Architecture & Design Patterns findings (grade: C, score: 70)",
+      "value": "improve project architecture & design patterns from C to at least B (80+)"
+    },
+    {
+      "role": "developer",
+      "action": "address Concept Traceability findings (grade: F, score: 30)",
+      "value": "improve project concept traceability from F to at least B (80+)"
+    },
+    {
+      "role": "developer",
+      "action": "address Linting & Formatting findings (grade: F, score: 0)",
+      "value": "improve project linting & formatting from F to at least B (80+)"
+    },
+    {
+      "role": "developer",
+      "action": "address Changelog Audit findings (grade: C, score: 75)",
+      "value": "improve project changelog audit from C to at least B (80+)"
+    },
+    {
+      "role": "developer",
+      "action": "address Pytest Quality findings (grade: C, score: 78)",
+      "value": "improve project pytest quality from C to at least B (80+)"
+    },
+    {
+      "role": "developer",
+      "action": "address Environment Variables findings (grade: C, score: 75)",
+      "value": "improve project environment variables from C to at least B (80+)"
+    }
+  ],
+  "functional_requirements": [
+    {
+      "id": "FR-001",
+      "description": "Minor update: pypdf 6.10.2 (installed) -> 6.11.0",
+      "testable": true
+    },
+    {
+      "id": "FR-002",
+      "description": "Minor update: llama-index-vector-stores-postgres 0.7.3 (constraint \u2014 not installed) -> 0.8.1",
+      "testable": true
+    },
+    {
+      "id": "FR-003",
+      "description": "Minor update: opentelemetry-api 1.39.1 (installed) -> 1.41.1",
+      "testable": true
+    },
+    {
+      "id": "FR-004",
+      "description": "MAJOR update: protobuf 6.33.6 (installed) -> 7.34.1",
+      "testable": true
+    },
+    {
+      "id": "FR-005",
+      "description": "Minor update: opentelemetry-sdk 1.39.1 (installed) -> 1.41.1",
+      "testable": true
+    },
+    {
+      "id": "FR-006",
+      "description": "Minor update: opentelemetry-exporter-otlp 1.39.1 (constraint \u2014 not installed) -> 1.41.1",
+      "testable": true
+    },
+    {
+      "id": "FR-007",
+      "description": "Minor update: llama-index-vector-stores-couchbase 0.6.0 (constraint \u2014 not installed) -> 0.7.1",
+      "testable": true
+    },
+    {
+      "id": "FR-008",
+      "description": "Minor update: fastembed 0.7.4 (constraint \u2014 not installed) -> 0.8.0",
+      "testable": true
+    },
+    {
+      "id": "FR-009",
+      "description": "Minor update: qdrant-client 1.16.2 (constraint \u2014 not installed) -> 1.18.0",
+      "testable": true
+    },
+    {
+      "id": "FR-010",
+      "description": "Minor update: couchbase 4.5.0 (constraint \u2014 not installed) -> 4.6.1",
+      "testable": true
+    },
+    {
+      "id": "FR-011",
+      "description": "Minor update: llama-index-vector-stores-qdrant 0.9.1 (constraint \u2014 not installed) -> 0.10.1",
+      "testable": true
+    },
+    {
+      "id": "FR-012",
+      "description": "Minor update: llama-index-embeddings-huggingface 0.6.1 (constraint \u2014 not installed) -> 0.7.0",
+      "testable": true
+    },
+    {
+      "id": "FR-013",
+      "description": "Minor update: llama-index-vector-stores-mongodb 0.9.1 (constraint \u2014 not installed) -> 0.10.1",
+      "testable": true
+    },
+    {
+      "id": "FR-014",
+      "description": "Minor update: sentence_transformers 5.2.2 (constraint \u2014 not installed) -> 5.5.0",
+      "testable": true
+    },
+    {
+      "id": "FR-015",
+      "description": "2 functions exceed 200 lines (actionable refactoring targets): register_collection_management_tools (448L), register_search_tools (337L)",
+      "testable": true
+    },
+    {
+      "id": "FR-016",
+      "description": "Monolithic: mcp_server.py (1054L) \u2014 3 functions with high complexity (worst: register_collection_management_tools at 448L, CC=39); Low cohesion: 13 distinct concepts in one file",
+      "testable": true
+    },
+    {
+      "id": "FR-017",
+      "description": "Monolithic: db_utils.py (556L) \u2014 2 functions with high complexity (worst: ModuleInfo.from_str at 52L, CC=10); Low cohesion: 21 distinct concepts in one file",
+      "testable": true
+    },
+    {
+      "id": "FR-018",
+      "description": "Monolithic: couchbase.py (708L) \u2014 2 functions with high complexity (worst: CouchbaseVectorDB._create_collection_via_rest at 51L, CC=12); God class: CouchbaseVectorDB (23 methods) \u2014 consider mixins/composition",
+      "testable": true
+    },
+    {
+      "id": "FR-019",
+      "description": "18 functions with nesting depth >4",
+      "testable": true
+    },
+    {
+      "id": "FR-020",
+      "description": "8 tests without assertions",
+      "testable": true
+    },
+    {
+      "id": "FR-021",
+      "description": "20 potential doc-test drift items",
+      "testable": true
+    },
+    {
+      "id": "FR-022",
+      "description": "README.md missing sections: installation",
+      "testable": true
+    },
+    {
+      "id": "FR-023",
+      "description": "README missing: Has a Table of Contents",
+      "testable": true
+    },
+    {
+      "id": "FR-024",
+      "description": "README missing: References /docs directory material",
+      "testable": true
+    },
+    {
+      "id": "FR-025",
+      "description": "SRP: 4 modules exceed 500 lines (god modules)",
+      "testable": true
+    },
+    {
+      "id": "FR-026",
+      "description": "SRP: 1 classes have >15 methods",
+      "testable": true
+    },
+    {
+      "id": "FR-027",
+      "description": "No discernible layer architecture (no domain/service/adapter separation)",
+      "testable": true
+    },
+    {
+      "id": "FR-028",
+      "description": "Low traceability ratio: 0% concepts fully traced",
+      "testable": true
+    },
+    {
+      "id": "FR-029",
+      "description": "30 test functions missing concept markers",
+      "testable": true
+    },
+    {
+      "id": "FR-030",
+      "description": "121 significant functions (>10 lines) missing concept markers in docstrings",
+      "testable": true
+    },
+    {
+      "id": "FR-031",
+      "description": "Total lint findings: 35 (high/error: 34, medium/warning: 1, low: 0)",
+      "testable": true
+    },
+    {
+      "id": "FR-032",
+      "description": "1 hook(s) may be outdated: ruff-pre-commit",
+      "testable": true
+    },
+    {
+      "id": "FR-033",
+      "description": "6 rogue/throwaway scripts detected (fix_*, validate_*, patch_*, etc.): scripts/debug_full.py, scripts/validate_all_dbs.py, scripts/debug_embedding.py, scripts/debug_pg.py, scripts/validate_agents.py",
+      "testable": true
+    },
+    {
+      "id": "FR-034",
+      "description": "CHANGELOG.md is missing \u2014 create one following Keep a Changelog format",
+      "testable": true
+    },
+    {
+      "id": "FR-035",
+      "description": "CHANGELOG.md is missing",
+      "testable": true
+    },
+    {
+      "id": "FR-036",
+      "description": "1 test files exceed 500 lines \u2014 split into focused modules",
+      "testable": true
+    },
+    {
+      "id": "FR-037",
+      "description": "Test directory lacks subdirectory organization (consider unit/, integration/, e2e/)",
+      "testable": true
+    },
+    {
+      "id": "FR-038",
+      "description": "Missing conftest.py for shared fixtures",
+      "testable": true
+    },
+    {
+      "id": "FR-039",
+      "description": "No shared fixtures in conftest.py",
+      "testable": true
+    },
+    {
+      "id": "FR-040",
+      "description": "8 tests have no assertions",
+      "testable": true
+    },
+    {
+      "id": "FR-041",
+      "description": "Partial env var documentation: 51% coverage",
+      "testable": true
+    },
+    {
+      "id": "FR-042",
+      "description": "Undocumented env vars: EMBEDDING_MODEL, EMBEDDING_MODEL_ID, EMBEDDING_PROVIDER, ENABLE_OTEL, EUNOMIA_REMOTE_URL, OAUTH_BASE_URL, OAUTH_UPSTREAM_AUTH_ENDPOINT, OAUTH_UPSTREAM_CLIENT_ID, OAUTH_UPSTREAM_CLIENT_SECRET, OAUTH_UPSTREAM_TOKEN_ENDPOINT",
+      "testable": true
+    },
+    {
+      "id": "FR-043",
+      "description": "23 Python env vars not in .env.example: API_TOKEN, COLLECTION_MANAGEMENTTOOL, COLLECTION_NAME, DATABASE_PATH, DATABASE_TYPE",
+      "testable": true
+    }
+  ],
+  "success_criteria": [
+    {
+      "metric": "Overall GPA",
+      "current": 2.24,
+      "target": 3.0
+    },
+    {
+      "metric": "Domains at B or above",
+      "current": 7,
+      "target": 17
+    },
+    {
+      "metric": "Actionable findings",
+      "current": 43,
+      "target": 0
+    }
+  ]
+}

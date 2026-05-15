@@ -1,0 +1,91 @@
+# Tasks: Code Enhancement: vector-mcp
+
+Generated: 2026-05-12T14:14:41.046400+00:00
+Skipped informational: 5
+
+- [ ] [P] **T001** [Dependency Audit] Minor update: pypdf 6.10.2 (installed) -> 6.11.0
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T002** [Dependency Audit] Minor update: llama-index-vector-stores-postgres 0.7.3 (constraint — not installed)
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T003** [Dependency Audit] Minor update: opentelemetry-api 1.39.1 (installed) -> 1.41.1
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T004** [Dependency Audit] MAJOR update: protobuf 6.33.6 (installed) -> 7.34.1
+  - Priority: P2-Medium | Effort: Small
+- [ ] [P] **T005** [Dependency Audit] Minor update: opentelemetry-sdk 1.39.1 (installed) -> 1.41.1
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T006** [Dependency Audit] Minor update: opentelemetry-exporter-otlp 1.39.1 (constraint — not installed) ->
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T007** [Dependency Audit] Minor update: llama-index-vector-stores-couchbase 0.6.0 (constraint — not installed)
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T008** [Dependency Audit] Minor update: fastembed 0.7.4 (constraint — not installed) -> 0.8.0
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T009** [Dependency Audit] Minor update: qdrant-client 1.16.2 (constraint — not installed) -> 1.18.0
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T010** [Dependency Audit] Minor update: couchbase 4.5.0 (constraint — not installed) -> 4.6.1
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T011** [Dependency Audit] Minor update: llama-index-vector-stores-qdrant 0.9.1 (constraint — not installed)
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T012** [Dependency Audit] Minor update: llama-index-embeddings-huggingface 0.6.1 (constraint — not installed)
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T013** [Dependency Audit] Minor update: llama-index-vector-stores-mongodb 0.9.1 (constraint — not installed)
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T014** [Dependency Audit] Minor update: sentence_transformers 5.2.2 (constraint — not installed) -> 5.5.0
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T015** [Codebase Optimization] 2 functions exceed 200 lines (actionable refactoring targets): register_collecti
+  - Priority: P2-Medium | Effort: Large
+- [ ] [P] **T016** [Codebase Optimization] Monolithic: mcp_server.py (1054L) — 3 functions with high complexity (worst: reg
+  - Priority: P1-High | Effort: Large
+- [ ] [P] **T017** [Codebase Optimization] Monolithic: db_utils.py (556L) — 2 functions with high complexity (worst: Module
+  - Priority: P1-High | Effort: Large
+- [ ] [P] **T018** [Codebase Optimization] Monolithic: couchbase.py (708L) — 2 functions with high complexity (worst: Couch
+  - Priority: P1-High | Effort: Large
+- [ ] [P] **T019** [Codebase Optimization] 18 functions with nesting depth >4
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T020** [Test Coverage] 8 tests without assertions
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T021** [Test Coverage] 20 potential doc-test drift items
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T022** [Documentation & Governance] README.md missing sections: installation
+  - Priority: P2-Medium | Effort: Small
+- [ ] [P] **T023** [Documentation & Governance] README missing: Has a Table of Contents
+  - Priority: P2-Medium | Effort: Small
+- [ ] [P] **T024** [Documentation & Governance] README missing: References /docs directory material
+  - Priority: P2-Medium | Effort: Small
+- [ ] [P] **T025** [Architecture & Design Patterns] SRP: 4 modules exceed 500 lines (god modules)
+  - Priority: P2-Medium | Effort: Large
+- [ ] [P] **T026** [Architecture & Design Patterns] SRP: 1 classes have >15 methods
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T027** [Architecture & Design Patterns] No discernible layer architecture (no domain/service/adapter separation)
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T028** [Concept Traceability] Low traceability ratio: 0% concepts fully traced
+  - Priority: P4-Enhancement | Effort: Medium
+- [ ] [P] **T029** [Concept Traceability] 30 test functions missing concept markers
+  - Priority: P4-Enhancement | Effort: Small
+- [ ] [P] **T030** [Concept Traceability] 121 significant functions (>10 lines) missing concept markers in docstrings
+  - Priority: P4-Enhancement | Effort: Small
+- [ ] [P] **T031** [Linting & Formatting] Total lint findings: 35 (high/error: 34, medium/warning: 1, low: 0)
+  - Priority: P1-High | Effort: Medium
+- [ ] [P] **T032** [Pre-Commit Compliance] 1 hook(s) may be outdated: ruff-pre-commit
+  - Priority: P2-Medium | Effort: Small
+- [ ] [P] **T033** [Directory Organization] 6 rogue/throwaway scripts detected (fix_*, validate_*, patch_*, etc.): scripts/d
+  - Priority: P3-Low | Effort: Medium
+- [ ] [P] **T034** [Changelog Audit] CHANGELOG.md is missing — create one following Keep a Changelog format
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T035** [Changelog Audit] CHANGELOG.md is missing
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T036** [Pytest Quality] 1 test files exceed 500 lines — split into focused modules
+  - Priority: P2-Medium | Effort: Large
+- [ ] [P] **T037** [Pytest Quality] Test directory lacks subdirectory organization (consider unit/, integration/, e2
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T038** [Pytest Quality] Missing conftest.py for shared fixtures
+  - Priority: P2-Medium | Effort: Small
+- [ ] [P] **T039** [Pytest Quality] No shared fixtures in conftest.py
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T040** [Pytest Quality] 8 tests have no assertions
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T041** [Environment Variables] Partial env var documentation: 51% coverage
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T042** [Environment Variables] Undocumented env vars: EMBEDDING_MODEL, EMBEDDING_MODEL_ID, EMBEDDING_PROVIDER,
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T043** [Environment Variables] 23 Python env vars not in .env.example: API_TOKEN, COLLECTION_MANAGEMENTTOOL, CO
+  - Priority: P2-Medium | Effort: Medium

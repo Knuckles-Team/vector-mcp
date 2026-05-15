@@ -458,3 +458,15 @@ Special shoutouts to Microsoft Autogen V1 ♥️
   }
 }
 ```
+
+## Available MCP Tools
+This server implements an action-routed dynamic tool architecture, consolidating operations into categorized tools.
+| Tool Name | Action | Description |
+|-----------|--------|-------------|
+| `vector_collection_management` | `create_collection` | Executes `create_collection` within the `collection_management` category. |
+| `vector_collection_management` | `add_documents` | Executes `add_documents` within the `collection_management` category. |
+| `vector_collection_management` | `delete_collection` | Executes `delete_collection` within the `collection_management` category. |
+| `vector_collection_management` | `list_collections` | Executes `list_collections` within the `collection_management` category. |
+| `vector_search` | `semantic_search` | Executes `semantic_search` within the `search` category. |
+| `vector_search` | `lexical_search` | Executes `lexical_search` within the `search` category. |
+| `vector_search` | `search` | Executes `search` within the `search` category. |

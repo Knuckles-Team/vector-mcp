@@ -63,3 +63,17 @@ repos:
         additional_dependencies: ['@zabaca/mermaid-validate@1.0.1']
         types: [markdown]
         pass_filenames: true
+  - repo: https://github.com/AleksaC/hadolint-py
+    rev: v2.14.0
+    hooks:
+      - id: hadolint
+        args:
+          - --ignore=DL3008
+          - --ignore=DL3015
+          - --ignore=DL3009
+          - --ignore=DL4006
+          - --ignore=SC2102
+  - repo: https://github.com/IamTheFij/docker-pre-commit
+    rev: v3.0.1
+    hooks:
+      - id: docker-compose-check
