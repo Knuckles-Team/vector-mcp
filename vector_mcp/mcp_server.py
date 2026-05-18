@@ -40,7 +40,7 @@ logger.setLevel(logging.INFO)
 def register_collection_management_tools(mcp: FastMCP):
     @mcp.tool(tags={"collection_management"})
     async def vector_collection_management(
-        action: str = Field(..., description="Action to perform. Must be one of: 'create_collection', 'add_documents', 'delete_collection', 'list_collections'"),
+        action: str = Field(description="Action to perform. Must be one of: 'create_collection', 'add_documents', 'delete_collection', 'list_collections'"),
         db_type: str | None = Field(default=None, description="db type"),
         db_path: str | None = Field(default=None, description="db path"),
         host: str | None = Field(default=None, description="host"),
@@ -87,7 +87,7 @@ def register_collection_management_tools(mcp: FastMCP):
 def register_search_tools(mcp: FastMCP):
     @mcp.tool(tags={"search"})
     async def vector_search(
-        action: str = Field(..., description="Action to perform. Must be one of: 'semantic_search', 'lexical_search', 'search'"),
+        action: str = Field(description="Action to perform. Must be one of: 'semantic_search', 'lexical_search', 'search'"),
         db_type: str | None = Field(default=None, description="db type"),
         db_path: str | None = Field(default=None, description="db path"),
         host: str | None = Field(default=None, description="host"),
