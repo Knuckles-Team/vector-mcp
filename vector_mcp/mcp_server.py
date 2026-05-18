@@ -31,7 +31,7 @@ from starlette.responses import JSONResponse
 
 from vector_mcp.auth import get_client
 
-__version__ = "1.10.0"
+__version__ = "1.11.0"
 
 logger = get_logger(name="vector-mcp")
 logger.setLevel(logging.INFO)
