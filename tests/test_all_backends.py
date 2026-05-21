@@ -23,12 +23,11 @@ Individual backends can be tested by running specific markers:
 
 import os
 import tempfile
-from typing import Any
-from llama_index.core.embeddings import BaseEmbedding
 
 import pytest
+from llama_index.core.embeddings import BaseEmbedding
 
-from vector_mcp.vectordb.base import Document, VectorDB
+from vector_mcp.vectordb.base import Document
 from vector_mcp.vectordb.chromadb import ChromaVectorDB
 from vector_mcp.vectordb.mongodb import MongoDBAtlasVectorDB
 from vector_mcp.vectordb.postgres import PostgreSQL
@@ -334,9 +333,9 @@ def test_insert_documents(db_name, request):
             collection_name=collection_name,
             n_results=5,
         )
-        assert (
-            len(results) > 0 and len(results[0]) > 0
-        ), "No documents found after insert"
+        assert len(results) > 0 and len(results[0]) > 0, (
+            "No documents found after insert"
+        )
 
         # Cleanup
         db.delete_collection(collection_name)
@@ -443,7 +442,7 @@ def test_delete_documents(db_name, request):
 
             # We expect the count to decrease, but due to ID mismatch it might not
             # For now, we just verify the operation doesn't crash
-        except Exception as delete_error:
+        except Exception:
             # Delete might fail due to ID mismatch - that's expected
             pass
 

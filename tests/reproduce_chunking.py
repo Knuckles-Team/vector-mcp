@@ -1,5 +1,6 @@
 import os
 import sys
+
 from llama_index.core import Settings
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

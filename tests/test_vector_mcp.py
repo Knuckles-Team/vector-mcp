@@ -1,6 +1,8 @@
-import pytest
 import shutil
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from vector_mcp.vectordb.chromadb import ChromaVectorDB
 
 

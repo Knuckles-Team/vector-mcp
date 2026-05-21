@@ -1,5 +1,6 @@
-import requests
 import time
+
+import requests
 
 SERVERS = [
     {"name": "ChromaDB", "port": 8003},
@@ -27,7 +28,6 @@ def test_server(server_config):
     }
 
     try:
-
         endpoint = f"http://localhost:{port}/mcp"
 
         headers = {"Content-Type": "application/json", "Accept": "application/json"}

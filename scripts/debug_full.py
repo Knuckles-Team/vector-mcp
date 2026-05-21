@@ -1,5 +1,5 @@
-import sys
 import logging
+import sys
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
@@ -7,8 +7,9 @@ logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 print(f"Python: {sys.version}")
 
 try:
-    from vector_mcp.vectordb.postgres import PostgreSQL
     from agent_utilities.embedding_utilities import create_embedding_model
+
+    from vector_mcp.vectordb.postgres import PostgreSQL
 
     print("SUCCESS: Imported PostgreSQL")
 except ImportError as e:

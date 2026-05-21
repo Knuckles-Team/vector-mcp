@@ -1,20 +1,15 @@
 import pytest
-from typing import Protocol
-from vector_mcp.retriever.retriever import RAGRetriever
-from vector_mcp.vectordb.base import VectorDB
 
 from vector_mcp.retriever.chromadb_retriever import ChromaDBRetriever
-from vector_mcp.retriever.postgres_retriever import PGVectorRetriever
 from vector_mcp.retriever.couchbase_retriever import CouchbaseRetriever
 from vector_mcp.retriever.mongodb_retriever import MongoDBRetriever
+from vector_mcp.retriever.postgres_retriever import PGVectorRetriever
 from vector_mcp.retriever.qdrant_retriever import QdrantRetriever
-
 from vector_mcp.vectordb.chromadb import ChromaVectorDB
-from vector_mcp.vectordb.postgres import PostgreSQL
 from vector_mcp.vectordb.couchbase import CouchbaseVectorDB
 from vector_mcp.vectordb.mongodb import MongoDBAtlasVectorDB
+from vector_mcp.vectordb.postgres import PostgreSQL
 from vector_mcp.vectordb.qdrant import QdrantVectorDB
-
 
 
 @pytest.mark.parametrize(
@@ -50,6 +45,7 @@ def test_vectordb_implements_protocol(vectordb_cls):
 
 def test_no_super_init_usage():
     import os
+
     import vector_mcp
 
     package_dir = os.path.dirname(vector_mcp.__file__)
@@ -58,7 +54,7 @@ def test_no_super_init_usage():
         for file in files:
             if file.endswith(".py"):
                 path = os.path.join(root, file)
-                with open(path, "r") as f:
+                with open(path) as f:
                     content = f.read()
                     if "super().__init__" in content:
                         if "retriever.py" in file or "base.py" in file:

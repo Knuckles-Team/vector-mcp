@@ -187,7 +187,9 @@ class CouchbaseVectorDB(VectorDB):
             # Try to create collection using N1QL
             query_url = f"http://{self.host}:{self.query_port}/query/service"
             query = f"CREATE COLLECTION IF NOT EXISTS `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}`"
-            response = requests.post(query_url, json={"statement": query}, auth=auth, timeout=10)
+            response = requests.post(
+                query_url, json={"statement": query}, auth=auth, timeout=10
+            )
 
             if response.status_code == 200:
                 result = response.json()
@@ -278,7 +280,9 @@ class CouchbaseVectorDB(VectorDB):
             VALUES ('{doc_id}', '{doc_id}', '{text}', {json.dumps(metadata).replace('"', "'")}, {json.dumps(embedding).replace('"', "'")})
             """
 
-            response = requests.post(url, json={"statement": query}, auth=auth, timeout=10)
+            response = requests.post(
+                url, json={"statement": query}, auth=auth, timeout=10
+            )
             if response.status_code == 200:
                 result = response.json()
                 if result.get("status") == "success":
@@ -291,7 +295,9 @@ class CouchbaseVectorDB(VectorDB):
             (KEY, id, text, metadata, embedding)
             VALUES ('{doc_id}', '{doc_id}', '{text}', {json.dumps(metadata).replace('"', "'")}, {json.dumps(embedding).replace('"', "'")})
             """  # nosec B608
-            response = requests.post(url, json={"statement": query}, auth=auth, timeout=10)
+            response = requests.post(
+                url, json={"statement": query}, auth=auth, timeout=10
+            )
             if response.status_code == 200:
                 result = response.json()
                 if result.get("status") == "success":
@@ -395,7 +401,9 @@ class CouchbaseVectorDB(VectorDB):
             )
 
             query = f"SELECT id, text, metadata, embedding FROM `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}`"  # nosec B608
-            response = requests.post(url, json={"statement": query}, auth=auth, timeout=10)
+            response = requests.post(
+                url, json={"statement": query}, auth=auth, timeout=10
+            )
 
             if response.status_code == 200:
                 result = response.json()
@@ -469,7 +477,9 @@ class CouchbaseVectorDB(VectorDB):
 
             # Use N1QL to get document
             query = f"SELECT id, text, metadata FROM `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}` WHERE META().id = '{doc_id}'"  # nosec B608
-            response = requests.post(url, json={"statement": query}, auth=auth, timeout=10)
+            response = requests.post(
+                url, json={"statement": query}, auth=auth, timeout=10
+            )
 
             if response.status_code == 200:
                 result = response.json()
@@ -526,7 +536,9 @@ class CouchbaseVectorDB(VectorDB):
 
             # Use N1QL to delete document
             query = f"DELETE FROM `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}` WHERE META().id = '{doc_id}'"  # nosec B608  # nosec B608
-            response = requests.post(url, json={"statement": query}, auth=auth, timeout=10)
+            response = requests.post(
+                url, json={"statement": query}, auth=auth, timeout=10
+            )
 
             if response.status_code == 200:
                 result = response.json()
@@ -569,7 +581,9 @@ class CouchbaseVectorDB(VectorDB):
             )
 
             query = f"DROP COLLECTION IF EXISTS `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}`"
-            response = requests.post(query_url, json={"statement": query}, auth=auth, timeout=10)
+            response = requests.post(
+                query_url, json={"statement": query}, auth=auth, timeout=10
+            )
 
             if response.status_code == 200:
                 result = response.json()
@@ -684,7 +698,9 @@ class CouchbaseVectorDB(VectorDB):
 
             # Simple LIKE query for text search
             query = f"SELECT id, text, metadata FROM `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}` WHERE text LIKE '%{query_text}%' LIMIT {n_results}"  # nosec B608  # nosec B608
-            response = requests.post(url, json={"statement": query}, auth=auth, timeout=10)
+            response = requests.post(
+                url, json={"statement": query}, auth=auth, timeout=10
+            )
 
             if response.status_code == 200:
                 result = response.json()

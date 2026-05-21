@@ -1,5 +1,6 @@
 import os
 import sys
+
 from openai import OpenAI
 
 print(f"Python: {sys.version}")

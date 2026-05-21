@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import asyncio
-import httpx
-import uuid
 import sys
 import time
+import uuid
+
+import httpx
 
 QUERY = "List all collections."
 
@@ -46,7 +47,7 @@ async def validate_agent(name, port, question):
                     break
                 except (httpx.ConnectError, httpx.ReadError) as err:
                     print(
-                        f"[{name}] Connection attempt {_retry+1} failed ({err}). Retrying in 5s..."
+                        f"[{name}] Connection attempt {_retry + 1} failed ({err}). Retrying in 5s..."
                     )
                     await asyncio.sleep(5)
 

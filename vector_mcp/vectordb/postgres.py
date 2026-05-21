@@ -319,7 +319,7 @@ class PostgreSQL(VectorDB):
                                         metadata=ref_doc.metadata or {},
                                     )
                                 )
-                        except Exception: # nosec B112
+                        except Exception:  # nosec B112
                             continue
                     return docs
             except Exception as fallback_error:

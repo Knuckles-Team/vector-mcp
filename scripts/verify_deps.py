@@ -1,6 +1,7 @@
 try:
-    from pydantic_ai.ui.ag_ui import AGUIAdapter
     import inspect
+
+    from pydantic_ai.ui.ag_ui import AGUIAdapter
 
     print(inspect.getsource(AGUIAdapter.run_stream))
 
