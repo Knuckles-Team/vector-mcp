@@ -76,9 +76,9 @@ Configure your IDE's `mcp.json` to launch the MCP server via `uvx`:
       ],
       "env": {
         "VECTOR_URL": "your_vector_url_here",
+        "VECTOR_API_KEY": "your_vector_api_key_here",
         "EMBEDDING_MODEL_ID": "your_embedding_model_id_here",
-        "CHUNK_SIZE": "your_chunk_size_here",
-        "VECTOR_API_KEY": "your_vector_api_key_here"
+        "CHUNK_SIZE": "your_chunk_size_here"
       }
     }
   }
@@ -86,33 +86,7 @@ Configure your IDE's `mcp.json` to launch the MCP server via `uvx`:
 ```
 
 #### Streamable-HTTP Transport (Recommended for production deployments)
-Configure your client's `mcp.json` to launch the Streamable-HTTP server via `uvx` with explicit host and port definition:
-
-```json
-{
-  "mcpServers": {
-    "vector-mcp": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "vector-mcp",
-        "vector-mcp"
-      ],
-      "env": {
-        "TRANSPORT": "streamable-http",
-        "HOST": "0.0.0.0",
-        "PORT": "8000",
-        "VECTOR_URL": "your_vector_url_here",
-        "EMBEDDING_MODEL_ID": "your_embedding_model_id_here",
-        "CHUNK_SIZE": "your_chunk_size_here",
-        "VECTOR_API_KEY": "your_vector_api_key_here"
-      }
-    }
-  }
-}
-```
-
-Alternatively, connect to a pre-deployed remote or local Streamable-HTTP instance:
+To run the server as a long-running Streamable-HTTP service:
 
 ```json
 {
@@ -133,9 +107,9 @@ docker run -d \
   -e TRANSPORT=streamable-http \
   -e PORT=8000 \
   -e VECTOR_URL="your_value" \
+  -e VECTOR_API_KEY="your_value" \
   -e EMBEDDING_MODEL_ID="your_value" \
   -e CHUNK_SIZE="your_value" \
-  -e VECTOR_API_KEY="your_value" \
   knucklessg1/vector-mcp:latest
 ```
 
@@ -151,9 +125,9 @@ To start the interactive command-line agent:
 ```bash
 # Set credentials
 export VECTOR_URL="your_value"
+export VECTOR_API_KEY="your_value"
 export EMBEDDING_MODEL_ID="your_value"
 export CHUNK_SIZE="your_value"
-export VECTOR_API_KEY="your_value"
 
 # Run the agent server
 vector-agent --provider openai --model-id gpt-4o
