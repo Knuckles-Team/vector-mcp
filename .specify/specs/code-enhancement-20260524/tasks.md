@@ -1,0 +1,107 @@
+# Tasks: Code Enhancement: vector-mcp
+
+Generated: 2026-05-24T04:17:16.247340+00:00
+Skipped informational: 6
+
+- [ ] [P] **T001** [Dependency Audit] Minor update: agent-utilities 0.2.40 (installed) -> 0.16.0
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T002** [Dependency Audit] Minor update: pypdf 6.7.2 (constraint — not installed) -> 6.12.1
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T003** [Dependency Audit] Minor update: ipython 9.10.0 (constraint — not installed) -> 9.13.0
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T004** [Dependency Audit] Minor update: llama-index-llms-langchain 0.7.2 (constraint — not installed) -> 0
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T005** [Dependency Audit] Minor update: llama-index-readers-file 0.5.6 (constraint — not installed) -> 0.6
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T006** [Dependency Audit] Minor update: opentelemetry-api 1.41.1 (installed) -> 1.42.1
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T007** [Dependency Audit] Minor update: llama-index-vector-stores-postgres 0.7.3 (constraint — not install
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T008** [Dependency Audit] MAJOR update: protobuf 6.33.6 (installed) -> 7.35.0
+  - Priority: P2-Medium | Effort: Small
+- [ ] [P] **T009** [Dependency Audit] Minor update: llama-index-vector-stores-couchbase 0.6.0 (constraint — not instal
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T010** [Dependency Audit] Minor update: opentelemetry-exporter-otlp 1.39.1 (constraint — not installed) ->
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T011** [Dependency Audit] Minor update: opentelemetry-sdk 1.41.1 (installed) -> 1.42.1
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T012** [Dependency Audit] Minor update: fastembed 0.7.4 (constraint — not installed) -> 0.8.0
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T013** [Dependency Audit] Minor update: qdrant-client 1.16.2 (constraint — not installed) -> 1.18.0
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T014** [Dependency Audit] Minor update: llama-index-vector-stores-qdrant 0.9.1 (constraint — not installed
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T015** [Dependency Audit] Minor update: couchbase 4.5.0 (constraint — not installed) -> 4.6.1
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T016** [Dependency Audit] Minor update: llama-index-vector-stores-mongodb 0.9.1 (constraint — not installe
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T017** [Dependency Audit] Minor update: sentence_transformers 5.2.2 (constraint — not installed) -> 5.5.1
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T018** [Dependency Audit] Minor update: llama-index-embeddings-huggingface 0.6.1 (constraint — not install
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T019** [Dependency Audit] Minor update: pymongo 4.16.0 (constraint — not installed) -> 4.17.0
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T020** [Dependency Audit] Minor update: pytest-xdist 3.6.0 (constraint — not installed) -> 3.8.0
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T021** [Codebase Optimization] 31 functions exceed 50 lines
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T022** [Codebase Optimization] Monolithic: db_utils.py (556L) — 2 functions with high complexity (worst: Module
+  - Priority: P1-High | Effort: Large
+- [ ] [P] **T023** [Codebase Optimization] Monolithic: couchbase.py (724L) — 2 functions with high complexity (worst: Couch
+  - Priority: P1-High | Effort: Large
+- [ ] [P] **T024** [Codebase Optimization] 17 functions with nesting depth >4
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T025** [Test Coverage] 9 tests without assertions
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T026** [Test Coverage] 14 potential doc-test drift items
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T027** [Documentation & Governance] README.md missing sections: usage|quick start
+  - Priority: P4-Enhancement | Effort: Small
+- [ ] [P] **T028** [Documentation & Governance] 2 broken internal links in README.md
+  - Priority: P4-Enhancement | Effort: Medium
+- [ ] [P] **T029** [Documentation & Governance] README missing: Has a Table of Contents
+  - Priority: P4-Enhancement | Effort: Small
+- [ ] [P] **T030** [Documentation & Governance] README missing: Has usage examples with code blocks
+  - Priority: P4-Enhancement | Effort: Small
+- [ ] [P] **T031** [Architecture & Design Patterns] SRP: 3 modules exceed 500 lines (god modules)
+  - Priority: P2-Medium | Effort: Large
+- [ ] [P] **T032** [Architecture & Design Patterns] SRP: 1 classes have >15 methods
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T033** [Architecture & Design Patterns] No discernible layer architecture (no domain/service/adapter separation)
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T034** [Concept Traceability] Low traceability ratio: 0% concepts fully traced
+  - Priority: P4-Enhancement | Effort: Medium
+- [ ] [P] **T035** [Concept Traceability] 10 orphaned concepts (only in one source)
+  - Priority: P4-Enhancement | Effort: Medium
+- [ ] [P] **T036** [Concept Traceability] 61 test functions missing concept markers
+  - Priority: P4-Enhancement | Effort: Small
+- [ ] [P] **T037** [Concept Traceability] 119 significant functions (>10 lines) missing concept markers in docstrings
+  - Priority: P4-Enhancement | Effort: Small
+- [ ] [P] **T038** [Linting & Formatting] Total lint findings: 0 (high/error: 0, medium/warning: 0, low: 0)
+  - Priority: P4-Enhancement | Effort: Medium
+- [ ] [P] **T039** [Pre-Commit Compliance] 1 hook(s) may be outdated: ruff-pre-commit
+  - Priority: P2-Medium | Effort: Small
+- [ ] [P] **T040** [Directory Organization] 6 rogue/throwaway scripts detected (fix_*, validate_*, patch_*, etc.): scripts/d
+  - Priority: P3-Low | Effort: Medium
+- [ ] [P] **T041** [Changelog Audit] CHANGELOG.md exists but could not be parsed — check format compliance
+  - Priority: P3-Low | Effort: Medium
+- [ ] [P] **T042** [Changelog Audit] No changelog entries within the last 30 days
+  - Priority: P3-Low | Effort: Medium
+- [ ] [P] **T043** [Changelog Audit] keepachangelog not installed — pip install 'universal-skills[code-enhancer]'
+  - Priority: P3-Low | Effort: Small
+- [ ] [P] **T044** [Pytest Quality] 1 test files exceed 500 lines — split into focused modules
+  - Priority: P2-Medium | Effort: Large
+- [ ] [P] **T045** [Pytest Quality] Test directory lacks subdirectory organization (consider unit/, integration/, e2
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T046** [Pytest Quality] 9 tests have no assertions
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T047** [Pytest Quality] 9 tests use weak assertions (assert result is not None, assert True, etc.)
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T048** [Environment Variables] Only 29% of env vars documented in README.md
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T049** [Environment Variables] Undocumented env vars: AUTH_TYPE, COLLECTION_MANAGEMENTTOOL, DEFAULT_AGENT_NAME,
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T050** [Environment Variables] 14 Python env vars not in .env.example: DEFAULT_AGENT_NAME, EMBEDDING_MODEL, EMB
+  - Priority: P2-Medium | Effort: Medium
+- [ ] [P] **T051** [analyze_xdg_kg] Analysis error: No module named 'agent_utilities.knowledge_graph'
+  - Priority: P1-High | Effort: Medium

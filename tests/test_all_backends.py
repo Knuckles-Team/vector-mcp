@@ -225,16 +225,9 @@ def couchbase_db():
         ),
     ],
 )
-def vector_db(request, chromadb_db, postgres_db, mongodb_db, qdrant_db, couchbase_db):
+def vector_db(request):
     """Parametrized fixture that yields each database backend."""
-    db_map = {
-        "chromadb": chromadb_db,
-        "postgres": postgres_db,
-        "mongodb": mongodb_db,
-        "qdrant": qdrant_db,
-        "couchbase": couchbase_db,
-    }
-    return db_map[request.param]
+    return request.getfixturevalue(f"{request.param}_db")
 
 
 # Test collection management

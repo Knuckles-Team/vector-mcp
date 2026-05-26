@@ -38,7 +38,6 @@ __version__ = "1.14.0"
 logger = get_logger(name="vector-mcp")
 logger.setLevel(logging.INFO)
 
-
 def register_collection_management_tools(mcp: FastMCP):
     @mcp.tool(tags={"collection_management"})
     async def vector_collection_management(
@@ -140,7 +139,6 @@ def register_collection_management_tools(mcp: FastMCP):
             f"Unknown action: {action}. Must be one of: create_collection', 'add_documents', 'delete_collection', 'list_collections"
         )
 
-
 def register_search_tools(mcp: FastMCP):
     @mcp.tool(tags={"search"})
     async def vector_search(
@@ -177,7 +175,10 @@ def register_search_tools(mcp: FastMCP):
           - 'search': Performs a hybrid search combining semantic (vector) and lexical (BM25) methods.
         """
         if ctx:
-            ctx.info("Executing tool...")
+            try:
+                await ctx.info("Executing tool...")
+            except Exception:
+                pass
         kwargs: dict[str, Any]
         if action == "semantic_search":
             kwargs = {
@@ -231,7 +232,6 @@ def register_search_tools(mcp: FastMCP):
             f"Unknown action: {action}. Must be one of: semantic_search', 'lexical_search', 'search"
         )
 
-
 def get_mcp_instance() -> tuple[Any, ...]:
     """Initialize and return the MCP instance."""
     load_dotenv(find_dotenv())
@@ -258,7 +258,6 @@ def get_mcp_instance() -> tuple[Any, ...]:
         mcp.add_middleware(mw)
     return mcp, args, middlewares
 
-
 def mcp_server() -> None:
     mcp, args, middlewares = get_mcp_instance()
     print(f"vector-mcp MCP v{__version__}", file=sys.stderr)
@@ -275,7 +274,6 @@ def mcp_server() -> None:
     else:
         logger.error("Invalid transport", extra={"transport": args.transport})
         sys.exit(1)
-
 
 if __name__ == "__main__":
     mcp_server()

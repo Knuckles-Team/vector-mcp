@@ -43,7 +43,7 @@
 
 This agent wraps the Integrate RAG into AI Agents via MCP Server. Supports multiple Vector database technologies. API. You can interact with it programmatically or via its integrated execution entrypoints.
 
-Detailed instructions on how to use the underlying API wrappers, extended schema bindings, and developer SDK references are maintained in [docs/index.md](file:///home/apps/workspace/agent-packages/agents/vector-mcp/docs/index.md).
+Detailed instructions on how to use the underlying API wrappers, extended schema bindings, and developer SDK references are maintained in [docs/index.md](docs/index.md).
 
 ---
 
@@ -54,10 +54,66 @@ This server utilizes dynamic Action-Routed tools to optimize token overhead and 
 ### Available MCP Tools
 | Tool Module | Toggle Env Var | Enabled by Default | Description & Nested Methods |
 |-------------|----------------|--------------------|------------------------------|
-| **Collection Management** | `COLLECTION_MANAGEMENTTOOL` | `True` | Manage collection management operations. Action-routed methods: `create_collection`, `add_documents`, `delete_collection`, `list_collections`. |
-| **Search** | `SEARCHTOOL` | `True` | Manage search operations. Action-routed methods: `semantic_search`, `lexical_search`, `search`. |
+| **Collection Management** | `COLLECTION_MANAGEMENT_TOOL` | `True` | Manage collection management operations.
 
-Detailed tool schemas, parameter shapes, and validation constraints are preserved in [docs/mcp.md](file:///home/apps/workspace/agent-packages/agents/vector-mcp/docs/mcp.md).
+        Actions:
+          - 'create_collection': Creates a new collection or retrieves an existing one in the vector database.
+          - 'add_documents': Adds documents to an existing collection in the vector database.
+          - 'delete_collection': Deletes a collection from the vector database.
+          - 'list_collections': Lists all collections in the vector database. Action-routed methods: `add_documents`, `create_collection`, `delete_collection`, `list_collections`. |
+| **Search** | `SEARCH_TOOL` | `True` | Manage search operations.
+
+        Actions:
+          - 'semantic_search': Retrieves and gathers related knowledge from the vector database instance using the question variable.
+          - 'lexical_search': This is a lexical or term based search that retrieves and gathers related knowledge from the database instance using the question variable via BM25.
+          - 'search': Performs a hybrid search combining semantic (vector) and lexical (BM25) methods. Action-routed methods: `lexical_search`, `search`, `semantic_search`. |
+
+        Actions:
+          - 'create_collection': Creates a new collection or retrieves an existing one in the vector database.
+          - 'add_documents': Adds documents to an existing collection in the vector database.
+          - 'delete_collection': Deletes a collection from the vector database.
+          - 'list_collections': Lists all collections in the vector database. Action-routed methods: `add_documents`, `create_collection`, `delete_collection`, `list_collections`. |
+| **Search** | `SEARCH_TOOL` | `True` | Manage search operations.
+
+        Actions:
+          - 'semantic_search': Retrieves and gathers related knowledge from the vector database instance using the question variable.
+          - 'lexical_search': This is a lexical or term based search that retrieves and gathers related knowledge from the database instance using the question variable via BM25.
+          - 'search': Performs a hybrid search combining semantic (vector) and lexical (BM25) methods. Action-routed methods: `lexical_search`, `search`, `semantic_search`. |
+
+        Actions:
+          - 'create_collection': Creates a new collection or retrieves an existing one in the vector database.
+          - 'add_documents': Adds documents to an existing collection in the vector database.
+          - 'delete_collection': Deletes a collection from the vector database.
+          - 'list_collections': Lists all collections in the vector database. Action-routed methods: `add_documents`, `create_collection`, `delete_collection`, `list_collections`. |
+| **Search** | `SEARCH_TOOL` | `True` | Manage search operations.
+
+        Actions:
+          - 'semantic_search': Retrieves and gathers related knowledge from the vector database instance using the question variable.
+          - 'lexical_search': This is a lexical or term based search that retrieves and gathers related knowledge from the database instance using the question variable via BM25.
+          - 'search': Performs a hybrid search combining semantic (vector) and lexical (BM25) methods. Action-routed methods: `lexical_search`, `search`, `semantic_search`. |
+
+Detailed tool schemas, parameter shapes, and validation constraints are preserved in [docs/mcp.md](docs/mcp.md).
+
+### Dynamic Tool Selection & Visibility
+
+This MCP server supports dynamic toolset selection and visibility filtering at runtime. This allows you to restrict the set of exposed tools in order to prevent blowing up the LLM's context window.
+
+You can configure tool filtering via multiple input channels:
+
+- **CLI Arguments:** Pass `--tools` or `--toolsets` (or their disabled counterparts `--disabled-tools` and `--disabled-toolsets`) during startup.
+- **Environment Variables:** Define standard environment variables:
+  - `MCP_ENABLED_TOOLS` / `MCP_DISABLED_TOOLS`
+  - `MCP_ENABLED_TAGS` / `MCP_DISABLED_TAGS`
+- **HTTP SSE Request Headers:** Pass custom headers during transport initialization:
+  - `x-mcp-enabled-tools` / `x-mcp-disabled-tools`
+  - `x-mcp-enabled-tags` / `x-mcp-disabled-tags`
+- **HTTP SSE Request Query Parameters:** Append query parameters directly to your transport connection URL:
+  - `?tools=tool1,tool2`
+  - `?tags=tag1`
+
+When query strings or parameters are supplied, an LLM-free **Knowledge Graph resolution layer** (using `DynamicToolOrchestrator`) matches query intents against known tool tags, names, or descriptions, with safe fallback and automated 24-hour background cache refreshing.
+
+---
 
 ### MCP Configuration Examples
 
@@ -227,7 +283,7 @@ services:
 
 ```
 
-Detailed graph node architecture explanations, custom skill configurations, and agentic trace guides are available in [docs/agent.md](file:///home/apps/workspace/agent-packages/agents/vector-mcp/docs/agent.md).
+Detailed graph node architecture explanations, custom skill configurations, and agentic trace guides are available in [docs/agent.md](docs/agent.md).
 
 ---
 
