@@ -134,10 +134,19 @@ class ModuleInfo:
 
         """
         import importlib.util
+        import sys
         from importlib.metadata import PackageNotFoundError
         from importlib.metadata import version as get_version
 
-        if not importlib.util.find_spec(self.name):
+        try:
+            spec = importlib.util.find_spec(self.name)
+        except ValueError:
+            spec = None
+
+        if not spec and self.name in sys.modules and sys.modules[self.name] is not None:
+            spec = True
+
+        if not spec:
             return f"'{self.name}' is not installed."
 
         if self.min_version or self.max_version:

@@ -15,11 +15,11 @@ Skipped informational: 6
   - Priority: P3-Low | Effort: Small
 - [ ] [P] **T006** [Dependency Audit] Minor update: opentelemetry-api 1.41.1 (installed) -> 1.42.1
   - Priority: P3-Low | Effort: Small
-- [ ] [P] **T007** [Dependency Audit] Minor update: llama-index-vector-stores-postgres 0.7.3 (constraint — not install
+- [ ] [P] **T007** [Dependency Audit] Minor update: llama-index-vector-stores-postgres 0.7.3 (constraint — not installed)
   - Priority: P3-Low | Effort: Small
 - [ ] [P] **T008** [Dependency Audit] MAJOR update: protobuf 6.33.6 (installed) -> 7.35.0
   - Priority: P2-Medium | Effort: Small
-- [ ] [P] **T009** [Dependency Audit] Minor update: llama-index-vector-stores-couchbase 0.6.0 (constraint — not instal
+- [ ] [P] **T009** [Dependency Audit] Minor update: llama-index-vector-stores-couchbase 0.6.0 (constraint — not installed)
   - Priority: P3-Low | Effort: Small
 - [ ] [P] **T010** [Dependency Audit] Minor update: opentelemetry-exporter-otlp 1.39.1 (constraint — not installed) ->
   - Priority: P3-Low | Effort: Small
@@ -33,11 +33,11 @@ Skipped informational: 6
   - Priority: P3-Low | Effort: Small
 - [ ] [P] **T015** [Dependency Audit] Minor update: couchbase 4.5.0 (constraint — not installed) -> 4.6.1
   - Priority: P3-Low | Effort: Small
-- [ ] [P] **T016** [Dependency Audit] Minor update: llama-index-vector-stores-mongodb 0.9.1 (constraint — not installe
+- [ ] [P] **T016** [Dependency Audit] Minor update: llama-index-vector-stores-mongodb 0.9.1 (constraint — not installed)
   - Priority: P3-Low | Effort: Small
 - [ ] [P] **T017** [Dependency Audit] Minor update: sentence_transformers 5.2.2 (constraint — not installed) -> 5.5.1
   - Priority: P3-Low | Effort: Small
-- [ ] [P] **T018** [Dependency Audit] Minor update: llama-index-embeddings-huggingface 0.6.1 (constraint — not install
+- [ ] [P] **T018** [Dependency Audit] Minor update: llama-index-embeddings-huggingface 0.6.1 (constraint — not installed)
   - Priority: P3-Low | Effort: Small
 - [ ] [P] **T019** [Dependency Audit] Minor update: pymongo 4.16.0 (constraint — not installed) -> 4.17.0
   - Priority: P3-Low | Effort: Small

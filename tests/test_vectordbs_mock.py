@@ -3,25 +3,34 @@ import sys
 import pytest
 from unittest.mock import MagicMock, patch
 
-# Ensure agent_utilities is mocked or imported safely
-mock_agent_utilities = MagicMock()
-sys.modules["agent_utilities"] = mock_agent_utilities
+# Save original modules to restore later
+_orig_pgvector = sys.modules.get("llama_index.vector_stores.postgres")
 
-# Mock SQLAlchemy and PGVectorStore dependencies before importing
-mock_sqlalchemy = MagicMock()
+# Define mock objects
 mock_pgvector = MagicMock()
-mock_llama_index = MagicMock()
-sys.modules["sqlalchemy"] = mock_sqlalchemy
-sys.modules["llama_index.vector_stores.postgres"] = mock_pgvector
-sys.modules["llama_index.core"] = mock_llama_index
-
-# Mock MongoDB pymongo dependencies
 mock_pymongo = MagicMock()
-sys.modules["pymongo"] = mock_pymongo
 
+# Place temporary mock for pgvector so the optional import succeeds
+sys.modules["llama_index.vector_stores.postgres"] = mock_pgvector
+
+# Import targets
 from vector_mcp.vectordb.base import VectorDBFactory
 from vector_mcp.vectordb.postgres import PostgreSQL
 from vector_mcp.vectordb.mongodb import MongoDBAtlasVectorDB
+
+# Restore original modules
+if _orig_pgvector is not None:
+    sys.modules["llama_index.vector_stores.postgres"] = _orig_pgvector
+else:
+    sys.modules.pop("llama_index.vector_stores.postgres", None)
+
+
+@pytest.fixture(autouse=True)
+def mock_mongodb_client():
+    """Mock the MongoClient inside the mongodb module to avoid real connections."""
+    with patch("vector_mcp.vectordb.mongodb.MongoClient", new=mock_pymongo.MongoClient) as mock:
+        yield mock
+
 
 
 def test_vectordb_factory():

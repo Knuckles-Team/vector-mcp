@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-import os
 from typing import Any
 
 from agent_utilities import create_embedding_model
@@ -60,7 +59,30 @@ class ChromaVectorDB(VectorDB):
                 self.path = path
                 self.client = chromadb.PersistentClient(path=self.path)
             else:
-                self.path = os.path.expanduser("~/Documents/ChromaDB")
+                import shutil
+                from pathlib import Path
+
+                from agent_utilities.core import paths
+
+                legacy_dir = Path.home() / "Documents" / "ChromaDB"
+                new_dir = paths.data_dir() / "vectordb"
+
+                if legacy_dir.exists() and legacy_dir != new_dir:
+                    try:
+                        new_dir.parent.mkdir(parents=True, exist_ok=True)
+                        if not new_dir.exists():
+                            shutil.copytree(
+                                legacy_dir, new_dir, symlinks=True, dirs_exist_ok=True
+                            )
+                            logger.info(
+                                f"Successfully migrated ChromaDB from {legacy_dir} to {new_dir}"
+                            )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to migrate legacy ChromaDB directory: {e}"
+                        )
+
+                self.path = str(new_dir)
                 self.client = chromadb.PersistentClient(path=self.path)
 
         self.chroma_collection = self.client.get_or_create_collection(

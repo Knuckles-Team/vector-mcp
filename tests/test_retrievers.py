@@ -4,6 +4,14 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+# Save original modules
+_orig_agent_utilities = sys.modules.get("agent_utilities")
+_orig_llama_index = sys.modules.get("llama_index")
+_orig_llama_index_core = sys.modules.get("llama_index.core")
+_orig_llama_index_core_schema = sys.modules.get("llama_index.core.schema")
+_orig_llama_index_core_vector_stores = sys.modules.get("llama_index.core.vector_stores")
+_orig_llama_index_core_vector_stores_types = sys.modules.get("llama_index.core.vector_stores.types")
+
 # Ensure agent_utilities is mocked or imported safely
 mock_agent_utilities = MagicMock()
 sys.modules["agent_utilities"] = mock_agent_utilities
@@ -31,6 +39,48 @@ sys.modules["llama_index.core.vector_stores.types"] = (
 )
 
 from vector_mcp.retriever.llamaindex_retriever import LlamaIndexRetriever
+
+# Immediately restore/clean sys.modules
+for name, orig in [
+    ("agent_utilities", _orig_agent_utilities),
+    ("llama_index", _orig_llama_index),
+    ("llama_index.core", _orig_llama_index_core),
+    ("llama_index.core.schema", _orig_llama_index_core_schema),
+    ("llama_index.core.vector_stores", _orig_llama_index_core_vector_stores),
+    ("llama_index.core.vector_stores.types", _orig_llama_index_core_vector_stores_types),
+]:
+    if orig is not None:
+        sys.modules[name] = orig
+    else:
+        sys.modules.pop(name, None)
+
+
+@pytest.fixture(autouse=True)
+def mock_dependencies_fixture():
+    # Set them up again during the test run
+    _curr_orig = {
+        name: sys.modules.get(name) for name in [
+            "agent_utilities", "llama_index", "llama_index.core",
+            "llama_index.core.schema", "llama_index.core.vector_stores",
+            "llama_index.core.vector_stores.types"
+        ]
+    }
+    sys.modules["agent_utilities"] = mock_agent_utilities
+    sys.modules["llama_index"] = mock_llama_index
+    sys.modules["llama_index.core"] = mock_llama_index.core
+    sys.modules["llama_index.core.schema"] = mock_llama_index.core.schema
+    sys.modules["llama_index.core.vector_stores"] = mock_llama_index.core.vector_stores
+    sys.modules["llama_index.core.vector_stores.types"] = (
+        mock_llama_index.core.vector_stores.types
+    )
+    yield
+    # Restore
+    for name, orig in _curr_orig.items():
+        if orig is not None:
+            sys.modules[name] = orig
+        else:
+            sys.modules.pop(name, None)
+
 
 
 def test_llamaindex_retriever_init():

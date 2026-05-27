@@ -4,10 +4,29 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 # Mock the agent_utilities module before importing agent_server
+_orig_agent_utilities = sys.modules.get("agent_utilities")
 mock_agent_utilities = MagicMock()
 sys.modules["agent_utilities"] = mock_agent_utilities
 
 from vector_mcp.agent_server import agent_server
+
+# Restore/remove immediately after import
+if _orig_agent_utilities is not None:
+    sys.modules["agent_utilities"] = _orig_agent_utilities
+else:
+    sys.modules.pop("agent_utilities", None)
+
+
+@pytest.fixture(autouse=True)
+def mock_agent_utilities_fixture():
+    _curr_orig = sys.modules.get("agent_utilities")
+    sys.modules["agent_utilities"] = mock_agent_utilities
+    yield mock_agent_utilities
+    if _curr_orig is not None:
+        sys.modules["agent_utilities"] = _curr_orig
+    else:
+        sys.modules.pop("agent_utilities", None)
+
 
 
 def test_agent_server_success():
