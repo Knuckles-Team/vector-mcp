@@ -3,6 +3,11 @@ import sys
 import pytest
 from unittest.mock import MagicMock, patch
 
+# Clear vector_mcp.vectordb modules from sys.modules cache to prevent caching issues
+for k in list(sys.modules.keys()):
+    if k.startswith("vector_mcp.vectordb"):
+        sys.modules.pop(k, None)
+
 # Save original modules to restore later
 _orig_pgvector = sys.modules.get("llama_index.vector_stores.postgres")
 
@@ -92,11 +97,16 @@ def test_mongodb_operations():
 
     mock_pymongo.MongoClient.return_value = mock_client
 
+    mock_embed_model = MagicMock()
+    mock_embed_model.get_text_embedding.return_value = [0.5, 0.5]
+    mock_embed_model.get_query_embedding.return_value = [0.5, 0.5]
+
     db = MongoDBAtlasVectorDB(
         host="localhost",
         port=27017,
         dbname="testdb",
         collection_name="col1",
+        embed_model=mock_embed_model,
     )
 
     # 1. create_collection
@@ -132,7 +142,6 @@ def test_mongodb_operations():
     mock_collection.find.return_value = [
         {"id": "1", "text": "text1", "embedding": [0.5, 0.5]}
     ]
-    db.embed_model.get_query_embedding.return_value = [0.5, 0.5]
     results = db.semantic_search(queries=["query1"])
     assert len(results) == 1
     assert len(results[0]) == 1

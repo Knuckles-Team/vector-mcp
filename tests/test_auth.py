@@ -1,21 +1,16 @@
 import os
-import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import pytest
 
 from agent_utilities.base_utilities import to_boolean
-
-# Share the same vector_api mock across all tests to prevent import-caching issues
-if "vector_mcp.vector_api" not in sys.modules:
-    mock_vector_api = MagicMock()
-    mock_vector_api.Api = MagicMock()
-    sys.modules["vector_mcp.vector_api"] = mock_vector_api
-else:
-    mock_vector_api = sys.modules["vector_mcp.vector_api"]
-
-MockApiClass = mock_vector_api.Api
-
 from vector_mcp.auth import get_client
+
+
+@pytest.fixture
+def mock_api_class():
+    """Mock the Api class imported by auth."""
+    with patch("vector_mcp.vector_api.Api") as mock:
+        yield mock
 
 
 def test_get_client_missing_base_url():
@@ -27,7 +22,7 @@ def test_get_client_missing_base_url():
             get_client()
 
 
-def test_get_client_success():
+def test_get_client_success(mock_api_class):
     """get_client should correctly parse env variables and return the Api client."""
     with patch.dict(
         os.environ,
@@ -37,15 +32,14 @@ def test_get_client_success():
             "LLM_SSL_VERIFY": "True",
         },
     ):
-        MockApiClass.reset_mock()
         client = get_client()
         assert client is not None
-        MockApiClass.assert_called_once_with(
+        mock_api_class.assert_called_once_with(
             base_url="http://test-url", token="test-token", verify=True
         )
 
 
-def test_get_client_verify_defaults():
+def test_get_client_verify_defaults(mock_api_class):
     """get_client should default verify to False and check fallback token env variables."""
     with patch.dict(
         os.environ,
@@ -56,9 +50,8 @@ def test_get_client_verify_defaults():
     ):
         if "LLM_TOKEN" in os.environ:
             del os.environ["LLM_TOKEN"]
-        MockApiClass.reset_mock()
         client = get_client()
         assert client is not None
-        MockApiClass.assert_called_once_with(
+        mock_api_class.assert_called_once_with(
             base_url="http://test-url", token="test-key", verify=False
         )
