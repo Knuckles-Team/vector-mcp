@@ -142,3 +142,19 @@ dmypy.json
 knowledge_graph.db*
 .repo_graph/
 .ladybug/
+# Model-generated transient scripts at root level
+/test_*.py
+/fix_*.py
+/debug_*.py
+/scratch_*.py
+/temp_*.py
+
+# Transient logs, traces, patch files, and test outputs
+*.orig
+*.rej
+*.patch
+*.log
+*output*.txt
+*errors*.txt
+failed_tests.txt
+trace.txt
