@@ -98,3 +98,11 @@ repos:
   rev: v3.0.1
   hooks:
   - id: docker-compose-check
+- repo: local
+  hooks:
+  - id: security-sanitizer
+    name: Security and Garbage Sanitizer
+    entry: python scripts/security_sanitizer.py
+    language: python
+    pass_filenames: false
+    always_run: true
