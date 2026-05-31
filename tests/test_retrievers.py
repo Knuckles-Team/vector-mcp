@@ -10,7 +10,9 @@ _orig_llama_index = sys.modules.get("llama_index")
 _orig_llama_index_core = sys.modules.get("llama_index.core")
 _orig_llama_index_core_schema = sys.modules.get("llama_index.core.schema")
 _orig_llama_index_core_vector_stores = sys.modules.get("llama_index.core.vector_stores")
-_orig_llama_index_core_vector_stores_types = sys.modules.get("llama_index.core.vector_stores.types")
+_orig_llama_index_core_vector_stores_types = sys.modules.get(
+    "llama_index.core.vector_stores.types"
+)
 
 # Ensure agent_utilities is mocked or imported safely
 mock_agent_utilities = MagicMock()
@@ -47,7 +49,10 @@ for name, orig in [
     ("llama_index.core", _orig_llama_index_core),
     ("llama_index.core.schema", _orig_llama_index_core_schema),
     ("llama_index.core.vector_stores", _orig_llama_index_core_vector_stores),
-    ("llama_index.core.vector_stores.types", _orig_llama_index_core_vector_stores_types),
+    (
+        "llama_index.core.vector_stores.types",
+        _orig_llama_index_core_vector_stores_types,
+    ),
 ]:
     if orig is not None:
         sys.modules[name] = orig
@@ -59,10 +64,14 @@ for name, orig in [
 def mock_dependencies_fixture():
     # Set them up again during the test run
     _curr_orig = {
-        name: sys.modules.get(name) for name in [
-            "agent_utilities", "llama_index", "llama_index.core",
-            "llama_index.core.schema", "llama_index.core.vector_stores",
-            "llama_index.core.vector_stores.types"
+        name: sys.modules.get(name)
+        for name in [
+            "agent_utilities",
+            "llama_index",
+            "llama_index.core",
+            "llama_index.core.schema",
+            "llama_index.core.vector_stores",
+            "llama_index.core.vector_stores.types",
         ]
     }
     sys.modules["agent_utilities"] = mock_agent_utilities
@@ -80,7 +89,6 @@ def mock_dependencies_fixture():
             sys.modules[name] = orig
         else:
             sys.modules.pop(name, None)
-
 
 
 def test_llamaindex_retriever_init():

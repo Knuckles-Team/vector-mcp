@@ -33,9 +33,10 @@ else:
 @pytest.fixture(autouse=True)
 def mock_mongodb_client():
     """Mock the MongoClient inside the mongodb module to avoid real connections."""
-    with patch("vector_mcp.vectordb.mongodb.MongoClient", new=mock_pymongo.MongoClient) as mock:
+    with patch(
+        "vector_mcp.vectordb.mongodb.MongoClient", new=mock_pymongo.MongoClient
+    ) as mock:
         yield mock
-
 
 
 def test_vectordb_factory():

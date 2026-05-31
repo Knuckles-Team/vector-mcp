@@ -28,7 +28,6 @@ def mock_agent_utilities_fixture():
         sys.modules.pop("agent_utilities", None)
 
 
-
 def test_agent_server_success():
     """Verify that agent_server CLI parses args and invokes create_agent_server correctly."""
     mock_agent_utilities.reset_mock()

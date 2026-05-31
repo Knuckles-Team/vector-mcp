@@ -1,6 +1,7 @@
 import sys
 from importlib import import_module
 
+
 def test_optional_dependencies():
     # Save original sys.modules state of optional dependencies
     keys_to_restore = [
@@ -12,7 +13,11 @@ def test_optional_dependencies():
     orig_modules = {k: sys.modules.get(k) for k in keys_to_restore}
 
     # Save original vector_mcp modules state so we can restore it exactly
-    orig_vector_mcp = {k: sys.modules[k] for k in list(sys.modules.keys()) if k.startswith("vector_mcp")}
+    orig_vector_mcp = {
+        k: sys.modules[k]
+        for k in list(sys.modules.keys())
+        if k.startswith("vector_mcp")
+    }
 
     try:
         # Mock missing optional dependencies
