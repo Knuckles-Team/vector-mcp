@@ -1,4 +1,4 @@
-agent-utilities[embeddings-openai,mcp]>=0.40.0
+agent-utilities[embeddings-openai,mcp]>=0.41.0
 chromadb>=1.5.1
 markdownify>=1.2.2
 beautifulsoup4>=4.14.3
