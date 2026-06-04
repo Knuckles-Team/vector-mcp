@@ -172,7 +172,34 @@ class PostgreSQL(VectorDB):
         return self.vector_store
 
     def delete_collection(self, collection_name: str) -> Any:
-        pass
+        try:
+            engine = getattr(self.vector_store, "_engine", None)
+            if not engine:
+                from sqlalchemy import create_engine
+                conn_str = self._db_params.get("connection_string")
+                if not conn_str:
+                    conn_str = f"postgresql://{self._db_params['user']}:{self._db_params['password']}@{self._db_params['host']}:{self._db_params['port']}/{self._db_params['database']}"
+                from sqlalchemy import make_url
+                url = make_url(conn_str)
+                engine = create_engine(url)
+
+            schema_name = getattr(self.vector_store, "schema_name", "public")
+            table_name = f"data_{collection_name}"
+
+            with engine.connect() as connection:
+                from sqlalchemy import text
+                # We can't use parameterized identifiers in DROP TABLE, but we control the collection name somewhat
+                # Note: PGVectorStore actually handles this internally in newer LlamaIndex versions, but we do it manually here.
+                connection.execute(text(f'DROP TABLE IF EXISTS "{schema_name}"."{table_name}" CASCADE'))
+                connection.commit()
+
+                logger.info(f"Deleted collection {collection_name}")
+                if self.active_collection == collection_name:
+                    self.active_collection = ""
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete collection {collection_name}: {e}")
+            return False
 
     def insert_documents(
         self,
