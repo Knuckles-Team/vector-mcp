@@ -22,6 +22,10 @@
 
 *Version: 1.39.0*
 
+> **Documentation** — Installation, deployment, usage across the MCP, API, and agent
+> interfaces, and guidance for provisioning a vector database are maintained in the
+> [official documentation](https://knuckles-team.github.io/vector-mcp/).
+
 ---
 
 ## Overview
@@ -316,6 +320,23 @@ uv pip install vector-mcp[all]
 # Using standard pip
 python -m pip install vector-mcp[all]
 ```
+
+---
+
+## Documentation
+
+The complete documentation is published as the
+[official documentation site](https://knuckles-team.github.io/vector-mcp/) and is the
+recommended reference for installation, deployment, and day-to-day operation.
+
+| Page | Contents |
+|---|---|
+| [Installation](https://knuckles-team.github.io/vector-mcp/installation/) | pip, source, backend extras, prebuilt Docker image |
+| [Deployment](https://knuckles-team.github.io/vector-mcp/deployment/) | run the MCP and agent servers, Compose, Caddy + Technitium, env config |
+| [Usage](https://knuckles-team.github.io/vector-mcp/usage/) | the MCP tools, the `Api` client, the agent CLI |
+| [Backing Platform](https://knuckles-team.github.io/vector-mcp/platform/) | deploy ChromaDB, PostgreSQL, Qdrant, MongoDB, or Couchbase |
+| [Overview](https://knuckles-team.github.io/vector-mcp/overview/) | backends, tools, and the standardized package layout |
+| [Concepts](https://knuckles-team.github.io/vector-mcp/concepts/) | concept registry (`CONCEPT:VEC-*`) |
 
 ---
 
