@@ -20,7 +20,7 @@
 ![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
 ![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
 
-*Version: 1.39.0*
+*Version: 1.40.0*
 
 > **Documentation** — Installation, deployment, usage across the MCP, API, and agent
 > interfaces, and guidance for provisioning a vector database are maintained in the
