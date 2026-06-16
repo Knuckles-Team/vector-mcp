@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_utilities.base_utilities import to_boolean
-from agent_utilities.mcp_utilities import create_mcp_server
+from agent_utilities.mcp_utilities import create_mcp_server, resolve_action
 from dotenv import find_dotenv, load_dotenv
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -76,6 +76,19 @@ def register_collection_management_tools(mcp: FastMCP):
           - 'delete_collection': Deletes a collection from the vector database.
           - 'list_collections': Lists all collections in the vector database.
         """
+        resolved = resolve_action(
+            action,
+            (
+                "create_collection",
+                "add_documents",
+                "delete_collection",
+                "list_collections",
+            ),
+            service="vector-mcp",
+        )
+        if isinstance(resolved, dict):
+            return resolved
+        action = resolved
         kwargs: dict[str, Any]
         if action == "create_collection":
             kwargs = {
@@ -181,6 +194,14 @@ def register_search_tools(mcp: FastMCP):
                 await ctx.info("Executing tool...")
             except Exception:
                 pass
+        resolved = resolve_action(
+            action,
+            ("semantic_search", "lexical_search", "search"),
+            service="vector-mcp",
+        )
+        if isinstance(resolved, dict):
+            return resolved
+        action = resolved
         kwargs: dict[str, Any]
         if action == "semantic_search":
             kwargs = {

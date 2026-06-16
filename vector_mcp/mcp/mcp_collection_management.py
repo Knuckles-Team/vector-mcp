@@ -6,6 +6,7 @@ Auto-generated from mcp_server.py during ecosystem standardization.
 from pathlib import Path
 from typing import Any
 
+from agent_utilities.mcp_utilities import resolve_action
 from fastmcp import FastMCP
 from fastmcp.dependencies import Depends
 from pydantic import Field
@@ -50,6 +51,19 @@ def register_collection_management_tools(mcp: FastMCP):
           - 'delete_collection': Deletes a collection from the vector database.
           - 'list_collections': Lists all collections in the vector database.
         """
+        resolved = resolve_action(
+            action,
+            (
+                "create_collection",
+                "add_documents",
+                "delete_collection",
+                "list_collections",
+            ),
+            service="vector-mcp",
+        )
+        if isinstance(resolved, dict):
+            return resolved
+        action = resolved
         kwargs: dict[str, Any]
         if action == "create_collection":
             kwargs = {
