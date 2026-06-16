@@ -5,6 +5,7 @@ Auto-generated from mcp_server.py during ecosystem standardization.
 
 from typing import Any
 
+from agent_utilities.mcp_utilities import resolve_action
 from fastmcp import Context, FastMCP
 from fastmcp.dependencies import Depends
 from pydantic import Field
@@ -52,6 +53,14 @@ def register_search_tools(mcp: FastMCP):
                 await ctx.info("Executing tool...")
             except Exception:
                 pass
+        resolved = resolve_action(
+            action,
+            ("semantic_search", "lexical_search", "search"),
+            service="vector-mcp",
+        )
+        if isinstance(resolved, dict):
+            return resolved
+        action = resolved
         kwargs: dict[str, Any]
         if action == "semantic_search":
             kwargs = {

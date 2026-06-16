@@ -1,7 +1,8 @@
+import json
 import os
 import sys
-import json
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 # Ensure LLM_BASE_URL is set in environment for imports / get_client
@@ -139,7 +140,7 @@ async def test_vector_collection_management_tools(mock_client_methods):
     mock_client_methods.list_collections.assert_called_once_with(db_type="chromadb")
 
     # 5. Test unknown action
-    with pytest.raises(Exception, match="Unknown action: invalid_action"):
+    with pytest.raises(Exception, match="Unknown action 'invalid_action'"):
         await mcp.call_tool(
             "vector_collection_management", {"action": "invalid_action"}
         )
@@ -219,7 +220,7 @@ async def test_vector_search_tools(mock_client_methods):
     )
 
     # 4. Test unknown action
-    with pytest.raises(Exception, match="Unknown action: invalid_action"):
+    with pytest.raises(Exception, match="Unknown action 'invalid_action'"):
         await mcp.call_tool("vector_search", {"action": "invalid_action"})
 
 
