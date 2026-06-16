@@ -5,7 +5,7 @@ Auto-generated from mcp_server.py during ecosystem standardization.
 
 from typing import Any
 
-from agent_utilities.mcp_utilities import resolve_action
+from agent_utilities.mcp_utilities import resolve_action, run_blocking
 from fastmcp import Context, FastMCP
 from fastmcp.dependencies import Depends
 from pydantic import Field
@@ -76,7 +76,7 @@ def register_search_tools(mcp: FastMCP):
                 "number_results": number_results,
             }
             kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return client.semantic_search(**kwargs)
+            return await run_blocking(client.semantic_search, **kwargs)
         if action == "lexical_search":
             kwargs = {
                 "db_type": db_type,
@@ -91,7 +91,7 @@ def register_search_tools(mcp: FastMCP):
                 "number_results": number_results,
             }
             kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return client.lexical_search(**kwargs)
+            return await run_blocking(client.lexical_search, **kwargs)
         if action == "search":
             kwargs = {
                 "db_type": db_type,
@@ -109,7 +109,7 @@ def register_search_tools(mcp: FastMCP):
                 "rrf_k": rrf_k,
             }
             kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return client.search(**kwargs)
+            return await run_blocking(client.search, **kwargs)
         raise ValueError(
             f"Unknown action: {action}. Must be one of: semantic_search', 'lexical_search', 'search"
         )

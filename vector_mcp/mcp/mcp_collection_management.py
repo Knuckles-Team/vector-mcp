@@ -6,7 +6,7 @@ Auto-generated from mcp_server.py during ecosystem standardization.
 from pathlib import Path
 from typing import Any
 
-from agent_utilities.mcp_utilities import resolve_action
+from agent_utilities.mcp_utilities import resolve_action, run_blocking
 from fastmcp import FastMCP
 from fastmcp.dependencies import Depends
 from pydantic import Field
@@ -81,7 +81,7 @@ def register_collection_management_tools(mcp: FastMCP):
                 "document_contents": document_contents,
             }
             kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return client.create_collection(**kwargs)
+            return await run_blocking(client.create_collection, **kwargs)
         if action == "add_documents":
             kwargs = {
                 "db_type": db_type,
@@ -97,7 +97,7 @@ def register_collection_management_tools(mcp: FastMCP):
                 "document_contents": document_contents,
             }
             kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return client.add_documents(**kwargs)
+            return await run_blocking(client.add_documents, **kwargs)
         if action == "delete_collection":
             kwargs = {
                 "db_type": db_type,
@@ -111,7 +111,7 @@ def register_collection_management_tools(mcp: FastMCP):
                 "confirm": confirm,
             }
             kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return client.delete_collection(**kwargs)
+            return await run_blocking(client.delete_collection, **kwargs)
         if action == "list_collections":
             kwargs = {
                 "db_type": db_type,
@@ -123,7 +123,7 @@ def register_collection_management_tools(mcp: FastMCP):
                 "password": password,
             }
             kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return client.list_collections(**kwargs)
+            return await run_blocking(client.list_collections, **kwargs)
         raise ValueError(
             f"Unknown action: {action}. Must be one of: create_collection', 'add_documents', 'delete_collection', 'list_collections"
         )
