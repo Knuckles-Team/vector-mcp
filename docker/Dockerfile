@@ -14,7 +14,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
 RUN --mount=type=cache,target=/root/.cache/uv \
-    pip install --no-cache-dir uv \
+    pip install --no-cache-dir uv==0.11.21 \
     && uv pip install --system --upgrade --break-system-packages --prerelease=allow vector-mcp[all]>=1.39.0
 
 FROM python:3.11-slim
