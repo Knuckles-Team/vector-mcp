@@ -52,45 +52,18 @@ Detailed instructions on how to use the underlying API wrappers, extended schema
 This server utilizes dynamic Action-Routed tools to optimize token overhead and maximize IDE compatibility.
 
 ### Available MCP Tools
-| Tool Module | Toggle Env Var | Enabled by Default | Description & Nested Methods |
-|-------------|----------------|--------------------|------------------------------|
-| **Collection Management** | `COLLECTION_MANAGEMENT_TOOL` | `True` | Manage collection management operations.
 
-        Actions:
-          - 'create_collection': Creates a new collection or retrieves an existing one in the vector database.
-          - 'add_documents': Adds documents to an existing collection in the vector database.
-          - 'delete_collection': Deletes a collection from the vector database.
-          - 'list_collections': Lists all collections in the vector database. Action-routed methods: `add_documents`, `create_collection`, `delete_collection`, `list_collections`. |
-| **Search** | `SEARCH_TOOL` | `True` | Manage search operations.
+_Auto-generated from the live MCP server — do not edit by hand._
 
-        Actions:
-          - 'semantic_search': Retrieves and gathers related knowledge from the vector database instance using the question variable.
-          - 'lexical_search': This is a lexical or term based search that retrieves and gathers related knowledge from the database instance using the question variable via BM25.
-          - 'search': Performs a hybrid search combining semantic (vector) and lexical (BM25) methods. Action-routed methods: `lexical_search`, `search`, `semantic_search`. |
+<!-- MCP-TOOLS-TABLE:START -->
 
-        Actions:
-          - 'create_collection': Creates a new collection or retrieves an existing one in the vector database.
-          - 'add_documents': Adds documents to an existing collection in the vector database.
-          - 'delete_collection': Deletes a collection from the vector database.
-          - 'list_collections': Lists all collections in the vector database. Action-routed methods: `add_documents`, `create_collection`, `delete_collection`, `list_collections`. |
-| **Search** | `SEARCH_TOOL` | `True` | Manage search operations.
+| MCP Tool | Toggle Env Var | Description |
+|----------|----------------|-------------|
+| `vector_collection_management` | `COLLECTION_MANAGEMENTTOOL` | Manage collection management operations. |
+| `vector_search` | `SEARCHTOOL` | Manage search operations. |
 
-        Actions:
-          - 'semantic_search': Retrieves and gathers related knowledge from the vector database instance using the question variable.
-          - 'lexical_search': This is a lexical or term based search that retrieves and gathers related knowledge from the database instance using the question variable via BM25.
-          - 'search': Performs a hybrid search combining semantic (vector) and lexical (BM25) methods. Action-routed methods: `lexical_search`, `search`, `semantic_search`. |
-
-        Actions:
-          - 'create_collection': Creates a new collection or retrieves an existing one in the vector database.
-          - 'add_documents': Adds documents to an existing collection in the vector database.
-          - 'delete_collection': Deletes a collection from the vector database.
-          - 'list_collections': Lists all collections in the vector database. Action-routed methods: `add_documents`, `create_collection`, `delete_collection`, `list_collections`. |
-| **Search** | `SEARCH_TOOL` | `True` | Manage search operations.
-
-        Actions:
-          - 'semantic_search': Retrieves and gathers related knowledge from the vector database instance using the question variable.
-          - 'lexical_search': This is a lexical or term based search that retrieves and gathers related knowledge from the database instance using the question variable via BM25.
-          - 'search': Performs a hybrid search combining semantic (vector) and lexical (BM25) methods. Action-routed methods: `lexical_search`, `search`, `semantic_search`. |
+_2 action-routed tools (default `MCP_TOOL_MODE=condensed`). Each is enabled unless its toggle is set false; set `MCP_TOOL_MODE=verbose` (or `both`) for the 1:1 per-operation surface. Auto-generated — do not edit._
+<!-- MCP-TOOLS-TABLE:END -->
 
 Detailed tool schemas, parameter shapes, and validation constraints are preserved in [docs/mcp.md](docs/mcp.md).
 
