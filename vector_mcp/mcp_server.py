@@ -20,15 +20,14 @@ warnings.filterwarnings("ignore", message=".*urllib3.*or chardet.*")
 warnings.filterwarnings("ignore", message=".*urllib3.*or charset_normalizer.*")
 
 import logging
-import os
 import sys
 from pathlib import Path
 from typing import Any
 
-from agent_utilities.base_utilities import to_boolean
 from agent_utilities.mcp_utilities import (
     create_mcp_server,
     load_config,
+    register_tool_surface,
     resolve_action,
     run_blocking,
 )
@@ -36,6 +35,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from vector_mcp.auth import get_client
+from vector_mcp.vector_api import Api
 
 __version__ = "1.41.0"
 
@@ -273,14 +273,13 @@ def get_mcp_instance() -> tuple[Any, ...]:
     async def health_check(request: Request) -> JSONResponse:
         return JSONResponse({"status": "OK"})
 
-    DEFAULT_COLLECTION_MANAGEMENTTOOL = to_boolean(
-        os.getenv("COLLECTION_MANAGEMENTTOOL", "True")
+    register_tool_surface(
+        mcp,
+        client_cls=Api,
+        get_client=get_client,
+        service="vector-mcp",
+        tools_module=sys.modules[__name__],
     )
-    if DEFAULT_COLLECTION_MANAGEMENTTOOL:
-        register_collection_management_tools(mcp)
-    DEFAULT_SEARCHTOOL = to_boolean(os.getenv("SEARCHTOOL", "True"))
-    if DEFAULT_SEARCHTOOL:
-        register_search_tools(mcp)
 
     for mw in middlewares:
         mcp.add_middleware(mw)
