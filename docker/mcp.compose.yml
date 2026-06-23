@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   vector-mcp-mcp:
-    image: knucklessg1/vector-mcp:latest
+    image: knucklessg1/vector-mcp:mcp
     container_name: vector-mcp-mcp
     hostname: vector-mcp-mcp
     restart: always
