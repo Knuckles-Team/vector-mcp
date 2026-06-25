@@ -11,7 +11,6 @@
     - `mcp_server.py`: Main MCP server entry point and tool registration.
     - `agent.py`: Pydantic AI agent definition and logic.
     - `skills/`: Directory containing modular agent skills (if applicable).
-    - `agent/`: Internal agent logic and prompt templates.
     - `vectordb/`: Vector database implementations for multiple backends.
     - `retriever/`: Retriever implementations for each backend.
 
@@ -134,16 +133,6 @@ podman-compose -f docker-compose.test.yml down
 └── vector_mcp
     ├── __init__.py
     ├── __main__.py
-    ├── agent
-    │   ├── AGENTS.md
-    │   ├── CRON.md
-    │   ├── CRON_LOG.md
-    │   ├── HEARTBEAT.md
-    │   ├── IDENTITY.md
-    │   ├── MEMORY.md
-    │   ├── USER.md
-    │   ├── mcp_config.json
-    │   └── templates.py
     ├── agent.py
     ├── mcp_server.py
     ├── retriever
