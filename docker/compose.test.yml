@@ -9,10 +9,9 @@ services:
   postgres:
     image: docker.io/paradedb/paradedb:latest-pg16
     container_name: vector-test-postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: vectordb
+    # DB-server image bootstrap lives in test-db.env (not app config).
+    env_file:
+      - test-db.env
     ports:
       - "5432:5432"
     healthcheck:
@@ -46,11 +45,9 @@ services:
   couchbase:
     image: docker.io/couchbase:latest
     container_name: vector-test-couchbase
-    environment:
-      COUCHBASE_ADMINISTRATOR_USERNAME: Administrator
-      COUCHBASE_ADMINISTRATOR_PASSWORD: password
-      COUCHBASE_BUCKET: vector_db
-      COUCHBASE_BUCKET_RAMSIZE: 256
+    # DB-server image bootstrap lives in test-db.env (not app config).
+    env_file:
+      - test-db.env
     ports:
       - "8091:8091"
       - "8092:8092"

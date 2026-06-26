@@ -57,12 +57,30 @@ _Auto-generated from the live MCP server — do not edit by hand._
 
 <!-- MCP-TOOLS-TABLE:START -->
 
+#### Condensed action-routed tools (default — `MCP_TOOL_MODE=condensed`)
+
 | MCP Tool | Toggle Env Var | Description |
 |----------|----------------|-------------|
 | `vector_collection_management` | `COLLECTION_MANAGEMENTTOOL` | Manage collection management operations. |
-| `vector_search` | `SEARCHTOOL` | Manage search operations. |
 
-_2 action-routed tools (default `MCP_TOOL_MODE=condensed`). Each is enabled unless its toggle is set false; set `MCP_TOOL_MODE=verbose` (or `both`) for the 1:1 per-operation surface. Auto-generated — do not edit._
+#### Verbose 1:1 API-mapped tools (`MCP_TOOL_MODE=verbose` or `both`)
+
+<details>
+<summary>7 per-operation tools — one per public API method (click to expand)</summary>
+
+| MCP Tool | Toggle Env Var | Description |
+|----------|----------------|-------------|
+| `vector_add_documents` | `APITOOL` | Add documents. |
+| `vector_create_collection` | `APITOOL` | Create a collection. |
+| `vector_delete_collection` | `APITOOL` | Delete a collection. |
+| `vector_lexical_search` | `APITOOL` | Perform lexical search. |
+| `vector_list_collections` | `APITOOL` | List collections. |
+| `vector_search` | `SEARCHTOOL` | Perform hybrid search. |
+| `vector_semantic_search` | `APITOOL` | Perform semantic search. |
+
+</details>
+
+_1 action-routed tool(s) (default) · 7 verbose 1:1 tool(s). Each is enabled unless its `<DOMAIN>TOOL` toggle is set false; `MCP_TOOL_MODE` selects the surface (`condensed` default · `verbose` 1:1 · `both`). Auto-generated — do not edit._
 <!-- MCP-TOOLS-TABLE:END -->
 
 Detailed tool schemas, parameter shapes, and validation constraints are preserved in [docs/mcp.md](docs/mcp.md).
@@ -221,12 +239,22 @@ consumed from a **remote deployment**. The
 | `EUNOMIA_TYPE` | `none` | options: none, embedded, remote |
 | `EUNOMIA_POLICY_FILE` | `mcp_policies.json` |  |
 | `EUNOMIA_REMOTE_URL` | `http://eunomia-server:8000` |  |
-| `VECTOR_URL` | `http://localhost:8000` |  |
-| `EMBEDDING_MODEL_ID` | `text-embedding-nomic-embed-text-v2-moe` |  |
-| `CHUNK_SIZE` | `512` |  |
-| `VECTOR_API_KEY` | `your_vector_api_key_here` |  |
+| `LLM_BASE_URL` | `http://localhost:8000/v1` | embedding/LLM API base url |
+| `LLM_TOKEN` | — | bearer token for the embedding/LLM endpoint |
+| `LLM_API_KEY` | — | alias accepted if LLM_TOKEN is unset |
+| `LLM_SSL_VERIFY` | `False` | verify TLS for the embedding/LLM endpoint |
+| `DOCUMENT_DIRECTORY` | `/documents` | default directory for ingested documents |
 | `COLLECTION_MANAGEMENTTOOL` | `True` |  |
 | `SEARCHTOOL` | `True` |  |
+| `TEST_POSTGRES_CONNECTION_STRING` | `postgresql://postgres:password@localhost:5432/vectordb` |  |
+| `TEST_MONGODB_HOST` | `localhost` |  |
+| `TEST_MONGODB_PORT` | `27017` |  |
+| `TEST_MONGODB_DB` | `vectordb` |  |
+| `TEST_QDRANT_LOCATION` | `http://localhost:6333` |  |
+| `TEST_COUCHBASE_CONNECTION` | `couchbase://localhost` |  |
+| `TEST_COUCHBASE_USER` | `Administrator` |  |
+| `TEST_COUCHBASE_PASSWORD` | `password` |  |
+| `TEST_COUCHBASE_DB` | `vector_db` |  |
 
 #### Inherited agent-utilities variables (apply to every connector)
 
@@ -247,7 +275,7 @@ consumed from a **remote deployment**. The
 | `MODEL_ID` | `gpt-4o` | Model id for the agent |
 | `ENABLE_WEB_UI` | `True` | Serve the AG-UI web interface |
 
-_17 package + 14 inherited variable(s). Auto-generated from `.env.example` + the shared agent-utilities set — do not edit._
+_27 package + 14 inherited variable(s). Auto-generated from `.env.example` + the shared agent-utilities set — do not edit._
 <!-- ENV-VARS-TABLE:END -->
 
 
