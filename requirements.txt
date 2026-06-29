@@ -1,10 +1,10 @@
-agent-utilities[embeddings-openai,mcp]>=0.51.0
+agent-utilities[embeddings-openai,mcp]>=1.0.0
 chromadb>=1.5.1
 markdownify>=1.2.2
 beautifulsoup4>=4.14.3
 ebooklib>=0.20
 html2text>=2025.4.15
-ipython>=9.10.0
+ipython>=1.0.0
 pypdf>=6.7.2
 protobuf>=6.33.5
 llama-index-core>=0.14.15
