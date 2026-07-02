@@ -108,16 +108,15 @@ When query strings or parameters are supplied, an LLM-free **Knowledge Graph res
 
 ### MCP Configuration Examples
 
-> **Install the slim `[mcp]` extra.** All examples below install
-> `vector-mcp[mcp]` — the MCP-server extra that pulls only the FastMCP /
-> FastAPI tooling (`agent-utilities[mcp]`). It deliberately **excludes** the heavy
-> agent runtime (the epistemic-graph engine, `pydantic-ai`, `dspy`, `llama-index`,
-> `tree-sitter`), so `uvx`/container installs are dramatically smaller and faster.
-> Use the full `[agent]` extra only when you need the integrated Pydantic AI agent
-> (see [Installation](#installation)).
+<!-- MCP-CONFIG-EXAMPLES:START -->
 
-#### stdio Transport (Recommended for local IDEs e.g., Cursor, Claude Desktop)
-Configure your IDE's `mcp.json` to launch the MCP server via `uvx`:
+> **Install the slim `[mcp]` extra.** All examples install `vector-mcp[mcp]` — the
+> MCP-server extra that pulls only the FastMCP / FastAPI tooling (`agent-utilities[mcp]`).
+> It deliberately **excludes** the heavy agent runtime (`pydantic-ai`, the epistemic-graph
+> engine, `dspy`, `llama-index`), so `uvx` / container installs are far smaller. Use the
+> full `[agent]` extra only when you need the integrated Pydantic AI agent.
+
+#### stdio Transport (local IDEs — Cursor, Claude Desktop, VS Code)
 
 ```json
 {
@@ -130,18 +129,24 @@ Configure your IDE's `mcp.json` to launch the MCP server via `uvx`:
         "vector-mcp"
       ],
       "env": {
-        "VECTOR_URL": "your_vector_url_here",
-        "EMBEDDING_MODEL_ID": "your_embedding_model_id_here",
-        "CHUNK_SIZE": "your_chunk_size_here",
-        "VECTOR_API_KEY": "your_vector_api_key_here"
+        "MCP_TOOL_MODE": "condensed",
+        "COLLECTION_MANAGEMENTTOOL": "True",
+        "LLM_TOKEN": "",
+        "SEARCHTOOL": "True",
+        "TEST_COUCHBASE_DB": "vector_db",
+        "TEST_COUCHBASE_PASSWORD": "password",
+        "TEST_COUCHBASE_USER": "Administrator",
+        "TEST_MONGODB_DB": "vectordb",
+        "TEST_MONGODB_HOST": "localhost",
+        "TEST_MONGODB_PORT": "27017",
+        "TEST_QDRANT_LOCATION": "http://localhost:6333"
       }
     }
   }
 }
 ```
 
-#### Streamable-HTTP Transport (Recommended for production deployments)
-Configure your client's `mcp.json` to launch the Streamable-HTTP server via `uvx` with explicit host and port definition:
+#### Streamable-HTTP Transport (networked / production)
 
 ```json
 {
@@ -151,23 +156,34 @@ Configure your client's `mcp.json` to launch the Streamable-HTTP server via `uvx
       "args": [
         "--from",
         "vector-mcp[mcp]",
-        "vector-mcp"
+        "vector-mcp",
+        "--transport",
+        "streamable-http",
+        "--port",
+        "8000"
       ],
       "env": {
         "TRANSPORT": "streamable-http",
         "HOST": "0.0.0.0",
         "PORT": "8000",
-        "VECTOR_URL": "your_vector_url_here",
-        "EMBEDDING_MODEL_ID": "your_embedding_model_id_here",
-        "CHUNK_SIZE": "your_chunk_size_here",
-        "VECTOR_API_KEY": "your_vector_api_key_here"
+        "MCP_TOOL_MODE": "condensed",
+        "COLLECTION_MANAGEMENTTOOL": "True",
+        "LLM_TOKEN": "",
+        "SEARCHTOOL": "True",
+        "TEST_COUCHBASE_DB": "vector_db",
+        "TEST_COUCHBASE_PASSWORD": "password",
+        "TEST_COUCHBASE_USER": "Administrator",
+        "TEST_MONGODB_DB": "vectordb",
+        "TEST_MONGODB_HOST": "localhost",
+        "TEST_MONGODB_PORT": "27017",
+        "TEST_QDRANT_LOCATION": "http://localhost:6333"
       }
     }
   }
 }
 ```
 
-Alternatively, connect to a pre-deployed remote or local Streamable-HTTP instance:
+Alternatively, connect to a pre-deployed Streamable-HTTP instance by `url`:
 
 ```json
 {
@@ -186,22 +202,24 @@ docker run -d \
   --name vector-mcp-mcp \
   -p 8000:8000 \
   -e TRANSPORT=streamable-http \
+  -e HOST=0.0.0.0 \
   -e PORT=8000 \
-  -e VECTOR_URL="your_value" \
-  -e EMBEDDING_MODEL_ID="your_value" \
-  -e CHUNK_SIZE="your_value" \
-  -e VECTOR_API_KEY="your_value" \
+  -e MCP_TOOL_MODE=condensed \
+  -e COLLECTION_MANAGEMENTTOOL=True \
+  -e LLM_TOKEN="" \
+  -e SEARCHTOOL=True \
+  -e TEST_COUCHBASE_DB=vector_db \
+  -e TEST_COUCHBASE_PASSWORD=password \
+  -e TEST_COUCHBASE_USER=Administrator \
+  -e TEST_MONGODB_DB=vectordb \
+  -e TEST_MONGODB_HOST=localhost \
+  -e TEST_MONGODB_PORT=27017 \
+  -e TEST_QDRANT_LOCATION=http://localhost:6333 \
   knucklessg1/vector-mcp:mcp
 ```
 
-> The `:mcp` tag is the **slim MCP-server image** (built from
-> `docker/Dockerfile --target mcp`, installing `vector-mcp[mcp]`). The default
-> `:latest` tag is the **full agent image** (`--target agent`, `vector-mcp[agent]`)
-> which also bundles the Pydantic AI agent and the epistemic-graph engine — use it
-> when you run `vector-agent` (the agent), not just the MCP server. See
-> [Container images](#container-images-mcp-vs-agent).
-
----
+_Auto-generated from the code-read env surface (`MCP_TOOL_MODE` + package vars) — do not edit._
+<!-- MCP-CONFIG-EXAMPLES:END -->
 
 <!-- BEGIN GENERATED: additional-deployment-options -->
 ### Additional Deployment Options

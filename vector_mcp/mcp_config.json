@@ -8,13 +8,16 @@
       ],
       "env": {
         "MCP_TOOL_MODE": "condensed",
-        "DATABASE_PATH": "${DATABASE_PATH}",
-        "DOCUMENT_DIRECTORY": "${DOCUMENT_DIRECTORY:-/documents}",
-        "SEARCHTOOL": "${SEARCHTOOL:-True}",
-        "COLLECTION_MANAGEMENTTOOL": "${COLLECTION_MANAGEMENTTOOL:-True}",
-        "AGENT_DESCRIPTION": "<YOUR_AGENT_DESCRIPTION>",
-        "AGENT_SYSTEM_PROMPT": "<YOUR_AGENT_SYSTEM_PROMPT>",
-        "DEFAULT_AGENT_NAME": "<YOUR_DEFAULT_AGENT_NAME>"
+        "COLLECTION_MANAGEMENTTOOL": "True",
+        "LLM_TOKEN": "",
+        "SEARCHTOOL": "True",
+        "TEST_COUCHBASE_DB": "vector_db",
+        "TEST_COUCHBASE_PASSWORD": "password",
+        "TEST_COUCHBASE_USER": "Administrator",
+        "TEST_MONGODB_DB": "vectordb",
+        "TEST_MONGODB_HOST": "localhost",
+        "TEST_MONGODB_PORT": "27017",
+        "TEST_QDRANT_LOCATION": "http://localhost:6333"
       }
     }
   }
