@@ -1,0 +1,13 @@
+{
+  "_comment": "Tier-1 mcp_tool source preset for vector-mcp (AU-KG.ingest.mcp-tool-connector). NOTE: vector-mcp IS a vector backend, not a primary KG data source — native data ingestion is intentionally SKIPPED for this package. This preset only exposes the collection inventory (list_collections) as lightweight metadata documents so the KG can register which vector collections exist; it does not pull document/chunk payloads. Contributed presets win over the central MCP_TOOL_PRESETS.",
+  "vector-collections": {
+    "server": "vector-mcp",
+    "tool": "vector_collection_management",
+    "action": "list_collections",
+    "records_path": "collections",
+    "id_field": "collection_name",
+    "title_field": "collection_name",
+    "text_field": "collection_name",
+    "doc_type": "vector_collection"
+  }
+}

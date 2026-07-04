@@ -1,0 +1,160 @@
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix dc: <http://purl.org/dc/terms/> .
+@prefix : <http://knuckles.team/kg#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Vector / RAG retrieval ontology — collections, chunks, embeddings, backends, and the
+# semantic / lexical / hybrid search operations exposed by the vector-mcp MCP surface
+# (vector_collection_management + vector_search). All classes and properties live in the
+# shared `:` (kg#) namespace; only the owl:Ontology node gets the per-package IRI. The
+# shared :Document and :Person classes are REUSED (never redefined) — a :Chunk is a
+# retrievable segment of a :Document.
+
+# --- classes (owl:Class) ---
+
+:VectorCollection a owl:Class ;
+    rdfs:label "Vector Collection" ;
+    rdfs:comment "A named collection (index / namespace) of embedded chunks in a vector database, the unit created, listed, and deleted via vector_collection_management." .
+
+:VectorBackend a owl:Class ;
+    rdfs:label "Vector Backend" ;
+    rdfs:comment "A vector-store engine that hosts collections — one of chromadb, postgres (pgvector), qdrant, couchbase, or mongodb — selected by the db_type parameter." .
+
+:Chunk a owl:Class ;
+    rdfs:label "Chunk" ;
+    rdfs:comment "A retrievable text segment split from a :Document, stored in a collection with its embedding and metadata (the Document TypedDict record: id/content/metadata/embedding)." .
+
+:Embedding a owl:Class ;
+    rdfs:label "Embedding" ;
+    rdfs:comment "The dense vector representation of a Chunk produced by an embedding model, used for semantic (ANN) similarity search." .
+
+:SearchQuery a owl:Class ;
+    rdfs:label "Search Query" ;
+    rdfs:comment "A retrieval request against a collection — the natural-language 'question' resolved by semantic_search, lexical_search, or the hybrid search action." .
+
+:SearchHit a owl:Class ;
+    rdfs:label "Search Hit" ;
+    rdfs:comment "A single ranked result returned for a SearchQuery: a matched Chunk paired with its similarity / relevance score." .
+
+# --- links (owl:ObjectProperty) ---
+
+:hostedOn a owl:ObjectProperty ;
+    rdfs:label "hosted on" ;
+    rdfs:comment "Links a VectorCollection to the VectorBackend engine that stores it." ;
+    rdfs:domain :VectorCollection ;
+    rdfs:range :VectorBackend .
+
+:storedIn a owl:ObjectProperty ;
+    rdfs:label "stored in" ;
+    rdfs:comment "Links a Chunk to the VectorCollection it belongs to." ;
+    rdfs:domain :Chunk ;
+    rdfs:range :VectorCollection .
+
+:chunkedFrom a owl:ObjectProperty ;
+    rdfs:label "chunked from" ;
+    rdfs:comment "Links a Chunk back to the source :Document it was split from." ;
+    rdfs:domain :Chunk ;
+    rdfs:range :Document .
+
+:hasEmbedding a owl:ObjectProperty ;
+    rdfs:label "has embedding" ;
+    rdfs:comment "Links a Chunk to its Embedding vector." ;
+    rdfs:domain :Chunk ;
+    rdfs:range :Embedding .
+
+:queriesCollection a owl:ObjectProperty ;
+    rdfs:label "queries collection" ;
+    rdfs:comment "Links a SearchQuery to the VectorCollection it is run against." ;
+    rdfs:domain :SearchQuery ;
+    rdfs:range :VectorCollection .
+
+:hasHit a owl:ObjectProperty ;
+    rdfs:label "has hit" ;
+    rdfs:comment "Links a SearchQuery to a SearchHit it returned." ;
+    rdfs:domain :SearchQuery ;
+    rdfs:range :SearchHit .
+
+:matchedChunk a owl:ObjectProperty ;
+    rdfs:label "matched chunk" ;
+    rdfs:comment "Links a SearchHit to the Chunk that was retrieved." ;
+    rdfs:domain :SearchHit ;
+    rdfs:range :Chunk .
+
+# --- fields (owl:DatatypeProperty) ---
+
+:collectionName a owl:DatatypeProperty ;
+    rdfs:label "collection name" ;
+    rdfs:comment "Name of a VectorCollection (the collection_name parameter)." ;
+    rdfs:domain :VectorCollection ;
+    rdfs:range xsd:string .
+
+:dbType a owl:DatatypeProperty ;
+    rdfs:label "db type" ;
+    rdfs:comment "Backend engine identifier (chromadb, postgres, qdrant, couchbase, mongodb) — the db_type parameter." ;
+    rdfs:domain :VectorBackend ;
+    rdfs:range xsd:string .
+
+:embeddingModel a owl:DatatypeProperty ;
+    rdfs:label "embedding model" ;
+    rdfs:comment "Name of the model that produced an Embedding (e.g. an OpenAI or HuggingFace/sentence-transformers model)." ;
+    rdfs:domain :Embedding ;
+    rdfs:range xsd:string .
+
+:dimensions a owl:DatatypeProperty ;
+    rdfs:label "dimensions" ;
+    rdfs:comment "Dimensionality of an Embedding vector." ;
+    rdfs:domain :Embedding ;
+    rdfs:range xsd:integer .
+
+:distanceMetric a owl:DatatypeProperty ;
+    rdfs:label "distance metric" ;
+    rdfs:comment "Similarity metric used by a collection's index (cosine, l2, dot / ip)." ;
+    rdfs:domain :VectorCollection ;
+    rdfs:range xsd:string .
+
+:chunkText a owl:DatatypeProperty ;
+    rdfs:label "chunk text" ;
+    rdfs:comment "The text content of a Chunk (the Document.content field)." ;
+    rdfs:domain :Chunk ;
+    rdfs:range xsd:string .
+
+:similarityScore a owl:DatatypeProperty ;
+    rdfs:label "similarity score" ;
+    rdfs:comment "The relevance / distance score of a SearchHit (semantic distance, BM25 score, or fused RRF score)." ;
+    rdfs:domain :SearchHit ;
+    rdfs:range xsd:double .
+
+:semanticWeight a owl:DatatypeProperty ;
+    rdfs:label "semantic weight" ;
+    rdfs:comment "Weight applied to the semantic (vector) leg in a hybrid search (semantic_weight)." ;
+    rdfs:domain :SearchQuery ;
+    rdfs:range xsd:double .
+
+:bm25Weight a owl:DatatypeProperty ;
+    rdfs:label "bm25 weight" ;
+    rdfs:comment "Weight applied to the lexical (BM25) leg in a hybrid search (bm25_weight)." ;
+    rdfs:domain :SearchQuery ;
+    rdfs:range xsd:double .
+
+:rrfK a owl:DatatypeProperty ;
+    rdfs:label "rrf k" ;
+    rdfs:comment "The k constant of Reciprocal Rank Fusion used to merge semantic and lexical rankings (rrf_k)." ;
+    rdfs:domain :SearchQuery ;
+    rdfs:range xsd:integer .
+
+:numberResults a owl:DatatypeProperty ;
+    rdfs:label "number results" ;
+    rdfs:comment "Requested top-k result count for a SearchQuery (number_results)." ;
+    rdfs:domain :SearchQuery ;
+    rdfs:range xsd:integer .
+
+<http://knuckles.team/kg/vector> a owl:Ontology ;
+    rdfs:label "Vector Retrieval Ontology" ;
+    rdfs:comment """Vector-database / RAG retrieval model — collections, backends, chunks,
+    embeddings and semantic / lexical / hybrid search — backing the vector-mcp MCP tool
+    surface (vector_collection_management + vector_search) and federated into the
+    agent-utilities knowledge-graph hub. Reuses the shared :Document and :Person classes.""" ;
+    owl:imports <http://knuckles.team/kg> .

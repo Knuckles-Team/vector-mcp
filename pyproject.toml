@@ -37,6 +37,12 @@ vector-agent = "vector_mcp.agent_server:agent_server"
 [project.entry-points."agent_utilities.skill_providers"]
 vector-mcp = "vector_mcp.skills"
 
+[project.entry-points."agent_utilities.ontology_providers"]
+vector-mcp = "vector_mcp.ontology"
+
+[project.entry-points."agent_utilities.source_connector_providers"]
+vector-mcp = "vector_mcp.connectors"
+
 [project.entry-points."agent_utilities.prompt_providers"]
 vector-mcp = "vector_mcp.prompts"
 
@@ -58,7 +64,7 @@ dev = [
 ]
 
 [tool.setuptools.package-data]
-vector_mcp = [ "mcp_config.json", "agent_data/**", "prompts/**", "skills/**",]
+vector_mcp = [ "mcp_config.json", "agent_data/**", "prompts/**", "skills/**", "ontology/**", "connectors/**",]
 
 [tool.ruff.lint]
 select = [ "E", "F", "I", "UP", "B",]
