@@ -1,5 +1,6 @@
 ---
 name: vector-backend-operations
+skill_type: skill
 description: >-
   Select and connect the right vector-store backend for the vector-mcp MCP server
   — chromadb, postgres/pgvector, qdrant, couchbase, or mongodb — and supply the

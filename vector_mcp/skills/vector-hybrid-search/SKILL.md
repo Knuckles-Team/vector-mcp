@@ -1,5 +1,6 @@
 ---
 name: vector-hybrid-search
+skill_type: skill
 description: >-
   Retrieve knowledge from a vector-store collection via the vector-mcp MCP
   server's vector_search tool — semantic (ANN) search, lexical BM25 search, or a

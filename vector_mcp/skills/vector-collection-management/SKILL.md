@@ -1,5 +1,6 @@
 ---
 name: vector-collection-management
+skill_type: skill
 description: >-
   Create, populate, list, and delete vector-store collections through the
   vector-mcp MCP server's vector_collection_management tool. Use when the agent
