@@ -271,27 +271,35 @@ class EpistemicGraphVectorDB(VectorDB):
         n_results: int = 10,
         **kwargs: Any,
     ) -> QueryResults:
+        # Term-frequency keyword match over stored node content. (The engine's ANN is
+        # the scalable path via semantic_search; this is the term-based BM25-style
+        # fallback, mirroring the manual scan the mongodb/couchbase backends use.)
         client = self._client_for(collection_name)
+        try:
+            listing = client.nodes.list() or []
+        except Exception as e:
+            logger.info(f"lexical search (list nodes): {e}")
+            listing = []
+        corpus: list[tuple[str, dict]] = []
+        for entry in listing:
+            node_id = str(entry[0]) if isinstance(entry, list | tuple) else str(entry)
+            try:
+                props = client.nodes.properties(node_id) or {}
+            except Exception:
+                props = {}
+            corpus.append((node_id, props))
+
         results: QueryResults = []
         for query in queries:
-            try:
-                hits = client.graph.match_ontology_terms(query) or []
-            except Exception as e:
-                logger.info(f"lexical search: {e}")
-                hits = []
-            query_result: list[tuple[Document, float]] = []
-            for item in hits[:n_results]:
-                if isinstance(item, dict):
-                    node_id = str(item.get("id", ""))
-                    score = float(item.get("score", 1.0) or 1.0)
-                else:
-                    node_id, score = str(item), 1.0
-                if not node_id:
+            terms = [t for t in query.lower().split() if t]
+            scored: list[tuple[Document, float]] = []
+            for node_id, props in corpus:
+                content = str(props.get(_CONTENT_KEY, "") or "").lower()
+                if not content:
                     continue
-                try:
-                    props = client.nodes.properties(node_id)
-                except Exception:
-                    props = None
-                query_result.append((self._props_to_doc(node_id, props), score))
-            results.append(query_result)
+                freq = sum(content.count(t) for t in terms)
+                if freq > 0:
+                    scored.append((self._props_to_doc(node_id, props), float(freq)))
+            scored.sort(key=lambda x: x[1], reverse=True)
+            results.append(scored[:n_results])
         return results

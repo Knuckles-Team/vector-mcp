@@ -28,12 +28,12 @@ RUN apt-get update \
 # Slim MCP-only dependency closure.
 FROM builder-base AS builder-mcp
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system --upgrade --break-system-packages --prerelease=allow vector-mcp[mcp]>=2.1.0
+    uv pip install --system --upgrade --break-system-packages --prerelease=allow vector-mcp[mcp]>=2.1.1
 
 # Full agent runtime dependency closure.
 FROM builder-base AS builder-agent
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system --upgrade --break-system-packages --prerelease=allow vector-mcp[agent]>=2.1.0
+    uv pip install --system --upgrade --break-system-packages --prerelease=allow vector-mcp[agent]>=2.1.1
 
 FROM python:3.11-slim AS runtime-base
 ARG HOST=0.0.0.0
