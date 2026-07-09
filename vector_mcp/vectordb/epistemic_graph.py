@@ -30,9 +30,12 @@ with optional_import_block():
 
 logger = get_logger(__name__)
 
-# Node property key the chunk text is stored under (metadata takes the rest).
-_CONTENT_KEY = "content"
-_RESERVED_KEYS = {_CONTENT_KEY, "label", "id", "_similarity"}
+# The chunk text is stored under the engine's standard ``description`` property: it is
+# the field the engine keyword-indexes and that ``graph.discover`` hydrates, so lexical
+# search runs engine-side (scalable) instead of an O(N) client scan. Everything not in
+# the reserved set is treated as user metadata.
+_TEXT_KEY = "description"
+_RESERVED_KEYS = {_TEXT_KEY, "label", "id", "_similarity", "name", "type", "score"}
 
 
 @require_optional_import(["epistemic_graph", "agent_utilities"], "epistemic-graph")
@@ -107,7 +110,7 @@ class EpistemicGraphVectorDB(VectorDB):
     @staticmethod
     def _props_to_doc(node_id: str, props: dict | None) -> Document:
         props = dict(props or {})
-        content = props.pop(_CONTENT_KEY, "") or ""
+        content = props.get(_TEXT_KEY, "") or ""
         meta = {k: v for k, v in props.items() if k not in _RESERVED_KEYS}
         return Document(id=node_id, content=content, metadata=meta, embedding=None)
 
@@ -173,7 +176,7 @@ class EpistemicGraphVectorDB(VectorDB):
             embedding = doc.get("embedding")
             if embedding is None:
                 embedding = self._embed(text)
-            client.nodes.add(doc_id, {_CONTENT_KEY: text, "label": "Document", **meta})
+            client.nodes.add(doc_id, {_TEXT_KEY: text, "label": "Document", **meta})
             client.graph.add_embedding(doc_id, [float(x) for x in embedding])
 
     def update_documents(
@@ -271,35 +274,66 @@ class EpistemicGraphVectorDB(VectorDB):
         n_results: int = 10,
         **kwargs: Any,
     ) -> QueryResults:
-        # Term-frequency keyword match over stored node content. (The engine's ANN is
-        # the scalable path via semantic_search; this is the term-based BM25-style
-        # fallback, mirroring the manual scan the mongodb/couchbase backends use.)
+        """Keyword search over the engine's scalable index.
+
+        Routes through the engine's one-round-trip ``discover`` op — it ranks nodes by
+        keyword overlap over the indexed text (the chunk text lives in ``description``)
+        AND semantic similarity, returning a hydrated top-k. Falls back to a client-side
+        term scan only if the engine is too old to support ``discover``.
+        """
         client = self._client_for(collection_name)
+        results: QueryResults = []
+        for query in queries:
+            terms = list(dict.fromkeys(t for t in query.lower().split() if t))
+            try:
+                q_emb = self._embed(query, is_query=True)
+            except Exception:
+                q_emb = []  # discover degrades to a bounded keyword-only scan
+            try:
+                hits = client.graph.discover(terms, q_emb, n_results) or []
+            except Exception as e:
+                logger.info(f"discover unavailable, using client scan: {e}")
+                results.append(self._lexical_scan(client, terms, n_results))
+                continue
+            query_result: list[tuple[Document, float]] = []
+            for item in hits[:n_results]:
+                if isinstance(item, dict):
+                    node_id = str(item.get("id", ""))
+                    score = float(item.get("score", 0.0) or 0.0)
+                    # discover hydrates text in-band; fetch full props for metadata.
+                    try:
+                        props = client.nodes.properties(node_id) or item
+                    except Exception:
+                        props = item
+                else:
+                    node_id, score, props = str(item), 0.0, None
+                if not node_id:
+                    continue
+                query_result.append((self._props_to_doc(node_id, props), score))
+            results.append(query_result)
+        return results
+
+    def _lexical_scan(
+        self, client: Any, terms: list[str], n_results: int
+    ) -> list[tuple[Document, float]]:
+        """Fallback term-frequency scan (only when the engine lacks ``discover``)."""
         try:
             listing = client.nodes.list() or []
         except Exception as e:
-            logger.info(f"lexical search (list nodes): {e}")
-            listing = []
-        corpus: list[tuple[str, dict]] = []
+            logger.info(f"lexical scan (list nodes): {e}")
+            return []
+        scored: list[tuple[Document, float]] = []
         for entry in listing:
             node_id = str(entry[0]) if isinstance(entry, list | tuple) else str(entry)
             try:
                 props = client.nodes.properties(node_id) or {}
             except Exception:
-                props = {}
-            corpus.append((node_id, props))
-
-        results: QueryResults = []
-        for query in queries:
-            terms = [t for t in query.lower().split() if t]
-            scored: list[tuple[Document, float]] = []
-            for node_id, props in corpus:
-                content = str(props.get(_CONTENT_KEY, "") or "").lower()
-                if not content:
-                    continue
-                freq = sum(content.count(t) for t in terms)
-                if freq > 0:
-                    scored.append((self._props_to_doc(node_id, props), float(freq)))
-            scored.sort(key=lambda x: x[1], reverse=True)
-            results.append(scored[:n_results])
-        return results
+                continue
+            content = str(props.get(_TEXT_KEY, "") or "").lower()
+            if not content:
+                continue
+            freq = sum(content.count(t) for t in terms)
+            if freq > 0:
+                scored.append((self._props_to_doc(node_id, props), float(freq)))
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return scored[:n_results]

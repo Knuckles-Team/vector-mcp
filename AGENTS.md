@@ -190,11 +190,13 @@ async def my_tool(param: str) -> str:
 - **Couchbase**: Couchbase with REST API fallback and manual cosine similarity (container required, partially functional)
 
 ### Implementation Notes
-- **Epistemic-Graph**: stores each chunk as an engine node (text + metadata in node
-  properties) with its embedding in the engine's native ANN index via
-  `SyncEpistemicGraphClient` (`.nodes.add` + `.graph.add_embedding` +
-  `.graph.semantic_search`); a collection maps to an engine graph (`graph_name`).
-  Embeddings are produced client-side with the shared `create_embedding_model`.
+- **Epistemic-Graph**: stores each chunk as an engine node (text in the indexed
+  `description` property, plus metadata) with its embedding in the engine's native ANN
+  index via `SyncEpistemicGraphClient` (`.nodes.add` + `.graph.add_embedding`). Semantic
+  search is `.graph.semantic_search` (native ANN); lexical/keyword search is the engine's
+  one-round-trip `.graph.discover` (keyword overlap + semantic, scalable — a client-side
+  term scan is only a fallback for an engine too old for `discover`). A collection maps to
+  an engine graph (`graph_name`); embeddings come from the shared `create_embedding_model`.
 - **MongoDB**: Uses raw MongoClient instead of MongoDBAtlasVectorSearch to avoid authentication issues with local test containers. Implements manual cosine similarity calculation for semantic search.
 - **Couchbase**: Uses simple client approach with REST API fallback to bypass SDK authentication issues. Implements manual cosine similarity calculation for semantic search. Core search functionality working (10/14 tests passing), CRUD operations limited by N1QL service configuration.
 - **PostgreSQL**: Uses native PGVector with proper JSONB querying for get_documents_by_ids.
