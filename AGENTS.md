@@ -179,13 +179,22 @@ async def my_tool(param: str) -> str:
 ## Vector Database Backends
 
 ### Supported Backends
-- **ChromaDB**: Local filesystem-based vector database (no container required)
+- **Epistemic-Graph** (**DEFAULT**): the native local AI-native engine — durable
+  (redb-authoritative) with a native ANN/HNSW index, so semantic search is the engine's
+  O(log N) vector search. Zero external infra (autostarts). Selected when `db_type` is
+  unspecified (override with `VECTOR_DB_TYPE`).
+- **ChromaDB**: Local filesystem-based vector database (no container required). Opt-in via the `[chromadb]` extra.
 - **PostgreSQL/PGVector**: PostgreSQL with pgvector extension (container required)
 - **MongoDB**: MongoDB with manual cosine similarity calculation (container required)
 - **Qdrant**: Qdrant vector database (container required)
 - **Couchbase**: Couchbase with REST API fallback and manual cosine similarity (container required, partially functional)
 
 ### Implementation Notes
+- **Epistemic-Graph**: stores each chunk as an engine node (text + metadata in node
+  properties) with its embedding in the engine's native ANN index via
+  `SyncEpistemicGraphClient` (`.nodes.add` + `.graph.add_embedding` +
+  `.graph.semantic_search`); a collection maps to an engine graph (`graph_name`).
+  Embeddings are produced client-side with the shared `create_embedding_model`.
 - **MongoDB**: Uses raw MongoClient instead of MongoDBAtlasVectorSearch to avoid authentication issues with local test containers. Implements manual cosine similarity calculation for semantic search.
 - **Couchbase**: Uses simple client approach with REST API fallback to bypass SDK authentication issues. Implements manual cosine similarity calculation for semantic search. Core search functionality working (10/14 tests passing), CRUD operations limited by N1QL service configuration.
 - **PostgreSQL**: Uses native PGVector with proper JSONB querying for get_documents_by_ids.
