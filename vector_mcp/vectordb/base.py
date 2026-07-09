@@ -211,19 +211,42 @@ class VectorDB(Protocol):
 class VectorDBFactory:
     """Factory class for creating vector databases."""
 
-    PREDEFINED_VECTOR_DB = ["chroma", "postgres", "mongodb", "qdrant", "couchbase"]
+    # epistemic-graph is the native, zero-infra DEFAULT (the local AI-native engine);
+    # the others are opt-in via ``db_type`` / ``VECTOR_DB_TYPE``.
+    DEFAULT_VECTOR_DB = "epistemic_graph"
+    PREDEFINED_VECTOR_DB = [
+        "epistemic_graph",
+        "chroma",
+        "postgres",
+        "mongodb",
+        "qdrant",
+        "couchbase",
+    ]
 
     @staticmethod
-    def create_vector_database(db_type: str, **kwargs) -> VectorDB:
+    def create_vector_database(db_type: str | None = None, **kwargs) -> VectorDB:
         """Create a vector database.
 
         Args:
-            db_type: str | The type of the vector database.
+            db_type: str | The type of the vector database. When ``None``/empty it
+                resolves to ``VECTOR_DB_TYPE`` (config) or ``DEFAULT_VECTOR_DB``
+                (``epistemic_graph``).
             kwargs: Dict | The keyword arguments for initializing the vector database.
 
         Returns:
             VectorDB | The vector database.
         """
+        if not db_type:
+            try:
+                from agent_utilities.core.config import setting
+
+                db_type = setting("VECTOR_DB_TYPE", VectorDBFactory.DEFAULT_VECTOR_DB)
+            except Exception:
+                db_type = VectorDBFactory.DEFAULT_VECTOR_DB
+        if db_type.lower() in ["epistemic_graph", "epistemic-graph", "eg"]:
+            from .epistemic_graph import EpistemicGraphVectorDB
+
+            return EpistemicGraphVectorDB(**kwargs)
         if db_type.lower() in ["chroma", "chromadb"]:
             from .chromadb import ChromaVectorDB
 

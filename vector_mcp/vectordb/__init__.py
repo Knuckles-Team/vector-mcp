@@ -9,6 +9,7 @@ from .base import Document, VectorDB
 if TYPE_CHECKING:
     from .chromadb import ChromaVectorDB
     from .couchbase import CouchbaseVectorDB
+    from .epistemic_graph import EpistemicGraphVectorDB
     from .mongodb import MongoDBAtlasVectorDB
     from .postgres import PostgreSQL
     from .qdrant import QdrantVectorDB
@@ -17,6 +18,7 @@ __all__ = [
     "get_logger",
     "Document",
     "VectorDB",
+    "EpistemicGraphVectorDB",
     "PostgreSQL",
     "QdrantVectorDB",
     "CouchbaseVectorDB",
@@ -26,7 +28,11 @@ __all__ = [
 
 
 def __getattr__(name: str):
-    if name == "PostgreSQL":
+    if name == "EpistemicGraphVectorDB":
+        from .epistemic_graph import EpistemicGraphVectorDB
+
+        return EpistemicGraphVectorDB
+    elif name == "PostgreSQL":
         from .postgres import PostgreSQL
 
         return PostgreSQL

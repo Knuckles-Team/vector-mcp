@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .chromadb_retriever import ChromaDBRetriever
     from .couchbase_retriever import CouchbaseRetriever
+    from .epistemic_graph_retriever import EpistemicGraphRetriever
     from .llamaindex_retriever import LlamaIndexRetriever
     from .mongodb_retriever import MongoDBRetriever
     from .postgres_retriever import PGVectorRetriever
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
     from .retriever import RAGRetriever
 
 __all__ = [
+    "EpistemicGraphRetriever",
     "ChromaDBRetriever",
     "LlamaIndexRetriever",
     "MongoDBRetriever",
@@ -24,7 +26,11 @@ __all__ = [
 
 
 def __getattr__(name: str):
-    if name == "ChromaDBRetriever":
+    if name == "EpistemicGraphRetriever":
+        from .epistemic_graph_retriever import EpistemicGraphRetriever
+
+        return EpistemicGraphRetriever
+    elif name == "ChromaDBRetriever":
         from .chromadb_retriever import ChromaDBRetriever
 
         return ChromaDBRetriever
