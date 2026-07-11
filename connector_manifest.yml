@@ -1,0 +1,238 @@
+connector: vector-mcp
+ontology_source: vector
+schema_version: '1'
+resources:
+- name: Chunk
+  label: Chunk
+  id_prefix: chunk
+  relations:
+  - name: chunkedFrom
+    label: chunked from
+    target: Document
+    lpg_rel_type: ''
+  - name: hasEmbedding
+    label: has embedding
+    target: Embedding
+    lpg_rel_type: ''
+  - name: storedIn
+    label: stored in
+    target: VectorCollection
+    lpg_rel_type: ''
+- name: Embedding
+  label: Embedding
+  id_prefix: embedding
+  relations: []
+- name: SearchHit
+  label: Search Hit
+  id_prefix: searchhit
+  relations:
+  - name: matchedChunk
+    label: matched chunk
+    target: Chunk
+    lpg_rel_type: ''
+- name: SearchQuery
+  label: Search Query
+  id_prefix: searchquery
+  relations:
+  - name: hasHit
+    label: has hit
+    target: SearchHit
+    lpg_rel_type: ''
+  - name: queriesCollection
+    label: queries collection
+    target: VectorCollection
+    lpg_rel_type: ''
+- name: VectorBackend
+  label: Vector Backend
+  id_prefix: vectorbackend
+  relations: []
+- name: VectorCollection
+  label: Vector Collection
+  id_prefix: vectorcollection
+  relations:
+  - name: hostedOn
+    label: hosted on
+    target: VectorBackend
+    lpg_rel_type: ''
+actions:
+- id: run_graph_flow
+  name: Graph Flow Execution
+  description: Execute a workflow through the agent's graph orchestration engine
+events: []
+identity:
+  id_field:
+    vector_collection: collection_name
+  title_field:
+    vector_collection: collection_name
+  text_field:
+    vector_collection: collection_name
+  updated_field: {}
+permissions:
+  acl_fields: []
+  tenant_field: null
+  read_roles: []
+schema_mappings:
+  Chunk:
+    ontology_class: null
+    fields:
+      bm25Weight: xsd:double
+      chunkText: xsd:string
+      collectionName: xsd:string
+      dbType: xsd:string
+      dimensions: xsd:integer
+      distanceMetric: xsd:string
+      embeddingModel: xsd:string
+      numberResults: xsd:integer
+      rrfK: xsd:integer
+      semanticWeight: xsd:double
+      similarityScore: xsd:double
+  Embedding:
+    ontology_class: null
+    fields:
+      bm25Weight: xsd:double
+      chunkText: xsd:string
+      collectionName: xsd:string
+      dbType: xsd:string
+      dimensions: xsd:integer
+      distanceMetric: xsd:string
+      embeddingModel: xsd:string
+      numberResults: xsd:integer
+      rrfK: xsd:integer
+      semanticWeight: xsd:double
+      similarityScore: xsd:double
+  SearchHit:
+    ontology_class: null
+    fields:
+      bm25Weight: xsd:double
+      chunkText: xsd:string
+      collectionName: xsd:string
+      dbType: xsd:string
+      dimensions: xsd:integer
+      distanceMetric: xsd:string
+      embeddingModel: xsd:string
+      numberResults: xsd:integer
+      rrfK: xsd:integer
+      semanticWeight: xsd:double
+      similarityScore: xsd:double
+  SearchQuery:
+    ontology_class: null
+    fields:
+      bm25Weight: xsd:double
+      chunkText: xsd:string
+      collectionName: xsd:string
+      dbType: xsd:string
+      dimensions: xsd:integer
+      distanceMetric: xsd:string
+      embeddingModel: xsd:string
+      numberResults: xsd:integer
+      rrfK: xsd:integer
+      semanticWeight: xsd:double
+      similarityScore: xsd:double
+  VectorBackend:
+    ontology_class: null
+    fields:
+      bm25Weight: xsd:double
+      chunkText: xsd:string
+      collectionName: xsd:string
+      dbType: xsd:string
+      dimensions: xsd:integer
+      distanceMetric: xsd:string
+      embeddingModel: xsd:string
+      numberResults: xsd:integer
+      rrfK: xsd:integer
+      semanticWeight: xsd:double
+      similarityScore: xsd:double
+  VectorCollection:
+    ontology_class: null
+    fields:
+      bm25Weight: xsd:double
+      chunkText: xsd:string
+      collectionName: xsd:string
+      dbType: xsd:string
+      dimensions: xsd:integer
+      distanceMetric: xsd:string
+      embeddingModel: xsd:string
+      numberResults: xsd:integer
+      rrfK: xsd:integer
+      semanticWeight: xsd:double
+      similarityScore: xsd:double
+sync:
+- preset: vector-collections
+  server: vector-mcp
+  tool: vector_collection_management
+  action: list_collections
+  records_path: collections
+  id_field: collection_name
+  title_field: collection_name
+  text_field: collection_name
+  updated_field: null
+  pagination: null
+  doc_type: vector_collection
+  raw:
+    server: vector-mcp
+    tool: vector_collection_management
+    action: list_collections
+    records_path: collections
+    id_field: collection_name
+    title_field: collection_name
+    text_field: collection_name
+    doc_type: vector_collection
+provenance:
+  generated_by: scripts/generate_connector_manifests.py
+  generated_at: '2026-07-11T00:00:00Z'
+  source_artifacts:
+  - a2a.json
+  - vector_mcp/connectors/mcp_source_presets.json
+  - vector_mcp/ontology/vector.ttl
+  integrity:
+    algorithm: urdna2015-sha256
+    hash: a0d0d36bea83f1d0d6e255eed88018ca74cbf7f37c8e65807c9dd134f7b9c10a
+    triple_count: 83
+  signer: ontology-manifest-generator
+  signature: ed65f6b2a57f634d1a492385538c6a16e41693a7a99109ee0c7bf2b4c68338e6
+policy:
+  pii_fields: {}
+  tenant_boundary: null
+  rls: []
+review_todos:
+- "policy.rls / policy.tenant_boundary are unset \u2014 no row-level-security predicate has been reviewed\
+  \ for this connector."
+- "schema_mappings.Chunk.ontology_class = None [UNRESOLVED \u2014 no crosswalk found by any heuristic]\
+  \ \u2014 verify manually before relying on this crosswalk for reasoning/joins."
+- "schema_mappings.Embedding.ontology_class = None [UNRESOLVED \u2014 no crosswalk found by any heuristic]\
+  \ \u2014 verify manually before relying on this crosswalk for reasoning/joins."
+- "schema_mappings.SearchHit.ontology_class = None [UNRESOLVED \u2014 no crosswalk found by any heuristic]\
+  \ \u2014 verify manually before relying on this crosswalk for reasoning/joins."
+- "schema_mappings.SearchQuery.ontology_class = None [UNRESOLVED \u2014 no crosswalk found by any heuristic]\
+  \ \u2014 verify manually before relying on this crosswalk for reasoning/joins."
+- "schema_mappings.VectorBackend.ontology_class = None [UNRESOLVED \u2014 no crosswalk found by any heuristic]\
+  \ \u2014 verify manually before relying on this crosswalk for reasoning/joins."
+- "schema_mappings.VectorCollection.ontology_class = None [UNRESOLVED \u2014 no crosswalk found by any\
+  \ heuristic] \u2014 verify manually before relying on this crosswalk for reasoning/joins."
+- "auth: dual \u2014 the default backend (epistemic-graph engine) uses an HMAC secret over Unix socket/TCP;\
+  \ a separate embedding/LLM endpoint uses a Bearer token; alternate backends (Qdrant/Chroma/Postgres/Mongo/Couchbase)\
+  \ carry their own auth via constructor params, not directly env-driven in the code inspected. Env: GRAPH_SERVICE_SOCKET,\
+  \ GRAPH_SERVICE_AUTH_SECRET (alias EPISTEMIC_GRAPH_SECRET), GRAPH_SERVICE_TCP_ADDR, LLM_BASE_URL, LLM_TOKEN/LLM_API_KEY,\
+  \ LLM_SSL_VERIFY, VECTOR_DB_TYPE. required_scopes: none found. Shape: single shared HMAC secret/socket\
+  \ + shared LLM bearer token; no per-user delegation. KNOWN DOC DRIFT: README documents a generic VECTOR_API_KEY\
+  \ not actually referenced anywhere in vector_mcp/ source."
+- "change_support: none \u2014 this connector is NOT wired into any source_sync delta/hydrate/materialize\
+  \ ingestion path today (see docs/architecture/kg_connectors_and_ingestion.md section 8 connector inventory,\
+  \ which omits it entirely); it is an action/ops MCP connector (control-plane calls), not a KG data-ingestion\
+  \ source. cdc: none. webhook: none (any 'webhook' hits in this package's source manage webhooks/admission-hooks\
+  \ IN THE REMOTE SYSTEM \u2014 they are not an inbound push-ingestion receiver into this KG)."
+- "policy.classification / policy.retention: UNKNOWN \u2014 this connector declares no data classification\
+  \ (e.g. public/internal/confidential/restricted) or retention/legal-hold policy anywhere in its shipped\
+  \ artifacts; do not assume a default. Treat both as manifest_status=draft until an operator reviews\
+  \ the actual data handled and states a classification + retention period explicitly (see policy.pii_fields\
+  \ above for the one heuristic that IS populated)."
+- "quality (SHACL shapes / freshness SLA): UNKNOWN \u2014 no SHACL shape set or freshness contract is\
+  \ declared for this connector's resources; manifest_status=draft for quality until a shape set + freshness\
+  \ SLA is authored and referenced here."
+- "manifest_status: draft \u2014 resources/schema_mappings/sync/actions/events were generated deterministically\
+  \ (zero LLM, zero network) from this connector's OWN shipped artifacts via scripts/generate_connector_manifests.py;\
+  \ the auth/required_scopes/change_support/policy/quality annotations above were added by a manual read-only\
+  \ code survey (not re-verified against a live deployment) as part of AU-P1-6 making this connector's\
+  \ manifest MANDATORY for enterprise activation \u2014 operator sign-off on the ontology_class crosswalks,\
+  \ PII/RLS policy, and the classification/retention/quality gaps above is still required before this\
+  \ manifest should be treated as fully authoritative."
