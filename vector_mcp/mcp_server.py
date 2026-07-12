@@ -43,6 +43,25 @@ logger = get_logger(name="vector-mcp")
 logger.setLevel(logging.INFO)
 
 
+def _entitled(namespace: str, names: list[str]) -> list[str]:
+    """Filter ``names`` to what the calling identity may reach.
+
+    Routes the set through agent-utilities' shared identity-scoped resolver
+    (CONCEPT:AU-OS.identity.identity-scoped-resource-autoload): a caller's
+    Okta/Keycloak groups decide which resources they see by default. The
+    ambient ``SYSTEM_ACTOR`` (unauthenticated/local) holds ``admin`` → sees
+    all, so behaviour is unchanged until a real identity scopes it down.
+    Degrades to the full set if agent-utilities predates the resolver.
+    """
+    try:
+        from agent_utilities.security.entitlements import (
+            identity_scoped_resources,
+        )
+    except Exception:
+        return list(names)
+    return list(identity_scoped_resources(namespace, names))
+
+
 def register_collection_management_tools(mcp: FastMCP):
     @mcp.tool(tags={"collection_management"})
     async def vector_collection_management(
@@ -152,7 +171,13 @@ def register_collection_management_tools(mcp: FastMCP):
                 "password": password,
             }
             kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return await run_blocking(client.list_collections, **kwargs)
+            result = await run_blocking(client.list_collections, **kwargs)
+            if isinstance(result, dict) and "collections" in result:
+                result = {
+                    **result,
+                    "collections": _entitled("collection", result["collections"]),
+                }
+            return result
         raise ValueError(
             f"Unknown action: {action}. Must be one of: create_collection', 'add_documents', 'delete_collection', 'list_collections"
         )
