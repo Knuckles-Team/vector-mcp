@@ -1,5 +1,6 @@
 ---
 name: vector-mcp-operations
+skill_type: skill
 description: >-
   Operate vector-mcp through its governed MCP and GraphOS capabilities. Use for
   collection lifecycle, root-confined document ingestion, semantic or lexical
