@@ -1,358 +1,160 @@
-# Vector Mcp
-## CLI or API | MCP | Agent
+# vector-mcp
 
-![PyPI - Version](https://img.shields.io/pypi/v/vector-mcp)
-![MCP Server](https://badge.mcpx.dev?type=server 'MCP Server')
-![PyPI - Downloads](https://img.shields.io/pypi/dd/vector-mcp)
-![GitHub Repo stars](https://img.shields.io/github/stars/Knuckles-Team/vector-mcp)
-![GitHub forks](https://img.shields.io/github/forks/Knuckles-Team/vector-mcp)
-![GitHub contributors](https://img.shields.io/github/contributors/Knuckles-Team/vector-mcp)
-![PyPI - License](https://img.shields.io/pypi/l/vector-mcp)
-![GitHub](https://img.shields.io/github/license/Knuckles-Team/vector-mcp)
-![GitHub last commit (by committer)](https://img.shields.io/github/last-commit/Knuckles-Team/vector-mcp)
-![GitHub pull requests](https://img.shields.io/github/issues-pr/Knuckles-Team/vector-mcp)
-![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed/Knuckles-Team/vector-mcp)
-![GitHub issues](https://img.shields.io/github/issues/Knuckles-Team/vector-mcp)
-![GitHub top language](https://img.shields.io/github/languages/top/Knuckles-Team/vector-mcp)
-![GitHub language count](https://img.shields.io/github/languages/count/Knuckles-Team/vector-mcp)
-![GitHub repo size](https://img.shields.io/github/repo-size/Knuckles-Team/vector-mcp)
-![GitHub repo file count (file type)](https://img.shields.io/github/directory-file-count/Knuckles-Team/vector-mcp)
-![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
-![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
+Action-routed MCP and agent interfaces for governed vector collection management and retrieval.
+The native default is epistemic-graph. Secure opt-in providers cover PostgreSQL/pgvector,
+Qdrant, and MongoDB Atlas.
 
-*Version: 1.40.0*
+<!-- GOVERNED-CAPABILITY:START -->
+## Governed capability
 
-> **Documentation** — Installation, deployment, usage across the MCP, API, and agent
-> interfaces, and guidance for provisioning a vector database are maintained in the
-> [official documentation](https://knuckles-team.github.io/vector-mcp/).
+- MCP tools: `vector_collection_management` and `vector_search`
+- Skill provider: the consolidated `vector-mcp-operations` workflow
+- Ontology provider: the packaged vector retrieval ontology
+- Source connector provider: a read-only vector collection inventory preset
+- Runtime configuration: AgentConfig, environment variables, and secret references
+- Privacy posture: no checked-in endpoints, credentials, personal identity, or host paths
+<!-- GOVERNED-CAPABILITY:END -->
 
----
+## Install
 
-## Overview
+Use the smallest extra set required by the deployment:
 
-**Vector Mcp** is a production-grade Agent and Model Context Protocol (MCP) server designed to interface directly with Integrate RAG into AI Agents via MCP Server. Supports multiple Vector database technologies..
+```bash
+uvx --from 'vector-mcp[mcp]' vector-mcp
+```
 
----
+The runtime requires `agent-utilities>=1.27.1` and its self-contained full
+epistemic-graph engine contract. A bare numeric-only or partial engine profile is not a
+supported deployment.
 
-## Key Features
+For a selected storage provider:
 
-- **Consolidated Action-Routed MCP Tools:** Minimizes token overhead and eliminates tool bloat in LLM contexts by grouping methods into optimized, togglable tool modules.
-- **Enterprise-Grade Security:** Comprehensive support for Eunomia policies, OIDC token delegation, and granular execution context tracking.
-- **Integrated Graph Agent:** Built-in Pydantic AI agent supporting the Agent Control Protocol (ACP) and standard Web interfaces (AG-UI).
-- **Native Telemetry & Tracing:** Out-of-the-box OpenTelemetry exports and native Langfuse tracing.
+```bash
+uv add 'vector-mcp[postgres]'
+uv add 'vector-mcp[qdrant]'
+uv add 'vector-mcp[mongodb]'
+```
 
----
+The `all` extra enables every supported optional provider plus the agent, Langfuse, and
+Logfire runtimes. Production images should install only the providers they operate.
 
-## CLI or API
+## MCP configuration
 
-This agent wraps the Integrate RAG into AI Agents via MCP Server. Supports multiple Vector database technologies. API. You can interact with it programmatically or via its integrated execution entrypoints.
-
-Detailed instructions on how to use the underlying API wrappers, extended schema bindings, and developer SDK references are maintained in [docs/index.md](docs/index.md).
-
----
-
-## MCP
-
-This server utilizes dynamic Action-Routed tools to optimize token overhead and maximize IDE compatibility.
-
-### Available MCP Tools
-| Tool Module | Toggle Env Var | Enabled by Default | Description & Nested Methods |
-|-------------|----------------|--------------------|------------------------------|
-| **Collection Management** | `COLLECTION_MANAGEMENT_TOOL` | `True` | Manage collection management operations.
-
-        Actions:
-          - 'create_collection': Creates a new collection or retrieves an existing one in the vector database.
-          - 'add_documents': Adds documents to an existing collection in the vector database.
-          - 'delete_collection': Deletes a collection from the vector database.
-          - 'list_collections': Lists all collections in the vector database. Action-routed methods: `add_documents`, `create_collection`, `delete_collection`, `list_collections`. |
-| **Search** | `SEARCH_TOOL` | `True` | Manage search operations.
-
-        Actions:
-          - 'semantic_search': Retrieves and gathers related knowledge from the vector database instance using the question variable.
-          - 'lexical_search': This is a lexical or term based search that retrieves and gathers related knowledge from the database instance using the question variable via BM25.
-          - 'search': Performs a hybrid search combining semantic (vector) and lexical (BM25) methods. Action-routed methods: `lexical_search`, `search`, `semantic_search`. |
-
-        Actions:
-          - 'create_collection': Creates a new collection or retrieves an existing one in the vector database.
-          - 'add_documents': Adds documents to an existing collection in the vector database.
-          - 'delete_collection': Deletes a collection from the vector database.
-          - 'list_collections': Lists all collections in the vector database. Action-routed methods: `add_documents`, `create_collection`, `delete_collection`, `list_collections`. |
-| **Search** | `SEARCH_TOOL` | `True` | Manage search operations.
-
-        Actions:
-          - 'semantic_search': Retrieves and gathers related knowledge from the vector database instance using the question variable.
-          - 'lexical_search': This is a lexical or term based search that retrieves and gathers related knowledge from the database instance using the question variable via BM25.
-          - 'search': Performs a hybrid search combining semantic (vector) and lexical (BM25) methods. Action-routed methods: `lexical_search`, `search`, `semantic_search`. |
-
-        Actions:
-          - 'create_collection': Creates a new collection or retrieves an existing one in the vector database.
-          - 'add_documents': Adds documents to an existing collection in the vector database.
-          - 'delete_collection': Deletes a collection from the vector database.
-          - 'list_collections': Lists all collections in the vector database. Action-routed methods: `add_documents`, `create_collection`, `delete_collection`, `list_collections`. |
-| **Search** | `SEARCH_TOOL` | `True` | Manage search operations.
-
-        Actions:
-          - 'semantic_search': Retrieves and gathers related knowledge from the vector database instance using the question variable.
-          - 'lexical_search': This is a lexical or term based search that retrieves and gathers related knowledge from the database instance using the question variable via BM25.
-          - 'search': Performs a hybrid search combining semantic (vector) and lexical (BM25) methods. Action-routed methods: `lexical_search`, `search`, `semantic_search`. |
-
-Detailed tool schemas, parameter shapes, and validation constraints are preserved in [docs/mcp.md](docs/mcp.md).
-
-### Dynamic Tool Selection & Visibility
-
-This MCP server supports dynamic toolset selection and visibility filtering at runtime. This allows you to restrict the set of exposed tools in order to prevent blowing up the LLM's context window.
-
-You can configure tool filtering via multiple input channels:
-
-- **CLI Arguments:** Pass `--tools` or `--toolsets` (or their disabled counterparts `--disabled-tools` and `--disabled-toolsets`) during startup.
-- **Environment Variables:** Define standard environment variables:
-  - `MCP_ENABLED_TOOLS` / `MCP_DISABLED_TOOLS`
-  - `MCP_ENABLED_TAGS` / `MCP_DISABLED_TAGS`
-- **HTTP SSE Request Headers:** Pass custom headers during transport initialization:
-  - `x-mcp-enabled-tools` / `x-mcp-disabled-tools`
-  - `x-mcp-enabled-tags` / `x-mcp-disabled-tags`
-- **HTTP SSE Request Query Parameters:** Append query parameters directly to your transport connection URL:
-  - `?tools=tool1,tool2`
-  - `?tags=tag1`
-
-When query strings or parameters are supplied, an LLM-free **Knowledge Graph resolution layer** (using `DynamicToolOrchestrator`) matches query intents against known tool tags, names, or descriptions, with safe fallback and automated 24-hour background cache refreshing.
-
----
-
-### MCP Configuration Examples
-
-#### stdio Transport (Recommended for local IDEs e.g., Cursor, Claude Desktop)
-Configure your IDE's `mcp.json` to launch the MCP server via `uvx`:
+The package includes a neutral agent-launch configuration containing only the command,
+condensed tool mode, and tool toggles. Runtime values are inherited from AgentConfig or
+injected by the operator. A client launch entry can remain equally small:
 
 ```json
 {
   "mcpServers": {
     "vector-mcp": {
       "command": "uvx",
-      "args": [
-        "--from",
-        "vector-mcp",
-        "vector-mcp"
-      ],
-      "env": {
-        "VECTOR_URL": "your_vector_url_here",
-        "EMBEDDING_MODEL_ID": "your_embedding_model_id_here",
-        "CHUNK_SIZE": "your_chunk_size_here",
-        "VECTOR_API_KEY": "your_vector_api_key_here"
-      }
+      "args": ["--from", "vector-mcp[mcp]", "vector-mcp"],
+      "env": {"MCP_TOOL_MODE": "condensed"}
     }
   }
 }
 ```
 
-#### Streamable-HTTP Transport (Recommended for production deployments)
-Configure your client's `mcp.json` to launch the Streamable-HTTP server via `uvx` with explicit host and port definition:
+Do not put concrete endpoints, certificate paths, credentials, or user directories in the
+repository. Durable credentials and TLS profiles should be supplied by secret reference.
 
-```json
-{
-  "mcpServers": {
-    "vector-mcp": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "vector-mcp",
-        "vector-mcp"
-      ],
-      "env": {
-        "TRANSPORT": "streamable-http",
-        "HOST": "0.0.0.0",
-        "PORT": "8000",
-        "VECTOR_URL": "your_vector_url_here",
-        "EMBEDDING_MODEL_ID": "your_embedding_model_id_here",
-        "CHUNK_SIZE": "your_chunk_size_here",
-        "VECTOR_API_KEY": "your_vector_api_key_here"
-      }
-    }
-  }
-}
-```
+## Tool surface
 
-Alternatively, connect to a pre-deployed remote or local Streamable-HTTP instance:
+### `vector_collection_management`
 
-```json
-{
-  "mcpServers": {
-    "vector-mcp": {
-      "url": "http://localhost:8000/vector-mcp/mcp"
-    }
-  }
-}
-```
+Supported actions:
 
-Deploying the Streamable-HTTP server via Docker:
+- `create_collection`
+- `add_documents`
+- `delete_collection`
+- `list_collections`
 
-```bash
-docker run -d \
-  --name vector-mcp-mcp \
-  -p 8000:8000 \
-  -e TRANSPORT=streamable-http \
-  -e PORT=8000 \
-  -e VECTOR_URL="your_value" \
-  -e EMBEDDING_MODEL_ID="your_value" \
-  -e CHUNK_SIZE="your_value" \
-  -e VECTOR_API_KEY="your_value" \
-  knucklessg1/vector-mcp:latest
-```
+Database credentials and local database paths are not accepted as tool arguments. Document
+files are selected only by paths relative to the administrator-owned `DOCUMENT_DIRECTORY`.
+Absolute paths, URLs, traversal, symbolic links, unbounded file sets, and oversized content are
+rejected before delegation.
 
----
+### `vector_search`
 
-## Agent
+Supported actions:
 
-This repository features a fully integrated Pydantic AI Graph Agent. It communicates over the **Agent Control Protocol (ACP)** and interacts seamlessly with the **Agent Web UI (AG-UI)** and Terminal interface.
+- `semantic_search`
+- `lexical_search`
+- `search` (hybrid retrieval)
 
-### Running the Agent CLI
-To start the interactive command-line agent:
+Backend names, collection identifiers, result counts, search weights, and request sizes are
+validated at the MCP boundary. Legacy aliases and providers without the common indexed,
+authenticated, verified-TLS contract are not advertised or accepted.
+
+## Runtime trust
+
+Embedding providers are selected through the shared AgentConfig `EMBEDDING_MODELS` registry.
+Model credentials remain references in that registry, and model trust is selected through
+`EMBEDDING_TLS_PROFILE` or `EMBEDDING_TLS_PROFILE_REF`. Database credentials likewise use only
+`env://`, `vault://`, or `secret://` references. Complete-chain PEM bundles, system trust, mTLS,
+and proxy policy are resolved by Agent Utilities at runtime; boolean certificate-verification
+bypasses are not supported. The doctor reports configuration booleans and
+readiness without printing endpoints, hostnames, paths, identities, or secret references:
 
 ```bash
-# Set credentials
-export VECTOR_URL="your_value"
-export EMBEDDING_MODEL_ID="your_value"
-export CHUNK_SIZE="your_value"
-export VECTOR_API_KEY="your_value"
-
-# Run the agent server
-vector-agent --provider openai --model-id gpt-4o
+vector-mcp-doctor
 ```
 
-### Docker Compose Orchestration
-The following `docker/agent.compose.yml` configures the Agent, Web UI, and Terminal Interface together:
+## Provider and ontology integration
 
-```yaml
-version: '3.8'
+The package contributes its skills, prompts, ontology, and source connector through Python entry
+points. The collection-inventory connector is intentionally read-only and registers collection
+metadata, not document or embedding payloads.
 
-services:
-  vector-mcp-mcp:
-    image: knucklessg1/vector-mcp:latest
-    container_name: vector-mcp-mcp
-    hostname: vector-mcp-mcp
-    restart: always
-    env_file:
-      - ../.env
-    environment:
-      - PYTHONUNBUFFERED=1
-      - HOST=0.0.0.0
-      - PORT=8000
-      - TRANSPORT=streamable-http
-    ports:
-      - "8000:8000"
-    healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+Generated connector signatures must be recreated only after the installed MCP schema is observed
+and a release signing key is provided at runtime. A signature from an older tool schema or
+ontology must never be copied forward.
 
-  vector-mcp-agent:
-    image: knucklessg1/vector-mcp:latest
-    container_name: vector-mcp-agent
-    hostname: vector-mcp-agent
-    restart: always
-    depends_on:
-      - vector-mcp-mcp
-    env_file:
-      - ../.env
-    command: [ "vector-agent" ]
-    environment:
-      - PYTHONUNBUFFERED=1
-      - HOST=0.0.0.0
-      - PORT=9023
-      - MCP_URL=http://vector-mcp-mcp:8000/mcp
-      - PROVIDER=${PROVIDER:-openai}
-      - MODEL_ID=${MODEL_ID:-gpt-4o}
-      - ENABLE_WEB_UI=True
-      - ENABLE_OTEL=True
-    ports:
-      - "9023:9023"
-    healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9023/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+## Development checks
 
-```
-
-Detailed graph node architecture explanations, custom skill configurations, and agentic trace guides are available in [docs/agent.md](docs/agent.md).
-
----
-
-## Security & Governance
-
-Built directly upon the enterprise-ready [`agent-utilities`](https://github.com/Knuckles-Team/agent-utilities) core, standard security parameters are fully supported:
-
-### Access Control & Policy Enforcement
-- **Eunomia Policies:** Fine-grained, policy-driven tool authorization. Supports `none`, local `embedded` (`mcp_policies.json`), or centralized `remote` modes.
-- **OIDC Token Delegation:** Compliant with RFC 8693 token exchange for flowing authenticating user credentials from Web UI / ACP → Agent → MCP.
-- **Scoped Credentials:** Execution context runs restricted to the specific caller identity.
-
-### Runtime Security Grid
-| Feature | Functionality | Enablement |
-|---------|---------------|------------|
-| **Tool Guard** | Sensitivity inspection with human-in-the-loop validation | Enabled by default |
-| **Prompt Injection Defense** | Input scanning, repetition monitoring, and recursive loop blocks | Enabled by default |
-| **Context Safety Guard** | Stuck-loop detectors and contextual overflow preemptive alerts | Enabled by default |
-
----
-
-## Installation
-
-Install the Python package locally:
+Low-cost checks that do not launch providers:
 
 ```bash
-# Using uv (highly recommended)
-uv pip install vector-mcp[all]
-
-# Using standard pip
-python -m pip install vector-mcp[all]
+python scripts/security_sanitizer.py
+python scripts/security_contract.py --contract .security/security-contract.json validate
+python -m compileall -q vector_mcp
 ```
 
----
+Provider tests use mocked SDK boundaries and make no network calls. Live qualification is a
+separate deployment gate and must use operator-supplied AgentConfig and secrets.
 
 ## Documentation
 
-The complete documentation is published as the
-[official documentation site](https://knuckles-team.github.io/vector-mcp/) and is the
-recommended reference for installation, deployment, and day-to-day operation.
+- [Installation](docs/installation.md)
+- [Configuration and privacy](docs/configuration.md)
+- [Deployment](docs/deployment.md)
+- [Usage](docs/usage.md)
+- [Architecture overview](docs/overview.md)
 
-| Page | Contents |
-|---|---|
-| [Installation](https://knuckles-team.github.io/vector-mcp/installation/) | pip, source, backend extras, prebuilt Docker image |
-| [Deployment](https://knuckles-team.github.io/vector-mcp/deployment/) | run the MCP and agent servers, Compose, Caddy + Technitium, env config |
-| [Usage](https://knuckles-team.github.io/vector-mcp/usage/) | the MCP tools, the `Api` client, the agent CLI |
-| [Backing Platform](https://knuckles-team.github.io/vector-mcp/platform/) | deploy ChromaDB, PostgreSQL, Qdrant, MongoDB, or Couchbase |
-| [Overview](https://knuckles-team.github.io/vector-mcp/overview/) | backends, tools, and the standardized package layout |
-| [Concepts](https://knuckles-team.github.io/vector-mcp/concepts/) | concept registry (`CONCEPT:VEC-*`) |
+## License
 
----
+See [LICENSE](LICENSE).
 
-## Repository Owners
 
-<img width="100%" height="180em" src="https://github-readme-stats.vercel.app/api?username=Knucklessg1&show_icons=true&hide_border=true&&count_private=true&include_all_commits=true" />
+<!-- BEGIN agent-utilities-deployment (generated; do not edit between markers) -->
 
-![GitHub followers](https://img.shields.io/github/followers/Knucklessg1)
-![GitHub User's stars](https://img.shields.io/github/stars/Knucklessg1)
+## Deploy with `agent-utilities-deployment`
 
----
+Provision this package with the consolidated **`agent-utilities-deployment`**
+workflow. It selects an installed-package, editable-source, or immutable-container
+path; records only runtime secret and TLS-profile references in `AgentConfig`; and
+runs doctor, registration, policy, observability, and rollback gates. Ask your agent
+to **"deploy `vector-mcp` with agent-utilities-deployment"**.
 
-## Contribute
+| Install mode | Command |
+|------|---------|
+| Installed package | `uv tool install "vector-mcp[mcp]"`, then run `vector-mcp` |
+| Editable source | `uv pip install -e ".[agent]"`, then run `vector-mcp` |
+| Immutable container | deploy `registry.example.invalid/vector-mcp@sha256:<digest>` through the operator-selected orchestrator |
 
-Contributions are welcome! Please ensure code quality by executing local checks before submitting pull requests:
-- Format code using `ruff format .`
-- Lint code using `ruff check .`
-- Validate type-safety with `mypy .`
-- Execute test suites using `pytest`
+The repository embeds no deployment profile, credential value, certificate path, or
+environment-specific endpoint. Supply those at runtime through `AgentConfig` and the
+configured secret provider.
+
+<!-- END agent-utilities-deployment -->

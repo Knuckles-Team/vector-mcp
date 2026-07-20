@@ -1,0 +1,20 @@
+schema_version: '1'
+connector: vector-mcp
+ontology_source: vector
+sync:
+- preset: vector-collections
+  server: vector-mcp
+  tool: vector_collection_management
+  action: list_collections
+  records_path: collections
+  id_field: collection_name
+  title_field: collection_name
+  text_field: collection_name
+  updated_field: null
+  doc_type: vector_collection
+  tool_schema_sha256: 92a52d3cb7250a81cf9c779e496cb62fc78d2557b1f9b7722ab526214fcb5597
+governance:
+  default_acl: quarantine
+  identity: opaque-reference
+  tenant: required-at-materialization
+  provenance: required-at-materialization

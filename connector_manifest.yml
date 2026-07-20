@@ -1,0 +1,215 @@
+connector: vector-mcp
+ontology_source: vector
+schema_version: '1'
+resources:
+- name: Chunk
+  label: Chunk
+  id_prefix: chunk
+  relations:
+  - name: chunkedFrom
+    label: chunked from
+    target: Document
+    lpg_rel_type: ''
+  - name: hasEmbedding
+    label: has embedding
+    target: Embedding
+    lpg_rel_type: ''
+  - name: storedIn
+    label: stored in
+    target: VectorCollection
+    lpg_rel_type: ''
+- name: Embedding
+  label: Embedding
+  id_prefix: embedding
+  relations: []
+- name: SearchHit
+  label: Search Hit
+  id_prefix: searchhit
+  relations:
+  - name: matchedChunk
+    label: matched chunk
+    target: Chunk
+    lpg_rel_type: ''
+- name: SearchQuery
+  label: Search Query
+  id_prefix: searchquery
+  relations:
+  - name: hasHit
+    label: has hit
+    target: SearchHit
+    lpg_rel_type: ''
+  - name: queriesCollection
+    label: queries collection
+    target: VectorCollection
+    lpg_rel_type: ''
+- name: VectorBackend
+  label: Vector Backend
+  id_prefix: vectorbackend
+  relations: []
+- name: VectorCollection
+  label: Vector Collection
+  id_prefix: vectorcollection
+  relations:
+  - name: hostedOn
+    label: hosted on
+    target: VectorBackend
+    lpg_rel_type: ''
+actions:
+- id: run_graph_flow
+  name: Graph Flow Execution
+  description: Execute a workflow through the agent's graph orchestration engine
+events: []
+identity:
+  id_field:
+    vector_collection: collection_name
+  title_field:
+    vector_collection: collection_name
+  text_field:
+    vector_collection: collection_name
+  updated_field: {}
+permissions:
+  acl_fields: []
+  tenant_field: null
+  read_roles: []
+schema_mappings:
+  Chunk:
+    ontology_class: null
+    fields:
+      chunkText: xsd:string
+      collectionName: xsd:string
+      dbType: xsd:string
+      dimensions: xsd:integer
+      distanceMetric: xsd:string
+      embeddingModel: xsd:string
+      lexicalWeight: xsd:double
+      numberResults: xsd:integer
+      rrfK: xsd:integer
+      semanticWeight: xsd:double
+      similarityScore: xsd:double
+  Embedding:
+    ontology_class: null
+    fields:
+      chunkText: xsd:string
+      collectionName: xsd:string
+      dbType: xsd:string
+      dimensions: xsd:integer
+      distanceMetric: xsd:string
+      embeddingModel: xsd:string
+      lexicalWeight: xsd:double
+      numberResults: xsd:integer
+      rrfK: xsd:integer
+      semanticWeight: xsd:double
+      similarityScore: xsd:double
+  SearchHit:
+    ontology_class: null
+    fields:
+      chunkText: xsd:string
+      collectionName: xsd:string
+      dbType: xsd:string
+      dimensions: xsd:integer
+      distanceMetric: xsd:string
+      embeddingModel: xsd:string
+      lexicalWeight: xsd:double
+      numberResults: xsd:integer
+      rrfK: xsd:integer
+      semanticWeight: xsd:double
+      similarityScore: xsd:double
+  SearchQuery:
+    ontology_class: null
+    fields:
+      chunkText: xsd:string
+      collectionName: xsd:string
+      dbType: xsd:string
+      dimensions: xsd:integer
+      distanceMetric: xsd:string
+      embeddingModel: xsd:string
+      lexicalWeight: xsd:double
+      numberResults: xsd:integer
+      rrfK: xsd:integer
+      semanticWeight: xsd:double
+      similarityScore: xsd:double
+  VectorBackend:
+    ontology_class: null
+    fields:
+      chunkText: xsd:string
+      collectionName: xsd:string
+      dbType: xsd:string
+      dimensions: xsd:integer
+      distanceMetric: xsd:string
+      embeddingModel: xsd:string
+      lexicalWeight: xsd:double
+      numberResults: xsd:integer
+      rrfK: xsd:integer
+      semanticWeight: xsd:double
+      similarityScore: xsd:double
+  VectorCollection:
+    ontology_class: null
+    fields:
+      chunkText: xsd:string
+      collectionName: xsd:string
+      dbType: xsd:string
+      dimensions: xsd:integer
+      distanceMetric: xsd:string
+      embeddingModel: xsd:string
+      lexicalWeight: xsd:double
+      numberResults: xsd:integer
+      rrfK: xsd:integer
+      semanticWeight: xsd:double
+      similarityScore: xsd:double
+sync:
+- preset: vector-collections
+  server: vector-mcp
+  tool: vector_collection_management
+  action: list_collections
+  records_path: collections
+  id_field: collection_name
+  title_field: collection_name
+  text_field: collection_name
+  updated_field: null
+  pagination: null
+  doc_type: vector_collection
+  tool_schema_sha256: 92a52d3cb7250a81cf9c779e496cb62fc78d2557b1f9b7722ab526214fcb5597
+  raw:
+    server: vector-mcp
+    tool: vector_collection_management
+    action: list_collections
+    records_path: collections
+    id_field: collection_name
+    title_field: collection_name
+    text_field: collection_name
+    doc_type: vector_collection
+provenance:
+  generated_by: scripts/generate_connector_manifests.py
+  generated_at: '2026-07-18T14:21:05Z'
+  source_artifacts:
+  - a2a.json
+  - vector_mcp/connectors/mcp_source_presets.json
+  - vector_mcp/connectors/tool_schema_fingerprints.json
+  - vector_mcp/ontology/vector.ttl
+  integrity:
+    algorithm: urdna2015-sha256
+    hash: d96e6b77d78f42fe92be2a06b5d490c67aaa48a2264d682b1d37b2c95ebe2e22
+    triple_count: 83
+  signer: ontology-manifest-generator
+  signature_algorithm: ed25519
+  signing_public_key: q0Cp7bmQMqJhbofGKKw8xXC6KbFzukBDDke0UYVi8y4
+  signature: G3tbCg9BpVkgrZgOPzyrk0DuDrtIb1LMfNHEDZ-NYUeej_8Ny_dWHh47tP4ZRk7y2z0L9fVzoafJjbLiNvkBDQ
+policy:
+  pii_fields: {}
+  tenant_boundary: null
+  rls: []
+review_todos:
+- "policy.rls / policy.tenant_boundary are unset \u2014 no row-level-security predicate has been reviewed\
+  \ for this connector."
+- "schema_mappings.Chunk.ontology_class = None [UNRESOLVED \u2014 no crosswalk found by any heuristic]\
+  \ \u2014 verify manually before relying on this crosswalk for reasoning/joins."
+- "schema_mappings.Embedding.ontology_class = None [UNRESOLVED \u2014 no crosswalk found by any heuristic]\
+  \ \u2014 verify manually before relying on this crosswalk for reasoning/joins."
+- "schema_mappings.SearchHit.ontology_class = None [UNRESOLVED \u2014 no crosswalk found by any heuristic]\
+  \ \u2014 verify manually before relying on this crosswalk for reasoning/joins."
+- "schema_mappings.SearchQuery.ontology_class = None [UNRESOLVED \u2014 no crosswalk found by any heuristic]\
+  \ \u2014 verify manually before relying on this crosswalk for reasoning/joins."
+- "schema_mappings.VectorBackend.ontology_class = None [UNRESOLVED \u2014 no crosswalk found by any heuristic]\
+  \ \u2014 verify manually before relying on this crosswalk for reasoning/joins."
+- "schema_mappings.VectorCollection.ontology_class = None [UNRESOLVED \u2014 no crosswalk found by any\
+  \ heuristic] \u2014 verify manually before relying on this crosswalk for reasoning/joins."

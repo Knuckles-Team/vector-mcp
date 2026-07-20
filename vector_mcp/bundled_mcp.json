@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "vector-mcp": {
+      "command": "vector-mcp",
+      "args": [],
+      "env": {
+        "MCP_TOOL_MODE": "condensed",
+        "COLLECTION_MANAGEMENTTOOL": "True",
+        "SEARCHTOOL": "True"
+      }
+    }
+  }
+}

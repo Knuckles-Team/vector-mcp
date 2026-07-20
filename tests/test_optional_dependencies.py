@@ -5,10 +5,9 @@ from importlib import import_module
 def test_optional_dependencies():
     # Save original sys.modules state of optional dependencies
     keys_to_restore = [
-        "llama_index.embeddings.huggingface",
-        "llama_index.vector_stores.postgres",
+        "psycopg_pool",
         "qdrant_client",
-        "llama_index.vector_stores.qdrant",
+        "pymongo",
     ]
     orig_modules = {k: sys.modules.get(k) for k in keys_to_restore}
 
@@ -30,7 +29,7 @@ def test_optional_dependencies():
 
         # Import target modules
         import_module("vector_mcp")
-        import_module("vector_mcp.retriever")
+        import_module("vector_mcp.vectordb")
 
     finally:
         # Restore original sys.modules state of optional dependencies

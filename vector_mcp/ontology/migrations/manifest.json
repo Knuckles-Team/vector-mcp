@@ -1,0 +1,6 @@
+{
+  "connector": "vector-mcp",
+  "current_ontology_source": "vector",
+  "migrations": [],
+  "schema_version": "1"
+}

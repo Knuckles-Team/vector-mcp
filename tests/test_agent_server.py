@@ -1,133 +1,120 @@
-import os
-import sys
-import pytest
-from unittest.mock import MagicMock, patch
+from __future__ import annotations
 
-# Mock the agent_utilities module before importing agent_server
-_orig_agent_utilities = sys.modules.get("agent_utilities")
-mock_agent_utilities = MagicMock()
-sys.modules["agent_utilities"] = mock_agent_utilities
+import importlib
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
-from vector_mcp.agent_server import agent_server
+import agent_utilities
 
-# Restore/remove immediately after import
-if _orig_agent_utilities is not None:
-    sys.modules["agent_utilities"] = _orig_agent_utilities
-else:
-    sys.modules.pop("agent_utilities", None)
+agent_server_module = importlib.import_module("vector_mcp.agent_server")
 
 
-@pytest.fixture(autouse=True)
-def mock_agent_utilities_fixture():
-    _curr_orig = sys.modules.get("agent_utilities")
-    sys.modules["agent_utilities"] = mock_agent_utilities
-    yield mock_agent_utilities
-    if _curr_orig is not None:
-        sys.modules["agent_utilities"] = _curr_orig
-    else:
-        sys.modules.pop("agent_utilities", None)
-
-
-def test_agent_server_success():
-    """Verify that agent_server CLI parses args and invokes create_agent_server correctly."""
-    mock_agent_utilities.reset_mock()
-
-    mock_agent_utilities.load_identity.return_value = {
-        "name": "Vector Mcp Test",
-        "description": "Test description",
-        "content": "Test prompt",
+def _arguments(**overrides):
+    values = {
+        "debug": False,
+        "mcp_url": None,
+        "mcp_config": None,
+        "host": "127.0.0.1",
+        "port": 8888,
+        "provider": "configured-provider",
+        "model_id": "configured-model",
+        "base_url": "https://model.example.invalid/v1",
+        "api_key": None,
+        "custom_skills_directory": None,
+        "workspace": None,
+        "web": False,
+        "terminal": False,
+        "web_logs": False,
+        "otel": False,
+        "otel_endpoint": None,
+        "otel_headers": None,
+        "otel_public_key": None,
+        "otel_secret_key": None,
+        "otel_protocol": None,
     }
-
-    mock_parser = MagicMock()
-    mock_args = MagicMock()
-    mock_args.debug = True
-    mock_args.mcp_url = "http://test-mcp"
-    mock_args.mcp_config = "test_config.json"
-    mock_args.host = "127.0.0.1"
-    mock_args.port = 8888
-    mock_args.provider = "test-provider"
-    mock_args.model_id = "test-model"
-    mock_args.base_url = "http://base-url"
-    mock_args.api_key = "test-key"
-    mock_args.custom_skills_directory = "/custom"
-    mock_args.web = True
-    mock_args.otel = True
-    mock_args.otel_endpoint = "http://otel"
-    mock_args.otel_headers = "headers"
-    mock_args.otel_public_key = "pub"
-    mock_args.otel_secret_key = "sec"
-    mock_args.otel_protocol = "grpc"
-
-    mock_parser.parse_args.return_value = mock_args
-    mock_agent_utilities.create_agent_parser.return_value = mock_parser
-
-    with patch("sys.argv", ["agent_server"]), patch("builtins.print") as mock_print:
-        agent_server()
-
-        mock_agent_utilities.initialize_workspace.assert_called_once()
-        mock_agent_utilities.load_identity.assert_called_once()
-        mock_agent_utilities.create_agent_parser.assert_called_once()
-        mock_agent_utilities.create_agent_server.assert_called_once_with(
-            mcp_url="http://test-mcp",
-            mcp_config="test_config.json",
-            host="127.0.0.1",
-            port=8888,
-            provider="test-provider",
-            model_id="test-model",
-            router_model="test-model",
-            agent_model="test-model",
-            base_url="http://base-url",
-            api_key="test-key",
-            custom_skills_directory="/custom",
-            enable_web_ui=True,
-            enable_otel=True,
-            otel_endpoint="http://otel",
-            otel_headers="headers",
-            otel_public_key="pub",
-            otel_secret_key="sec",
-            otel_protocol="grpc",
-            debug=True,
-        )
+    values.update(overrides)
+    return SimpleNamespace(**values)
 
 
-def test_agent_server_fallback_system_prompt():
-    """Verify system prompt generation fallback when identity content is empty."""
-    mock_agent_utilities.reset_mock()
+def _configure_agent_utilities(monkeypatch, *, args, identity):
+    parser = MagicMock()
+    parser.parse_args.return_value = args
+    create_server = MagicMock()
+    initialize_workspace = MagicMock()
+    build_prompt = MagicMock(return_value="generated prompt")
 
-    mock_agent_utilities.load_identity.return_value = {
-        "name": "Vector Mcp Fallback",
-        "description": "Fallback description",
-        "content": "",
-    }
-    mock_agent_utilities.build_system_prompt_from_workspace.return_value = (
-        "generated-prompt"
+    monkeypatch.setattr(agent_utilities, "create_agent_parser", lambda: parser)
+    monkeypatch.setattr(agent_utilities, "create_agent_server", create_server)
+    monkeypatch.setattr(agent_utilities, "initialize_workspace", initialize_workspace)
+    monkeypatch.setattr(agent_utilities, "load_identity", lambda: identity)
+    monkeypatch.setattr(
+        agent_utilities, "build_system_prompt_from_workspace", build_prompt
+    )
+    monkeypatch.setattr(
+        agent_server_module,
+        "setting",
+        lambda _name, default=None: default,
+    )
+    return create_server, initialize_workspace, build_prompt
+
+
+def test_agent_server_uses_explicit_operator_config(monkeypatch) -> None:
+    args = _arguments(mcp_config="operator-config.json", debug=True)
+    create_server, initialize_workspace, _ = _configure_agent_utilities(
+        monkeypatch,
+        args=args,
+        identity={
+            "name": "Vector MCP Test",
+            "description": "Test description",
+            "content": "Test prompt",
+        },
     )
 
-    mock_parser = MagicMock()
-    mock_args = MagicMock()
-    mock_args.debug = False
-    mock_args.mcp_url = None
-    mock_args.mcp_config = None
-    mock_args.host = None
-    mock_args.port = None
-    mock_args.provider = None
-    mock_args.model_id = None
-    mock_args.base_url = None
-    mock_args.api_key = None
-    mock_args.custom_skills_directory = None
-    mock_args.web = False
-    mock_args.otel = False
-    mock_args.otel_endpoint = None
-    mock_args.otel_headers = None
-    mock_args.otel_public_key = None
-    mock_args.otel_secret_key = None
-    mock_args.otel_protocol = None
+    agent_server_module.agent_server()
 
-    mock_parser.parse_args.return_value = mock_args
-    mock_agent_utilities.create_agent_parser.return_value = mock_parser
+    initialize_workspace.assert_called_once()
+    create_server.assert_called_once_with(
+        mcp_url=None,
+        mcp_config="operator-config.json",
+        host="127.0.0.1",
+        port=8888,
+        provider="configured-provider",
+        model_id="configured-model",
+        router_model="configured-model",
+        agent_model="configured-model",
+        base_url="https://model.example.invalid/v1",
+        api_key=None,
+        custom_skills_directory=None,
+        enable_web_ui=False,
+        enable_terminal_ui=False,
+        enable_web_logs=False,
+        workspace=None,
+        name="Vector MCP Test",
+        system_prompt="Test prompt",
+        enable_otel=False,
+        otel_endpoint=None,
+        otel_headers=None,
+        otel_public_key=None,
+        otel_secret_key=None,
+        otel_protocol=None,
+        debug=True,
+    )
 
-    with patch("sys.argv", ["agent_server"]), patch("builtins.print") as mock_print:
-        agent_server()
 
-        mock_agent_utilities.build_system_prompt_from_workspace.assert_called_once()
-        mock_agent_utilities.create_agent_server.assert_called_once()
+def test_agent_server_uses_packaged_neutral_config(monkeypatch) -> None:
+    args = _arguments()
+    create_server, _, build_prompt = _configure_agent_utilities(
+        monkeypatch,
+        args=args,
+        identity={
+            "name": "Vector MCP",
+            "description": "Fallback description",
+            "content": "",
+        },
+    )
+
+    agent_server_module.agent_server()
+
+    build_prompt.assert_called_once()
+    configured_path = create_server.call_args.kwargs["mcp_config"]
+    assert configured_path.endswith("bundled_mcp.json")

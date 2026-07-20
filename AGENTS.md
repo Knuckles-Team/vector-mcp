@@ -1,381 +1,85 @@
 # AGENTS.md
 
-> Claude Code loads this file via `CLAUDE.md` (`@AGENTS.md` import) — the two stay
-> in sync. Edit **this** file, not `CLAUDE.md`.
+## Scope
 
-## Tech Stack & Architecture
-- Language/Version: Python 3.10+
-- Core Libraries: `agent-utilities`, `fastmcp`, `pydantic-ai`
-- Key principles: Functional patterns, Pydantic for data validation, asynchronous tool execution.
-- Architecture:
-    - `mcp_server.py`: Main MCP server entry point and tool registration.
-    - `agent.py`: Pydantic AI agent definition and logic.
-    - `skills/`: Directory containing modular agent skills (if applicable).
-    - `agent/`: Internal agent logic and prompt templates.
-    - `vectordb/`: Vector database implementations for multiple backends.
-    - `retriever/`: Retriever implementations for each backend.
+This repository provides the action-routed `vector-mcp` server, optional vector provider
+adapters, an agent entry point, packaged skills/prompts, a vector ontology, and a read-only
+collection-inventory connector preset.
 
-### Architecture Diagram
-```mermaid
-graph TD
-    User([User/A2A]) --> Server[A2A Server / FastAPI]
-    Server --> Agent[Pydantic AI Agent]
-    Agent --> Skills[Modular Skills]
-    Agent --> MCP[MCP Server / FastMCP]
-    MCP --> VectorDB[Vector Database Layer]
-    VectorDB --> Backend[Backend Implementation]
-    Backend --> Storage[(Vector Storage)]
-```
+## Current architecture
 
-### Workflow Diagram
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant S as Server
-    participant A as Agent
-    participant T as MCP Tool
-    participant V as VectorDB
-    participant B as Backend
-
-    U->>S: Request
-    S->>A: Process Query
-    A->>T: Invoke Tool
-    T->>V: VectorDB Operation
-    V->>B: Backend Call
-    B-->>V: Backend Response
-    V-->>T: VectorDB Result
-    T-->>A: Tool Result
-    A-->>S: Final Response
-    S-->>U: Output
-```
-
-## Commands (run these exactly)
-# Installation
-pip install .[all]
-
-# Quality & Linting (run from project root)
-pre-commit run --all-files
-
-# Execution Commands
-# vector-mcp\nvector_mcp.mcp:mcp_server\n# vector-agent\nvector_mcp.agent:agent_server
-
-# Testing
-# Start test databases
-podman-compose -f docker-compose.test.yml up -d
-
-# Run all tests
-python -m pytest tests/test_all_backends.py -v
-
-# Run specific backend tests
-python -m pytest tests/test_all_backends.py -k chromadb -v
-python -m pytest tests/test_all_backends.py -k postgres -v
-python -m pytest tests/test_all_backends.py -k mongodb -v
-python -m pytest tests/test_all_backends.py -k qdrant -v
-python -m pytest tests/test_all_backends.py -k couchbase -v
-
-# Stop test databases
-podman-compose -f docker-compose.test.yml down
-
-## Project Structure Quick Reference
-- MCP Entry Point → `mcp_server.py`
-- Agent Entry Point → `agent.py`
-- Source Code → `vector_mcp/`
-- Skills → `skills/` (if exists)
-- VectorDB Implementations → `vector_mcp/vectordb/`
-- Retriever Implementations → `vector_mcp/retriever/`
-- Tests → `tests/`
-
-### File Tree
 ```text
-├── .bumpversion.cfg
-├── .dockerignore
-├── .env
-├── .gitattributes
-├── .github
-│   └── workflows
-│       └── pipeline.yml
-├── .gitignore
-├── .pre-commit-config.yaml
-├── AGENTS.md
-├── Dockerfile
-├── LICENSE
-├── MANIFEST.in
-├── README.md
-├── compose.yml
-├── debug.Dockerfile
-├── docker-compose.test.yml
-├── mcp
-│   ├── documents
-│   └── pgdata
-├── mcp.compose.yml
-├── pyproject.toml
-├── pytest.ini
-├── requirements.txt
-├── scripts
-│   ├── debug_embedding.py
-│   ├── debug_full.py
-│   ├── debug_pg.py
-│   ├── investigate_timeout.py
-│   ├── test_embedding.py
-│   ├── validate_a2a_agent.py
-│   ├── validate_agents.py
-│   ├── validate_all_dbs.py
-│   └── verify_deps.py
-├── tests
-│   ├── README.md
-│   ├── TEST_RESULTS.md
-│   ├── reproduce_chunking.py
-│   ├── test_all_backends.py
-│   ├── test_databases.py
-│   ├── test_optional_dependencies.py
-│   ├── test_protocol_compliance.py
-│   ├── test_pruning.py
-│   └── test_vector_mcp_server.py
-└── vector_mcp
-    ├── __init__.py
-    ├── __main__.py
-    ├── agent
-    │   ├── AGENTS.md
-    │   ├── CRON.md
-    │   ├── CRON_LOG.md
-    │   ├── HEARTBEAT.md
-    │   ├── IDENTITY.md
-    │   ├── MEMORY.md
-    │   ├── USER.md
-    │   ├── mcp_config.json
-    │   └── templates.py
-    ├── agent.py
-    ├── mcp_server.py
-    ├── retriever
-    │   ├── __init__.py
-    │   ├── chromadb_retriever.py
-    │   ├── couchbase_retriever.py
-    │   ├── llamaindex_retriever.py
-    │   ├── mongodb_retriever.py
-    │   ├── postgres_retriever.py
-    │   ├── qdrant_retriever.py
-    │   └── retriever.py
-    └── vectordb
-        ├── __init__.py
-        ├── base.py
-        ├── chromadb.py
-        ├── couchbase.py
-        ├── db_utils.py
-        ├── mongodb.py
-        ├── postgres.py
-        └── qdrant.py
+MCP client
+  -> vector_collection_management / vector_search
+  -> validation, privacy, and backend policy
+  -> verified GraphSession boundary
+  -> configured provider
 ```
 
-## Code Style & Conventions
-**Always:**
-- Use `agent-utilities` for common patterns (e.g., `create_mcp_server`, `create_agent`).
-- Define input/output models using Pydantic.
-- Include descriptive docstrings for all tools (they are used as tool descriptions for LLMs).
-- Check for optional dependencies using `try/except ImportError`.
-- Use manual vector operations when SDK authentication issues arise (see MongoDB/Couchbase implementations).
+Epistemic-graph is the native default. Optional providers are isolated behind extras and imported
+only when selected.
 
-**Good example:**
-```python
-from agent_utilities import create_mcp_server
-from mcp.server.fastmcp import FastMCP
+## Non-negotiable design rules
 
-mcp = create_mcp_server("my-agent")
+- Do not add legacy paths, fallback implementations, deprecated aliases, compatibility shims, or
+  backward-compatibility branches. Migrate the current contract directly.
+- Do not accept credentials or local database paths as MCP tool arguments.
+- Do not persist endpoints, credentials, personal identity, raw content, hostnames, or local
+  filesystem paths in source, skills, docs, traces, reports, fixtures, or generated evidence.
+- Resolve runtime values through AgentConfig, environment variables, and supported secret
+  references.
+- Resolve TLS through the shared transport profile. Do not add certificate-verification bypasses.
+- Keep document ingestion confined to the configured root and relative caller-selected paths.
+- Keep optional dependencies lazy; importing `vector_mcp` must not start services or require
+  every provider SDK.
+- Never fabricate connector signatures, live test evidence, trace evidence, or safe dependency
+  versions.
 
-@mcp.tool()
-async def my_tool(param: str) -> str:
-    """Description for LLM."""
-    return f"Result: {param}"
-```
+## Source layout
 
-## Vector Database Backends
+- `vector_mcp/mcp_server.py`: condensed MCP registration and request boundary
+- `vector_mcp/vector_api.py`: verified session, privacy, secret, TLS, and provider boundary
+- `vector_mcp/vectordb/`: optional provider adapters
+- `vector_mcp/backend_policy.py`: canonical backend and exposure policy
+- `vector_mcp/document_inputs.py`: bounded root-confined ingestion inputs
+- `vector_mcp/doctor.py`: privacy-safe readiness output
+- `vector_mcp/skills/`, `prompts/`, `ontology/`, `connectors/`: packaged extensions
+- `tests/`: unit and explicitly configured integration tests
+- `docs/`: operator documentation
 
-### Supported Backends
-- **ChromaDB**: Local filesystem-based vector database (no container required)
-- **PostgreSQL/PGVector**: PostgreSQL with pgvector extension (container required)
-- **MongoDB**: MongoDB with manual cosine similarity calculation (container required)
-- **Qdrant**: Qdrant vector database (container required)
-- **Couchbase**: Couchbase with REST API fallback and manual cosine similarity (container required, partially functional)
+Deleted root-level debug scripts and obsolete test compose artifacts must remain deleted.
+Maintained container definitions live under `docker/`.
 
-### Implementation Notes
-- **MongoDB**: Uses raw MongoClient instead of MongoDBAtlasVectorSearch to avoid authentication issues with local test containers. Implements manual cosine similarity calculation for semantic search.
-- **Couchbase**: Uses simple client approach with REST API fallback to bypass SDK authentication issues. Implements manual cosine similarity calculation for semantic search. Core search functionality working (10/14 tests passing), CRUD operations limited by N1QL service configuration.
-- **PostgreSQL**: Uses native PGVector with proper JSONB querying for get_documents_by_ids.
-- **Qdrant**: Uses Qdrant client with proper payload handling.
-- **ChromaDB**: Uses ChromaDB client with metadata-based ID resolution.
+## Development rules
 
-### Test Coverage
-- **ChromaDB**: 14/14 tests passing (100%)
-- **PostgreSQL**: 14/14 tests passing (100%)
-- **MongoDB**: 14/14 tests passing (100%)
-- **Qdrant**: 14/14 tests passing (100%)
-- **Couchbase**: 10/14 tests passing (71% - search operations working)
-- **Overall**: 66/70 tests passing (94.3%)
+- Use `agent-utilities` primitives for MCP construction, AgentConfig, secrets, transport
+  security, and observability.
+- Keep public tool schemas bounded and explicit.
+- Use Pydantic fields/models where they define a public validation boundary.
+- Log stable status and exception types, not values or response bodies.
+- Require runtime credentials for integration tests; never supply checked-in password defaults.
+- Preserve unrelated user work and do not commit caches, databases, traces, logs, build outputs,
+  or environment files.
+- Keep `pyproject.toml`, module versions, and `uv.lock` synchronized. Do not regenerate the
+  lock as a side effect of unrelated work.
 
-See `tests/TEST_RESULTS.md` for detailed test results and known issues.
+## Cheap validation
 
-## Dos and Don'ts
-**Do:**
-- Run `pre-commit` before pushing changes.
-- Use existing patterns from `agent-utilities`.
-- Keep tools focused and idempotent where possible.
-- Check for optional dependencies before importing backend-specific libraries.
-- Use manual vector operations when SDK authentication issues arise.
-- Run tests after making changes to vector database implementations.
-
-**Don't:**
-- Use `cd` commands in scripts; use absolute paths or relative to project root.
-- Add new dependencies to `dependencies` in `pyproject.toml` without checking `optional-dependencies` first.
-- Hardcode secrets; use environment variables or `.env` files.
-- Assume all backends are available; check for optional dependencies.
-- Modify vector database implementations without running the corresponding tests.
-
-## Safety & Boundaries
-**Always do:**
-- Run lint/test via `pre-commit`.
-- Use `agent-utilities` base classes.
-- Test vector database implementations with the comprehensive test suite.
-- Check for optional dependencies before using backend-specific features.
-
-**Ask first:**
-- Major refactors of `mcp_server.py` or `agent.py`.
-- Deleting or renaming public tool functions.
-- Changing the VectorDB base class interface.
-- Adding new vector database backends.
-
-**Never do:**
-- Commit `.env` files or secrets.
-- Modify `agent-utilities` or `universal-skills` files from within this package.
-- Skip tests after modifying vector database implementations.
-- Hardcode database credentials; use environment variables.
-
-## When Stuck
-- Propose a plan first before making large changes.
-- Check `agent-utilities` documentation for existing helpers.
-- Review `tests/TEST_RESULTS.md` for known issues and solutions.
-- Check the implementation of working backends for patterns to follow.
-- Run the comprehensive test suite to validate changes.
-
-
-## Testing with Timeout
-
-To run tests with a timeout to prevent hanging, use the `pytest-timeout` plugin. You can combine it with the `-k` flag to run specific tests:
+These checks do not start providers:
 
 ```bash
-uv run pytest --timeout=60 -k "test_name_pattern"
+python scripts/security_sanitizer.py
+python scripts/security_contract.py --contract .security/security-contract.json validate
+python -m compileall -q vector_mcp
 ```
 
-## ⛔ No Scratch or Temporary Files in Repository
+Also parse JSON/TOML/YAML, run `git diff --check`, and run the configured formatter/linter.
+Provider tests, services, lock regeneration, and native compilation are separate serialized gates
+and must not be run concurrently on a constrained workstation.
 
-**NEVER write any of the following to this repository:**
-- Temporary test scripts (`test_*.py`, `debug_*.py` outside of `tests/`)
-- Scratch scripts or experimental one-off files
-- Log files (`.log`, `.txt` command output)
-- Random text files with command output or debug dumps
-- Any file that is NOT production source code, tests in `tests/`, or documentation
+## Connector evidence
 
-**Why:** These files expose private filesystem paths, credentials, and internal infrastructure details when pushed to GitHub publicly.
-
-**Where to put scratch work instead:**
-- Use `~/workspace/scratch/` for temporary scripts and experiments
-- Use `~/workspace/reports/` for command output and reports
-- Keep test scripts in the `tests/` directory following proper pytest conventions
-
-## ⛔ Keep the Repository Root Pristine — No Scratch / Temp / Debug Files
-
-**The repository ROOT must contain only canonical project files** (packaging,
-config, docs, lockfiles). The only hidden directories allowed at root are
-`.git/`, `.github/`, and `.specify/` (plus a local, git-ignored `.venv/`).
-
-**NEVER write any of the following — anywhere in the repo, and ESPECIALLY at the root:**
-- One-off / debug / migration scripts: `fix_*.py`, `migrate_*.py`, `refactor_*.py`,
-  `replace_*.py`, `update_*.py`, `debug_*.py`, or `test_*.py` **at the root**
-  (real tests live in `tests/` only).
-- Databases / data dumps: `*.db`, `*.db-wal`, `*.sqlite*`, `*.corrupted`.
-- Logs / command output: `*.log`, scratch `*.txt`, `*.orig`, `*.rej`, `*.bak`.
-- Build artifacts: `*.tsbuildinfo`, compiled binaries, coverage files.
-- AI agent scratch directories: `.agent/`, `.agents/`, `.agent_data/`, `.tmp/`,
-  `.hypothesis/`, or any per-tool cache committed to git.
-- Any file that is NOT production source, a test in `tests/`, documentation, or
-  a recognized config/lockfile.
-
-**Why:** scratch at the root leaks private paths/credentials, bloats the tree,
-and erodes a pristine codebase.
-
-**Where scratch goes instead:** `~/workspace/scratch/` (experiments),
-`~/workspace/reports/` (command output); tests go in `tests/` (pytest).
-Before finishing a task, run `git status` and confirm no stray root files were added.
-
-## Working Discipline — think, simplify, stay surgical, verify
-
-These four habits cut the most common LLM coding mistakes. For trivial tasks, use
-judgment; the bias here is correctness over speed.
-
-- **Think before coding.** State your assumptions explicitly. If a request has more than
-  one reasonable reading, surface the options instead of silently picking one. If a
-  simpler approach exists, say so and push back when warranted. When something is
-  genuinely unclear, stop and name what's confusing — ask, don't guess.
-- **Simplicity first.** Write the minimum code that solves the stated problem — no
-  speculative features, no abstraction for single-use code, no configurability that
-  wasn't requested, no error handling for impossible states. If you wrote 200 lines and
-  it could be 50, rewrite it. (Name code from its purpose, never `wave0`/`phase2`/`v2`.)
-- **Stay surgical.** Every changed line should trace directly to the task. Don't refactor,
-  reformat, or "improve" working code adjacent to your change; match the existing style
-  even where you'd do it differently. Remove only the imports/symbols your own change
-  orphaned; if you spot unrelated dead code, mention it rather than deleting it inline.
-  *Exception — the Quality Bar below:* lint/format/type errors the pre-commit gate flags
-  get fixed regardless of who introduced them. In short: **surgical on behavior, clean on
-  lint.**
-- **Verify against a goal.** Turn the task into a checkable outcome before you start:
-  "fix the bug" → "write a failing test that reproduces it, then make it pass"; "add
-  validation" → "tests for the invalid inputs pass". For multi-step work, state the short
-  plan and the check for each step, then loop until the checks pass.
-
-## Quality Bar — Leave the Codebase Clean (REQUIRED)
-
-After completing any code change, run the project's pre-commit suite and drive it
-**fully green** before committing:
-
-```bash
-pre-commit run --all-files
-```
-
-Resolve **every** issue it reports — failures, lint errors, type errors, and
-warnings — **including problems that pre-date your change and were not caused by
-your edits**. The standing goal is a clean, working codebase with **no errors and
-no warnings**. Do not silence checks (`# noqa`, `# type: ignore`, `SKIP=`,
-`--no-verify`) to force green unless the exception is already documented in this
-file as a known, unavoidable limitation. Only commit once `pre-commit run
---all-files` passes cleanly; if a check legitimately cannot pass, stop and explain
-why rather than bypassing it.
-
-## Working with Git Worktrees (multi-session)
-
-Multiple agents/sessions work the `agent-packages/*` repos concurrently. **Do not
-edit the canonical checkout** (`/home/apps/workspace/agent-packages/<repo>`) — a
-background `repository-manager` sync can reset its working tree and discard
-uncommitted edits. Take your own git worktree on your own branch instead:
-
-```bash
-# preferred — repository-manager MCP:
-rm_worktree add <repo> <your-branch>      # -> /home/apps/worktrees/<repo>/<your-branch>
-
-# raw-git fallback:
-git -C agent-packages/<repo> checkout main
-git -C agent-packages/<repo> worktree add /home/apps/worktrees/<repo>/<branch> -b <branch>
-```
-
-Work in the worktree and **commit often** (commits survive a working-tree reset).
-Each session must use a **distinct branch** — git allows a branch in only one
-worktree, which is what keeps concurrent sessions from colliding. Worktrees live
-under `/home/apps/worktrees/` (outside the workspace scan, so the sync leaves them
-alone).
-
-**Finishing work in a worktree** — run this sequence before calling it done:
-1. **Pre-commit green** — `pre-commit run --all-files`; resolve every issue per the
-   Quality Bar above (including pre-existing), no `--no-verify`.
-2. **Commit** in the worktree.
-3. **Merge to main locally** — `rm_worktree merge <repo> <branch> --into main`
-   (or `git merge --no-ff`). Push only when the user asks.
-4. **Clean up** — remove the worktree and delete the merged branch:
-   `rm_worktree remove <repo> <branch> --delete-branch`; `rm_worktree prune` clears
-   stale entries. (Raw-git: `git worktree remove <path> && git branch -d <branch>`.)
+The source preset follows the installed action-routed tool schema. Exact tool-schema fingerprints,
+connector manifests, and certification files are generated release evidence. Generate them only
+after observing the installed MCP schema and resolving an authorized runtime signing key. If
+source ontology or tool schemas change, old signatures are invalid and must not be copied forward.

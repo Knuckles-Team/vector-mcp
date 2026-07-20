@@ -65,7 +65,7 @@
 - **FR-046**: 9 tests have no assertions
 - **FR-047**: 9 tests use weak assertions (assert result is not None, assert True, etc.)
 - **FR-048**: Only 29% of env vars documented in README.md
-- **FR-049**: Undocumented env vars: AUTH_TYPE, COLLECTION_MANAGEMENTTOOL, DEFAULT_AGENT_NAME, EMBEDDING_PROVIDER, EUNOMIA_POLICY_FILE, EUNOMIA_TYPE, LLM_API_KEY, LLM_BASE_URL, LLM_SSL_VERIFY, LLM_TOKEN
+- **FR-049**: Undocumented env vars: AUTH_TYPE, COLLECTION_MANAGEMENTTOOL, DEFAULT_AGENT_NAME, EMBEDDING_PROVIDER, EUNOMIA_POLICY_FILE, EUNOMIA_TYPE, LLM_API_KEY, LLM_BASE_URL, MODEL_TLS_PROFILE, LLM_TOKEN
 - **FR-050**: 14 Python env vars not in .env.example: DEFAULT_AGENT_NAME, EMBEDDING_MODEL, EMBEDDING_PROVIDER, LLM_API_KEY, LLM_BASE_URL
 - **FR-051**: Analysis error: No module named 'agent_utilities.knowledge_graph'
 

@@ -1,0 +1,8 @@
+{
+  "algorithm": "agent-utilities:mcp-tool-schema-compat:v1",
+  "connector": "vector-mcp",
+  "schema_version": "1",
+  "tools": {
+    "vector_collection_management": "92a52d3cb7250a81cf9c779e496cb62fc78d2557b1f9b7722ab526214fcb5597"
+  }
+}

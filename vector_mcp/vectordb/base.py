@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import math
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol, TypedDict, runtime_checkable
 
@@ -13,7 +14,7 @@ class Document(TypedDict, total=False):
 
     id: ItemID | the unique identifier of the document.
     content: str | the text content of the chunk.
-    metadata: Metadata, Optional | contains additional information about the document such as source, date, etc.
+    metadata: Metadata, Optional | contains approved non-identifying document attributes.
     embedding: Vector, Optional | the vector representation of the content.
     """
 
@@ -30,13 +31,57 @@ The response is a list of query results, each query result is a list of tuples c
 QueryResults = list[list[tuple[Document, float]]]
 
 
+def document_embeddings(docs: list[Document], embed_model: Any) -> list[list[float]]:
+    """Resolve one finite, dimension-consistent vector per document.
+
+    Missing vectors use the model's batch API when available, collapsing up to the
+    public ingestion bound into one model request instead of one request per document.
+    """
+
+    resolved: list[list[float] | None] = [None] * len(docs)
+    missing: list[int] = []
+    texts: list[str] = []
+    for index, document in enumerate(docs):
+        supplied = document.get("embedding")
+        if supplied is None:
+            missing.append(index)
+            texts.append(str(document["content"]))
+            continue
+        resolved[index] = [float(value) for value in supplied]
+
+    if missing:
+        batch = getattr(embed_model, "get_text_embedding_batch", None)
+        generated = (
+            batch(texts)
+            if callable(batch)
+            else [embed_model.get_text_embedding(text) for text in texts]
+        )
+        if len(generated) != len(missing):
+            raise ValueError("embedding_batch_invalid")
+        for index, vector in zip(missing, generated, strict=True):
+            resolved[index] = [float(value) for value in vector]
+
+    vectors = [vector for vector in resolved if vector is not None]
+    if len(vectors) != len(docs):
+        raise ValueError("embedding_batch_invalid")
+    dimensions = {len(vector) for vector in vectors}
+    if (
+        not vectors
+        or dimensions == {0}
+        or len(dimensions) != 1
+        or any(not math.isfinite(value) for vector in vectors for value in vector)
+    ):
+        raise ValueError("embedding_invalid")
+    return vectors
+
+
 @runtime_checkable
 class VectorDB(Protocol):
     """Abstract class for vector database. A vector database is responsible for storing and retrieving documents.
 
     Attributes:
         active_collection: Any | The active collection in the vector database. Make get_collection faster. Default is None.
-        type: str | The type of the vector database, chroma, postgres, etc. Default is "".
+        type: str | The current vector database type. Default is "".
         embed_model: Any | The embedding model used for the vector database.
     """
 
@@ -211,40 +256,41 @@ class VectorDB(Protocol):
 class VectorDBFactory:
     """Factory class for creating vector databases."""
 
-    PREDEFINED_VECTOR_DB = ["chroma", "postgres", "mongodb", "qdrant", "couchbase"]
+    DEFAULT_VECTOR_DB = "epistemic_graph"
+    PREDEFINED_VECTOR_DB = [
+        "epistemic_graph",
+        "postgres",
+        "mongodb",
+        "qdrant",
+    ]
 
     @staticmethod
-    def create_vector_database(db_type: str, **kwargs) -> VectorDB:
+    def create_vector_database(db_type: str | None = None, **kwargs) -> VectorDB:
         """Create a vector database.
 
         Args:
-            db_type: str | The type of the vector database.
+            db_type: str | The type of the vector database. When ``None``/empty it
+                resolves to ``DEFAULT_VECTOR_DB`` (``epistemic_graph``).
             kwargs: Dict | The keyword arguments for initializing the vector database.
 
         Returns:
             VectorDB | The vector database.
         """
-        if db_type.lower() in ["chroma", "chromadb"]:
-            from .chromadb import ChromaVectorDB
+        db_type = str(db_type or VectorDBFactory.DEFAULT_VECTOR_DB).strip().casefold()
+        if db_type == "epistemic_graph":
+            from .epistemic_graph import EpistemicGraphVectorDB
 
-            return ChromaVectorDB(**kwargs)
-        if db_type.lower() in ["postgres", "pgvectordb"]:
+            return EpistemicGraphVectorDB(**kwargs)
+        if db_type == "postgres":
             from .postgres import PostgreSQL
 
             return PostgreSQL(**kwargs)
-        if db_type.lower() in ["mdb", "mongodb", "atlas"]:
+        if db_type == "mongodb":
             from .mongodb import MongoDBAtlasVectorDB
 
             return MongoDBAtlasVectorDB(**kwargs)
-        if db_type.lower() in ["qdrant", "qdrantdb"]:
+        if db_type == "qdrant":
             from .qdrant import QdrantVectorDB
 
             return QdrantVectorDB(**kwargs)
-        if db_type.lower() in ["couchbase", "couchbasedb", "capella"]:
-            from .couchbase import CouchbaseVectorDB
-
-            return CouchbaseVectorDB(**kwargs)
-        else:
-            raise ValueError(
-                f"Unsupported vector database type: {db_type}. Valid types are {VectorDBFactory.PREDEFINED_VECTOR_DB}."
-            )
+        raise ValueError("vector_database_type_unsupported")
