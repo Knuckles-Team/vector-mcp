@@ -3,6 +3,8 @@
 > **Prefix**: `CONCEPT:VEC-*`
 > **Version**: 1.14.0
 > **Bridge**: [`CONCEPT:AU-ECO.messaging.native-backend-abstraction`](../../agent-utilities/docs/concepts.md) (Unified Toolkit Ingestion)
+> **Version**: 2.1.2
+> **Bridge**: [`CONCEPT:AU-ECO.messaging.native-backend-abstraction`](https://github.com/Knuckles-Team/agent-utilities/blob/main/docs/overview.md) (Unified Toolkit Ingestion)
 
 ---
 

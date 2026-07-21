@@ -8,7 +8,7 @@ ci:
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v6.0.0
+  rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # v6.0.0
   hooks:
   - id: check-added-large-files
     args: ["--maxkb=2000"]
@@ -25,32 +25,32 @@ repos:
   - id: end-of-file-fixer
   - id: no-commit-to-branch
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.15.8
+  rev: aca6d4c8045a504e2812ea4bedff1d0a09e437bc # v0.15.8
   hooks:
   - id: ruff
     types_or: [python, pyi, jupyter]
     args: ["--fix", "--ignore=E402"]
     exclude: ^(tests/|test/|scripts/|script/)
 - repo: https://github.com/jendrikseipp/vulture
-  rev: v2.16
+  rev: b0f67ba0044693aa9ec0d38fe460590facc98004 # v2.16
   hooks:
   - id: vulture
     pass_filenames: false
     args: [".", "--min-confidence", "95", --exclude, '.venv,venv,node_modules,.git,build,dist']     # or 100 if you want very high confidence only
     require_serial: true
 - repo: https://github.com/codespell-project/codespell
-  rev: v2.4.2
+  rev: 2ccb47ff45ad361a21071a7eedda4c37e6ae8c5a # v2.4.2
   hooks:
   - id: codespell
     args: ["-L", "ans,linar,nam,tread,ot,"]
 - repo: https://github.com/PyCQA/bandit
-  rev: 1.8.6
+  rev: 2d0b675b04c80ae42277e10500db06a0a37bae17 # 1.8.6
   hooks:
   - id: bandit
     args: ["--skip", "B101,B404,B603"]
     exclude: ^(tests/|test/|scripts/|script/|__tests__/)
 - repo: https://github.com/nbQA-dev/nbQA
-  rev: 1.9.1
+  rev: d31b7eae1767c43460afb3ba130e0a6602933abe # 1.9.1
   hooks:
   - id: nbqa-ruff
     exclude: ^(\.\/test/|\./tests/)
@@ -58,19 +58,19 @@ repos:
   hooks:
   - id: okf-no-legacy-concepts
     name: OKF-CIS — no legacy CONCEPT ids
-    entry: python3 /home/apps/workspace/agent-packages/agent-utilities/scripts/check_no_legacy_markers.py .
+    entry: bash -c 'python3 "${AGENT_UTILITIES_ROOT:?set AGENT_UTILITIES_ROOT}/scripts/check_no_legacy_markers.py" .'
     language: system
     pass_filenames: false
     always_run: true
   - id: check-mermaid
     name: Check Mermaid syntax
-    entry: python3 /home/apps/workspace/agent-packages/agent-utilities/scripts/mermaid_linter.py
+    entry: bash -c 'python3 "${AGENT_UTILITIES_ROOT:?set AGENT_UTILITIES_ROOT}/scripts/mermaid_linter.py" "$@"' --
     language: system
     files: \.md$
     pass_filenames: true
   - id: check-stubs
     name: Check for Active Stubs and TODOs
-    entry: python3 /home/apps/workspace/agent-packages/agent-utilities/scripts/check_stubs.py
+    entry: bash -c 'python3 "${AGENT_UTILITIES_ROOT:?set AGENT_UTILITIES_ROOT}/scripts/check_stubs.py" "$@"' --
     language: system
     types: [python]
   - id: mermaid-validate
@@ -129,7 +129,7 @@ repos:
     pass_filenames: false
     always_run: true
 - repo: https://github.com/AleksaC/hadolint-py
-  rev: v2.14.0
+  rev: 458cb25edf664682e3e856a53a2f9af33e068297 # v2.14.0
   hooks:
   - id: hadolint
     args:
@@ -139,7 +139,7 @@ repos:
     - --ignore=DL4006
     - --ignore=SC2102
 - repo: https://github.com/IamTheFij/docker-pre-commit
-  rev: v3.0.1
+  rev: f626253b23de45412865c07fd076ff95d4cd77a7 # v3.0.1
   hooks:
   - id: docker-compose-check
 - repo: local

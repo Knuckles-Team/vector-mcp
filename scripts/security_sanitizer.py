@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import os
 import re
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 # Config
@@ -19,26 +19,98 @@ SECRET_PATTERNS = [
     ("GitHub PAT", re.compile(r"ghp_[A-Za-z0-9_]{36,255}")),
     ("GitHub Fine-grained PAT", re.compile(r"github_pat_[A-Za-z0-9_]{82,255}")),
     ("GitLab PAT", re.compile(r"glpat-[A-Za-z0-9\-]{20,255}")),
-    ("Generic Secret Assignment", re.compile(r"secret[A-Za-z0-9_]*\s*[:=]\s*['\"][A-Za-z0-9_\-\.\~\*]{16,255}['\"]", re.IGNORECASE)),
-    ("Generic Token Assignment", re.compile(r"token\s*[:=]\s*['\"][A-Za-z0-9_\-\.\~\*]{16,255}['\"]", re.IGNORECASE))
+    (
+        "Generic Secret Assignment",
+        re.compile(
+            r"secret[A-Za-z0-9_]*\s*[:=]\s*['\"][A-Za-z0-9_\-\.\~\*]{16,255}['\"]",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "Generic Token Assignment",
+        re.compile(
+            r"token\s*[:=]\s*['\"][A-Za-z0-9_\-\.\~\*]{16,255}['\"]", re.IGNORECASE
+        ),
+    ),
 ]
 
-EXCLUDED_DIRS = {".git", ".venv", "venv", "node_modules", "build", "dist", "__pycache__", ".tox", ".specify"}
+EXCLUDED_DIRS = {
+    ".git",
+    ".venv",
+    "venv",
+    "node_modules",
+    "build",
+    "dist",
+    "__pycache__",
+    ".tox",
+    ".specify",
+}
 EXCLUDED_EXTENSIONS = {
-    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pyc", ".db", ".kuzu",
-    ".sqlite", ".sqlite3", ".zip", ".tar.gz", ".tgz", ".bz2", ".xz", ".pdf",
-    ".bin", ".exe", ".dll", ".so", ".dylib", ".woff", ".woff2", ".eot", ".ttf",
-    ".mp4", ".mp3", ".wav", ".lock", ".svg"
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".ico",
+    ".pyc",
+    ".db",
+    ".kuzu",
+    ".sqlite",
+    ".sqlite3",
+    ".zip",
+    ".tar.gz",
+    ".tgz",
+    ".bz2",
+    ".xz",
+    ".pdf",
+    ".bin",
+    ".exe",
+    ".dll",
+    ".so",
+    ".dylib",
+    ".woff",
+    ".woff2",
+    ".eot",
+    ".ttf",
+    ".mp4",
+    ".mp3",
+    ".wav",
+    ".lock",
+    ".svg",
 }
 
 # Placeholder / Mock indicators
 PLACEHOLDER_SUBSTRINGS = [
-    "1234567890", "abcdef12345", "abc123youandme", "askdfalskdvjas", "your_", "YOUR_", "your-",
-    "dummy", "DUMMY", "example", "EXAMPLE", "mock", "MOCK", "test_token", "test_secret",
-    "glpat-askdfalskdvjas", "github_pat_12345", "glpat-abc123youandme", "github_pat_...",
-    "glpat-*************", "ghp_*************", "github_pat_*************", "token_*************",
-    "secret_*************", "glpat-abc", "ghp_abc", "github_pat_abc", "${env:"
+    "1234567890",
+    "abcdef12345",
+    "abc123youandme",
+    "askdfalskdvjas",
+    "your_",
+    "YOUR_",
+    "your-",
+    "dummy",
+    "DUMMY",
+    "example",
+    "EXAMPLE",
+    "mock",
+    "MOCK",
+    "test_token",
+    "test_secret",
+    "glpat-askdfalskdvjas",
+    "github_pat_12345",
+    "glpat-abc123youandme",
+    "github_pat_...",
+    "glpat-*************",
+    "ghp_*************",
+    "github_pat_*************",
+    "token_*************",
+    "secret_*************",
+    "glpat-abc",
+    "ghp_abc",
+    "github_pat_abc",
+    "${env:",
 ]
+
 
 def is_placeholder(match_str: str) -> bool:
     match_lower = match_str.lower()
@@ -58,6 +130,7 @@ def is_placeholder(match_str: str) -> bool:
 
     return False
 
+
 def get_repo_files(repo_path: Path):
     try:
         result = subprocess.run(
@@ -65,7 +138,7 @@ def get_repo_files(repo_path: Path):
             cwd=str(repo_path),
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         files = []
         for line in result.stdout.splitlines():
@@ -75,14 +148,17 @@ def get_repo_files(repo_path: Path):
                 if not any(part in EXCLUDED_DIRS for part in parts):
                     files.append(repo_path / line.strip())
         return files
-    except Exception as e:
+    except Exception:
         # Fallback to manual recursive scan
         files = []
         for root, dirs, walk_files in os.walk(str(repo_path)):
-            dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS and not d.startswith('.')]
+            dirs[:] = [
+                d for d in dirs if d not in EXCLUDED_DIRS and not d.startswith(".")
+            ]
             for file in walk_files:
                 files.append(Path(root) / file)
         return files
+
 
 def scan_repository(repo_path: Path):
     violations = []
@@ -121,7 +197,14 @@ def scan_repository(repo_path: Path):
             lines = content.splitlines()
 
             for idx, line in enumerate(lines, 1):
-                if any(bypass in line for bypass in ["# sanitizer:ignore", "# sanitizer-ignore", "# nosec"]):
+                if any(
+                    bypass in line
+                    for bypass in [
+                        "# sanitizer:ignore",
+                        "# sanitizer-ignore",
+                        "# nosec",
+                    ]
+                ):
                     continue
 
                 for label, pattern in SECRET_PATTERNS:
@@ -132,12 +215,12 @@ def scan_repository(repo_path: Path):
                             violations.append(
                                 f"Potential unmasked secret ({label}) detected in {rel_path}:{idx}\n"
                                 f"  Line: {line.strip()}"
-
                             )
         except Exception:
             pass
 
     return violations
+
 
 def main():
     repo_path = Path.cwd()
@@ -150,11 +233,14 @@ def main():
         print("Please correct the following issues before committing:")
         for idx, violation in enumerate(violations, 1):
             print(f"\n[{idx}] {violation}")
-        print("\nNote: To bypass secret checks on specific lines, append '# sanitizer:ignore' to the end of the line.")
+        print(
+            "\nNote: To bypass secret checks on specific lines, append '# sanitizer:ignore' to the end of the line."
+        )
         sys.exit(1)
 
     print("✅ All checks passed! No root garbage or unmasked secrets detected.")
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

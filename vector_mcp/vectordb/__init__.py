@@ -7,8 +7,6 @@ from agent_utilities import get_logger
 from .base import Document, VectorDB
 
 if TYPE_CHECKING:
-    from .chromadb import ChromaVectorDB
-    from .couchbase import CouchbaseVectorDB
     from .epistemic_graph import EpistemicGraphVectorDB
     from .mongodb import MongoDBAtlasVectorDB
     from .postgres import PostgreSQL
@@ -21,9 +19,7 @@ __all__ = [
     "EpistemicGraphVectorDB",
     "PostgreSQL",
     "QdrantVectorDB",
-    "CouchbaseVectorDB",
     "MongoDBAtlasVectorDB",
-    "ChromaVectorDB",
 ]
 
 
@@ -40,16 +36,8 @@ def __getattr__(name: str):
         from .qdrant import QdrantVectorDB
 
         return QdrantVectorDB
-    elif name == "CouchbaseVectorDB":
-        from .couchbase import CouchbaseVectorDB
-
-        return CouchbaseVectorDB
     elif name == "MongoDBAtlasVectorDB":
         from .mongodb import MongoDBAtlasVectorDB
 
         return MongoDBAtlasVectorDB
-    elif name == "ChromaVectorDB":
-        from .chromadb import ChromaVectorDB
-
-        return ChromaVectorDB
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

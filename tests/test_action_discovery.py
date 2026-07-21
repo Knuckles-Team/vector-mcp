@@ -2,11 +2,11 @@
 
 Verifies that the action-routed MCP tools expose list_actions discovery and
 raise a rich did-you-mean error on unknown actions, via the shared
-agent_utilities.mcp_utilities.resolve_action helper.
+agent_utilities.mcp.action_dispatch.resolve_action helper.
 """
 
+import importlib
 import os
-import sys
 from unittest.mock import MagicMock
 
 import pytest
@@ -29,29 +29,15 @@ class _MockApiClient:
 
 
 _mock_api_instance = _MockApiClient()
-
-if "vector_mcp.vector_api" not in sys.modules:
-    _mock_vector_api = MagicMock()
-    _mock_vector_api.Api = MagicMock()
-    sys.modules["vector_mcp.vector_api"] = _mock_vector_api
-else:
-    _mock_vector_api = sys.modules["vector_mcp.vector_api"]
-
-from vector_mcp.mcp_server import get_mcp_instance  # noqa: E402
+_mcp_server_module = importlib.import_module("vector_mcp.mcp_server")
+get_mcp_instance = _mcp_server_module.get_mcp_instance
 
 
 @pytest.fixture
-def mock_client():
-    """Point the shared vector_api.Api at our mock for the test, then restore.
-
-    Avoids clobbering the module-level mock other test files rely on.
-    """
-    previous = _mock_vector_api.Api.return_value
-    _mock_vector_api.Api.return_value = _mock_api_instance
-    try:
-        yield _mock_api_instance
-    finally:
-        _mock_vector_api.Api.return_value = previous
+def mock_client(monkeypatch):
+    """Use a deterministic in-memory client at the MCP dependency boundary."""
+    monkeypatch.setattr(_mcp_server_module, "get_client", lambda: _mock_api_instance)
+    yield _mock_api_instance
 
 
 @pytest.mark.asyncio
@@ -73,7 +59,7 @@ def mock_client():
         ),
     ],
 )
-async def test_list_actions_returns_names(tool_name, known_actions):
+async def test_list_actions_returns_names(tool_name, known_actions, mock_client):
     """list_actions returns the discovery payload with all action names."""
     mcp, _, _ = get_mcp_instance()
     res = await mcp.call_tool(tool_name, {"action": "list_actions"})
@@ -88,7 +74,7 @@ async def test_list_actions_returns_names(tool_name, known_actions):
     "tool_name",
     ["vector_collection_management", "vector_search"],
 )
-async def test_bogus_action_raises_did_you_mean(tool_name):
+async def test_bogus_action_raises_did_you_mean(tool_name, mock_client):
     """An unknown action raises a ValueError mentioning list_actions."""
     mcp, _, _ = get_mcp_instance()
     with pytest.raises(Exception) as excinfo:

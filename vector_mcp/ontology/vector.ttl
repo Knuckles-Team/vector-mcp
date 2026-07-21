@@ -21,7 +21,7 @@
 
 :VectorBackend a owl:Class ;
     rdfs:label "Vector Backend" ;
-    rdfs:comment "A vector-store engine that hosts collections — one of chromadb, postgres (pgvector), qdrant, couchbase, or mongodb — selected by the db_type parameter." .
+    rdfs:comment "A vector-store engine that hosts collections — epistemic_graph (native default), postgres (pgvector), qdrant, or mongodb — selected by the db_type parameter." .
 
 :Chunk a owl:Class ;
     rdfs:label "Chunk" ;
@@ -93,7 +93,7 @@
 
 :dbType a owl:DatatypeProperty ;
     rdfs:label "db type" ;
-    rdfs:comment "Backend engine identifier (chromadb, postgres, qdrant, couchbase, mongodb) — the db_type parameter." ;
+    rdfs:comment "Backend engine identifier (epistemic_graph, postgres, qdrant, mongodb) — the db_type parameter." ;
     rdfs:domain :VectorBackend ;
     rdfs:range xsd:string .
 
@@ -123,7 +123,7 @@
 
 :similarityScore a owl:DatatypeProperty ;
     rdfs:label "similarity score" ;
-    rdfs:comment "The relevance / distance score of a SearchHit (semantic distance, BM25 score, or fused RRF score)." ;
+    rdfs:comment "The relevance score of a SearchHit (semantic, lexical/BM25, or fused RRF score)." ;
     rdfs:domain :SearchHit ;
     rdfs:range xsd:double .
 
@@ -133,9 +133,15 @@
     rdfs:domain :SearchQuery ;
     rdfs:range xsd:double .
 
+:lexicalWeight a owl:DatatypeProperty ;
+    rdfs:label "lexical weight" ;
+    rdfs:comment "Weight applied to the indexed lexical leg in a hybrid search (lexical_weight)." ;
+    rdfs:domain :SearchQuery ;
+    rdfs:range xsd:double .
+
 :bm25Weight a owl:DatatypeProperty ;
     rdfs:label "bm25 weight" ;
-    rdfs:comment "Weight applied to the lexical (BM25) leg in a hybrid search (bm25_weight)." ;
+    rdfs:comment "Weight applied to a BM25-scored lexical leg in a hybrid search (bm25_weight)." ;
     rdfs:domain :SearchQuery ;
     rdfs:range xsd:double .
 

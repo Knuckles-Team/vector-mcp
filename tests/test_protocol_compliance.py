@@ -1,71 +1,22 @@
-import pytest
+from __future__ import annotations
 
-from vector_mcp.retriever.chromadb_retriever import ChromaDBRetriever
-from vector_mcp.retriever.couchbase_retriever import CouchbaseRetriever
-from vector_mcp.retriever.mongodb_retriever import MongoDBRetriever
-from vector_mcp.retriever.postgres_retriever import PGVectorRetriever
-from vector_mcp.retriever.qdrant_retriever import QdrantRetriever
-from vector_mcp.vectordb.chromadb import ChromaVectorDB
-from vector_mcp.vectordb.couchbase import CouchbaseVectorDB
-from vector_mcp.vectordb.mongodb import MongoDBAtlasVectorDB
-from vector_mcp.vectordb.postgres import PostgreSQL
-from vector_mcp.vectordb.qdrant import QdrantVectorDB
+from vector_mcp.vectordb.base import VectorDBFactory
 
 
-@pytest.mark.parametrize(
-    "retriever_cls",
-    [
-        ChromaDBRetriever,
-        PGVectorRetriever,
-        CouchbaseRetriever,
-        MongoDBRetriever,
-        QdrantRetriever,
-    ],
-)
-def test_retriever_implements_protocol(retriever_cls):
-    # Protocols with non-method members do not support issubclass()
-    # Mypy already checks this via TYPE_CHECKING blocks in the implementation files.
-    assert retriever_cls is not None
+def test_factory_advertises_only_current_contract_backends() -> None:
+    assert VectorDBFactory.PREDEFINED_VECTOR_DB == [
+        "epistemic_graph",
+        "postgres",
+        "mongodb",
+        "qdrant",
+    ]
+    assert VectorDBFactory.DEFAULT_VECTOR_DB == "epistemic_graph"
 
 
-@pytest.mark.parametrize(
-    "vectordb_cls",
-    [
-        ChromaVectorDB,
-        PostgreSQL,
-        CouchbaseVectorDB,
-        MongoDBAtlasVectorDB,
-        QdrantVectorDB,
-    ],
-)
-def test_vectordb_implements_protocol(vectordb_cls):
-    # Protocols with non-method members do not support issubclass()
-    assert vectordb_cls is not None
-
-
-def test_no_super_init_usage():
-    import os
-
-    import vector_mcp
-
-    package_dir = os.path.dirname(vector_mcp.__file__)
-
-    for root, dirs, files in os.walk(package_dir):
-        for file in files:
-            if file.endswith(".py"):
-                path = os.path.join(root, file)
-                with open(path) as f:
-                    content = f.read()
-                    if "super().__init__" in content:
-                        if "retriever.py" in file or "base.py" in file:
-                            pass
-                        elif "test" in file:
-                            pass
-                        else:
-                            if file in [
-                                "chromadb_retriever.py",
-                                "postgres_retriever.py",
-                                "chromadb.py",
-                                "postgres.py",
-                            ]:
-                                pytest.fail(f"Found super().__init__ in {file}")
+def test_factory_rejects_removed_backend() -> None:
+    try:
+        VectorDBFactory.create_vector_database("chroma")
+    except ValueError as exc:
+        assert str(exc) == "vector_database_type_unsupported"
+    else:
+        raise AssertionError("removed backend was accepted")

@@ -626,7 +626,7 @@
   {
     "id": "T049",
     "title": "[Environment Variables] Undocumented env vars: AUTH_TYPE, COLLECTION_MANAGEMENTTOOL, DEFAULT_AGENT_NAME,",
-    "description": "Undocumented env vars: AUTH_TYPE, COLLECTION_MANAGEMENTTOOL, DEFAULT_AGENT_NAME, EMBEDDING_PROVIDER, EUNOMIA_POLICY_FILE, EUNOMIA_TYPE, LLM_API_KEY, LLM_BASE_URL, LLM_SSL_VERIFY, LLM_TOKEN",
+    "description": "Undocumented env vars: AUTH_TYPE, COLLECTION_MANAGEMENTTOOL, DEFAULT_AGENT_NAME, EMBEDDING_PROVIDER, EUNOMIA_POLICY_FILE, EUNOMIA_TYPE, LLM_API_KEY, LLM_BASE_URL, MODEL_TLS_PROFILE, LLM_TOKEN",
     "domain": "Environment Variables",
     "priority": "P2-Medium",
     "effort": "Medium",

@@ -1,11 +1,32 @@
-# vector-mcp — Concept Overview
+# Architecture overview
 
-> **Category**: Intelligence | **Ecosystem Role**: MCP Server + A2A Agent
-> Built on [`agent-utilities`](https://github.com/Knuckles-Team/agent-utilities) — the unified AGI Harness.
+The current server uses two condensed MCP tools:
 
-## Description
+```text
+MCP client
+  -> vector_collection_management / vector_search
+  -> bounded validation and privacy controls
+  -> authenticated current API boundary
+  -> configured vector provider
+```
 
-Integrate RAG into AI Agents via MCP Server. Supports multiple Vector database technologies.
+Collection operations and search share a canonical backend-name policy. Epistemic-graph is the
+native default. Optional providers are imported only when selected so an unused database SDK does
+not expand the default runtime.
+
+Document ingestion is root-confined. An operator configures one document root; callers may select
+that root or relative files beneath it. The resolver rejects absolute paths, URLs, traversal,
+symbolic links, excessive file counts, and oversized inputs before provider delegation.
+
+The package contributes four extension surfaces through entry points:
+
+- skills;
+- prompts;
+- the vector retrieval ontology;
+- a read-only collection-inventory source preset.
+
+Generated connector certification is release evidence, not hand-maintained source. It must bind
+the exact installed tool schema and ontology and must be signed by an authorized runtime key.
 
 ## Enterprise Readiness
 
@@ -35,42 +56,3 @@ This project implements or inherits the following ecosystem concepts:
 | KG-2.8 | **Retrieval Quality Gate** | `agent-utilities` (inherited) |
 
 > 📖 **Full Registry**: See [`agent-utilities/docs/overview.md`](https://github.com/Knuckles-Team/agent-utilities/blob/main/docs/overview.md) for the complete 5-Pillar concept index.
-
-## Architecture
-
-This project follows the standardized agent-package pattern:
-
-```
-vector-mcp/
-├── vector_mcp/        # Source code
-│   ├── __init__.py
-│   ├── agent_server.py      # Entry point (create_graph_agent_server)
-│   ├── api_client.py        # REST/GraphQL API wrapper
-│   └── mcp_server.py        # FastMCP tool definitions
-├── tests/                   # Test suite
-├── docs/                    # Documentation
-├── pyproject.toml           # Package metadata
-├── mcp_config.json          # MCP server configuration
-├── main_agent.json          # Agent identity & system prompt
-└── Dockerfile               # Container deployment
-```
-
-## MCP Configuration
-
-### stdio Mode
-```json
-{
-  "mcpServers": {
-    "vector-mcp": {
-      "command": "uv",
-      "args": ["run", "--with", "vector-mcp", "vector-mcp"],
-      "env": {}
-    }
-  }
-}
-```
-
-### Streamable HTTP Mode
-```bash
-vector-mcp --transport streamable-http --port 8001
-```

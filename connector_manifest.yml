@@ -82,6 +82,7 @@ schema_mappings:
       dimensions: xsd:integer
       distanceMetric: xsd:string
       embeddingModel: xsd:string
+      lexicalWeight: xsd:double
       numberResults: xsd:integer
       rrfK: xsd:integer
       semanticWeight: xsd:double
@@ -96,6 +97,7 @@ schema_mappings:
       dimensions: xsd:integer
       distanceMetric: xsd:string
       embeddingModel: xsd:string
+      lexicalWeight: xsd:double
       numberResults: xsd:integer
       rrfK: xsd:integer
       semanticWeight: xsd:double
@@ -110,6 +112,7 @@ schema_mappings:
       dimensions: xsd:integer
       distanceMetric: xsd:string
       embeddingModel: xsd:string
+      lexicalWeight: xsd:double
       numberResults: xsd:integer
       rrfK: xsd:integer
       semanticWeight: xsd:double
@@ -124,6 +127,7 @@ schema_mappings:
       dimensions: xsd:integer
       distanceMetric: xsd:string
       embeddingModel: xsd:string
+      lexicalWeight: xsd:double
       numberResults: xsd:integer
       rrfK: xsd:integer
       semanticWeight: xsd:double
@@ -138,6 +142,7 @@ schema_mappings:
       dimensions: xsd:integer
       distanceMetric: xsd:string
       embeddingModel: xsd:string
+      lexicalWeight: xsd:double
       numberResults: xsd:integer
       rrfK: xsd:integer
       semanticWeight: xsd:double
@@ -152,6 +157,7 @@ schema_mappings:
       dimensions: xsd:integer
       distanceMetric: xsd:string
       embeddingModel: xsd:string
+      lexicalWeight: xsd:double
       numberResults: xsd:integer
       rrfK: xsd:integer
       semanticWeight: xsd:double
@@ -168,6 +174,7 @@ sync:
   updated_field: null
   pagination: null
   doc_type: vector_collection
+  tool_schema_sha256: 92a52d3cb7250a81cf9c779e496cb62fc78d2557b1f9b7722ab526214fcb5597
   raw:
     server: vector-mcp
     tool: vector_collection_management
@@ -179,17 +186,20 @@ sync:
     doc_type: vector_collection
 provenance:
   generated_by: scripts/generate_connector_manifests.py
-  generated_at: '2026-07-11T00:00:00Z'
+  generated_at: '2026-07-18T14:21:05Z'
   source_artifacts:
   - a2a.json
   - vector_mcp/connectors/mcp_source_presets.json
+  - vector_mcp/connectors/tool_schema_fingerprints.json
   - vector_mcp/ontology/vector.ttl
   integrity:
     algorithm: urdna2015-sha256
-    hash: a0d0d36bea83f1d0d6e255eed88018ca74cbf7f37c8e65807c9dd134f7b9c10a
+    hash: d96e6b77d78f42fe92be2a06b5d490c67aaa48a2264d682b1d37b2c95ebe2e22
     triple_count: 83
   signer: ontology-manifest-generator
-  signature: ed65f6b2a57f634d1a492385538c6a16e41693a7a99109ee0c7bf2b4c68338e6
+  signature_algorithm: ed25519
+  signing_public_key: q0Cp7bmQMqJhbofGKKw8xXC6KbFzukBDDke0UYVi8y4
+  signature: G3tbCg9BpVkgrZgOPzyrk0DuDrtIb1LMfNHEDZ-NYUeej_8Ny_dWHh47tP4ZRk7y2z0L9fVzoafJjbLiNvkBDQ
 policy:
   pii_fields: {}
   tenant_boundary: null
@@ -213,7 +223,7 @@ review_todos:
   \ a separate embedding/LLM endpoint uses a Bearer token; alternate backends (Qdrant/Chroma/Postgres/Mongo/Couchbase)\
   \ carry their own auth via constructor params, not directly env-driven in the code inspected. Env: GRAPH_SERVICE_SOCKET,\
   \ GRAPH_SERVICE_AUTH_SECRET (alias EPISTEMIC_GRAPH_SECRET), GRAPH_SERVICE_TCP_ADDR, LLM_BASE_URL, LLM_TOKEN/LLM_API_KEY,\
-  \ LLM_SSL_VERIFY, VECTOR_DB_TYPE. required_scopes: none found. Shape: single shared HMAC secret/socket\
+  \ LLM_SSL_VERIFY, DATABASE_TYPE (alias VECTOR_DB_TYPE). required_scopes: none found. Shape: single shared HMAC secret/socket\
   \ + shared LLM bearer token; no per-user delegation. KNOWN DOC DRIFT: README documents a generic VECTOR_API_KEY\
   \ not actually referenced anywhere in vector_mcp/ source."
 - "change_support: none \u2014 this connector is NOT wired into any source_sync delta/hydrate/materialize\
@@ -236,3 +246,9 @@ review_todos:
   \ manifest MANDATORY for enterprise activation \u2014 operator sign-off on the ontology_class crosswalks,\
   \ PII/RLS policy, and the classification/retention/quality gaps above is still required before this\
   \ manifest should be treated as fully authoritative."
+- "provenance.integrity/signature: STALE \u2014 this manifest was reconciled from two diverged branches\
+  \ (git merge) on 2026-07-21; the ontology/tool-schema content changed as part of that merge\
+  \ (DATABASE_TYPE/VECTOR_DB_TYPE aliasing, lexical_search hybrid-discover fix), so the\
+  \ carried-forward integrity.hash/signature no longer attest to the current source_artifacts. Re-run\
+  \ scripts/generate_connector_manifests.py with an authorized signing key before treating this manifest\
+  \ as cryptographically authoritative."

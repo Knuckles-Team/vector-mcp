@@ -1,0 +1,18 @@
+{
+  "connector": "vector-mcp",
+  "fixtures": [
+    {
+      "expected": {
+        "acl_state": "quarantine",
+        "id": "fixture-record",
+        "title": "Synthetic certification record"
+      },
+      "preset": "vector-collections",
+      "record": {
+        "acl_public": false,
+        "collection_name": "Synthetic content used only for contract validation."
+      }
+    }
+  ],
+  "schema_version": "1"
+}

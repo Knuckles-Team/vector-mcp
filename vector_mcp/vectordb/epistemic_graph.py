@@ -8,16 +8,32 @@ properties and the embedding lives in the engine's native ANN index
 vector search over a durable, cross-process index — not an in-Python cosine scan.
 
 A "collection" maps to an engine **graph** (``graph_name``); each collection is a
-separately-connected :class:`SyncEpistemicGraphClient`. Embeddings are produced
-client-side with the shared ``create_embedding_model`` (remote vLLM/OpenAI-style),
-matching every other backend here.
+separately-connected :class:`SyncEpistemicGraphClient`, cached per verified
+authority so a session change never reuses another caller's connection. Engine
+location, authentication, autostart, and deployment mode are owned entirely by
+AgentConfig/the current engine client — this module never accepts or persists
+transport or credential material. Embeddings are produced client-side with the
+shared ``create_embedding_model`` (remote vLLM/OpenAI-style), matching every
+other backend here.
 """
 
+from __future__ import annotations
+
+import hashlib
+import json
+import re
 from typing import Any
 
 from agent_utilities import create_embedding_model
+from agent_utilities.knowledge_graph.core.session import resolve_session
 
-from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
+from vector_mcp.vectordb.base import (
+    Document,
+    ItemID,
+    QueryResults,
+    VectorDB,
+    document_embeddings,
+)
 from vector_mcp.vectordb.db_utils import (
     get_logger,
     optional_import_block,
@@ -25,7 +41,6 @@ from vector_mcp.vectordb.db_utils import (
 )
 
 with optional_import_block():
-    from agent_utilities.core.config import setting
     from epistemic_graph.client import SyncEpistemicGraphClient
 
 logger = get_logger(__name__)
@@ -34,125 +49,140 @@ logger = get_logger(__name__)
 # the field the engine keyword-indexes and that ``graph.discover`` hydrates, so lexical
 # search runs engine-side (scalable) instead of an O(N) client scan. Everything not in
 # the reserved set is treated as user metadata.
+_LABEL = "VectorDocument"
 _TEXT_KEY = "description"
-_RESERVED_KEYS = {_TEXT_KEY, "label", "id", "_similarity", "name", "type", "score"}
+_RESERVED = {_TEXT_KEY, "name", "type", "label", "id", "score", "_similarity"}
+_WORD = re.compile(r"[A-Za-z0-9_]{2,}")
 
 
 @require_optional_import(["epistemic_graph", "agent_utilities"], "epistemic-graph")
 class EpistemicGraphVectorDB(VectorDB):
-    """A vector database backed by the native epistemic-graph engine."""
+    """A vector database backed by the native epistemic-graph engine.
+
+    Client connections are O(1)-cached per ``(collection, authority)`` and every
+    graph/node/txn operation rides the caller's verified :class:`GraphSession` —
+    there is no constructor path to target an arbitrary socket/secret.
+    """
 
     def __init__(
         self,
         *,
         embed_model: Any | None = None,
         collection_name: str = "memory",
-        socket_path: str | None = None,
-        auth_secret: str | None = None,
-        tcp_addr: str | None = None,
-        metadata: dict | None = None,
-        **kwargs,
+        metadata: dict[str, Any] | None = None,
+        **_kwargs: Any,
     ) -> None:
-        """Initialize the vector database.
-
-        Args:
-            embed_model: Embedding model; defaults to ``create_embedding_model()``.
-            collection_name: The engine graph a document set lives in.
-            socket_path: UDS path to the engine (else ``GRAPH_SERVICE_SOCKET``).
-            auth_secret: HMAC secret (else ``GRAPH_SERVICE_AUTH_SECRET``).
-            tcp_addr: Optional ``host:port`` if the engine is reached over TCP.
-        """
         self.embed_model = embed_model or create_embedding_model()
         self.collection_name = collection_name
         self.metadata = metadata or {}
-        self.type = "epistemic-graph"
-        self._socket_path = socket_path or setting("GRAPH_SERVICE_SOCKET", "") or None
-        self._auth_secret = (
-            auth_secret
-            or setting("GRAPH_SERVICE_AUTH_SECRET", "")
-            or setting("EPISTEMIC_GRAPH_SECRET", "")
-            or None
-        )
-        self._tcp_addr = tcp_addr or setting("GRAPH_SERVICE_TCP_ADDR", "") or None
-        self._clients: dict[str, Any] = {}
+        self.type = "epistemic_graph"
         self.active_collection = collection_name
-        # Connect (and ensure) the default collection up front.
-        self._client_for(collection_name)
+        self._clients: dict[tuple[str, str], Any] = {}
 
     # ── connection ────────────────────────────────────────────────────────
-    def _client_for(self, collection_name: str | None = None) -> Any:
+    def _client_for(
+        self, collection_name: str | None = None, *, session: Any | None = None
+    ) -> Any:
         name = collection_name or self.collection_name
-        client = self._clients.get(name)
+        session = session or resolve_session()
+        verified_context = session.engine_verified_context()
+        authority_digest = hashlib.sha256(
+            json.dumps(verified_context, sort_keys=True, separators=(",", ":")).encode(
+                "utf-8"
+            )
+        ).hexdigest()
+        cache_key = (name, authority_digest)
+        client = self._clients.get(cache_key)
         if client is None:
-            connect_kwargs: dict[str, Any] = {"graph_name": name}
-            if self._socket_path:
-                connect_kwargs["socket_path"] = self._socket_path
-            if self._tcp_addr:
-                connect_kwargs["tcp_addr"] = self._tcp_addr
-            if self._auth_secret:
-                connect_kwargs["auth_secret"] = self._auth_secret
-            client = SyncEpistemicGraphClient.connect(**connect_kwargs)
-            try:
-                client.tenants.create(name)
-            except Exception as e:  # graph may already exist — non-fatal
-                logger.debug(f"tenant create {name}: {e}")
-            self._clients[name] = client
+            # Engine location, authentication, autostart, and deployment mode are
+            # owned entirely by AgentConfig/the current engine client.
+            client = SyncEpistemicGraphClient.connect(
+                graph_name=name, verified_context=verified_context
+            )
+            self._clients[cache_key] = client
         return client
 
-    def _embed(self, text: str, *, is_query: bool = False) -> list[float]:
-        vec = (
+    def _embedding(self, text: str, *, query: bool = False) -> list[float]:
+        vector = (
             self.embed_model.get_query_embedding(text)
-            if is_query
+            if query
             else self.embed_model.get_text_embedding(text)
         )
-        return [float(x) for x in vec]
+        return [float(value) for value in vector]
 
     @staticmethod
-    def _props_to_doc(node_id: str, props: dict | None) -> Document:
-        props = dict(props or {})
-        content = props.get(_TEXT_KEY, "") or ""
-        meta = {k: v for k, v in props.items() if k not in _RESERVED_KEYS}
-        return Document(id=node_id, content=content, metadata=meta, embedding=None)
+    def _document(node_id: str, properties: dict[str, Any] | None) -> Document:
+        values = dict(properties or {})
+        return Document(
+            id=node_id,
+            content=str(values.get(_TEXT_KEY, "") or ""),
+            metadata={
+                key: value for key, value in values.items() if key not in _RESERVED
+            },
+        )
+
+    @staticmethod
+    def _graph_names(values: list[Any]) -> set[str]:
+        names: set[str] = set()
+        for value in values:
+            if isinstance(value, str):
+                names.add(value)
+            elif isinstance(value, dict):
+                candidate = value.get("name") or value.get("graph_name")
+                if candidate:
+                    names.add(str(candidate))
+            elif isinstance(value, (tuple, list)) and value:
+                names.add(str(value[0]))
+        return names
+
+    def _control_client(self) -> Any:
+        session = resolve_session()
+        return self._client_for(
+            str(getattr(session, "graph", "") or "__commons__"), session=session
+        )
 
     # ── collections ───────────────────────────────────────────────────────
     def create_collection(
         self, collection_name: str, overwrite: bool = False, _get_or_create: bool = True
     ) -> Any:
-        self.collection_name = collection_name
-        client = self._client_for(collection_name)
+        control = self._control_client()
+        exists = collection_name in self._graph_names(control.tenants.list())
+        cached_clients: list[Any] = []
+        if exists and overwrite:
+            cached_clients = [
+                self._clients.pop(key)
+                for key in tuple(self._clients)
+                if key[0] == collection_name
+            ]
+            control.tenants.delete(collection_name)
+            exists = False
+        if exists and not _get_or_create:
+            raise ValueError("collection_exists")
+        if not exists:
+            control.tenants.create(collection_name, "Agent")
         if overwrite:
-            try:
-                client.graph.clear()
-            except Exception as e:
-                logger.info(f"clear collection {collection_name}: {e}")
+            for cached in cached_clients:
+                cached.close()
+        self.collection_name = collection_name
         self.active_collection = collection_name
-        return collection_name
+        return self._client_for(collection_name)
 
     def get_collection(self, collection_name: str | None = None) -> Any:
-        return collection_name or self.collection_name
+        return self._client_for(collection_name)
 
-    def get_collections(self) -> Any:
-        client = self._client_for(self.collection_name)
-        try:
-            graphs = client.tenants.list() or []
-        except Exception as e:
-            logger.info(f"list collections: {e}")
-            return list(self._clients)
-        names = []
-        for g in graphs:
-            if isinstance(g, dict):
-                names.append(g.get("graph_name") or g.get("name"))
-            else:
-                names.append(g)
-        return [n for n in names if n]
+    def get_collections(self) -> list[str]:
+        return sorted(self._graph_names(self._control_client().tenants.list()))
 
     def delete_collection(self, collection_name: str) -> None:
-        client = self._client_for(collection_name)
-        try:
-            client.tenants.delete(collection_name)
-        except Exception as e:
-            logger.info(f"delete collection {collection_name}: {e}")
-        self._clients.pop(collection_name, None)
+        control = self._control_client()
+        cached_clients = [
+            self._clients.pop(key)
+            for key in tuple(self._clients)
+            if key[0] == collection_name
+        ]
+        control.tenants.delete(collection_name)
+        for cached in cached_clients:
+            cached.close()
         if self.active_collection == collection_name:
             self.active_collection = ""
 
@@ -162,70 +192,81 @@ class EpistemicGraphVectorDB(VectorDB):
         docs: list[Document],
         collection_name: str | None = None,
         _upsert: bool = False,
-        **kwargs,
+        **_kwargs: Any,
     ) -> None:
         client = self._client_for(collection_name)
-        for doc in docs:
-            doc_id = str(doc["id"])
-            text = doc.get("content") or ""
-            meta = {
-                k: v
-                for k, v in (doc.get("metadata") or {}).items()
-                if k not in _RESERVED_KEYS
-            }
-            embedding = doc.get("embedding")
-            if embedding is None:
-                embedding = self._embed(text)
-            client.nodes.add(doc_id, {_TEXT_KEY: text, "label": "Document", **meta})
-            client.graph.add_embedding(doc_id, [float(x) for x in embedding])
+        identifiers = [str(document["id"]) for document in docs]
+        if len(set(identifiers)) != len(identifiers):
+            raise ValueError("document_ids_duplicate")
+        if not _upsert:
+            existing = client.nodes.has_batch(identifiers)
+            if any(existing.get(identifier, False) for identifier in identifiers):
+                raise ValueError("document_exists")
+        vectors = document_embeddings(docs, self.embed_model)
+        transaction = client.txn.begin()
+        try:
+            for document, identifier, vector in zip(
+                docs, identifiers, vectors, strict=True
+            ):
+                content = str(document["content"])
+                properties = {
+                    **dict(document.get("metadata") or {}),
+                    _TEXT_KEY: content,
+                    "name": identifier,
+                    "type": _LABEL,
+                    "label": _LABEL,
+                }
+                client.txn.add_node(transaction, identifier, properties)
+                client.txn.add_embedding(transaction, identifier, vector)
+            if not client.txn.commit(transaction):
+                raise ValueError("transaction_conflict")
+        except Exception:
+            try:
+                client.txn.rollback(transaction)
+            except Exception:
+                pass
+            raise
 
     def update_documents(
-        self, docs: list[Document], collection_name: str | None = None, **kwargs
+        self, docs: list[Document], collection_name: str | None = None, **kwargs: Any
     ) -> None:
-        # Node add is an upsert on the engine (same id overwrites properties).
         self.insert_documents(docs, collection_name, _upsert=True, **kwargs)
 
     def delete_documents(
-        self, ids: list[ItemID], collection_name: str | None = None, **kwargs
+        self, ids: list[ItemID], collection_name: str | None = None, **_kwargs: Any
     ) -> None:
         client = self._client_for(collection_name)
-        for _id in ids:
+        transaction = client.txn.begin()
+        try:
+            for identifier in ids:
+                client.txn.remove_node(transaction, str(identifier))
+            if not client.txn.commit(transaction):
+                raise ValueError("transaction_conflict")
+        except Exception:
             try:
-                client.nodes.remove(str(_id))
-            except Exception as e:
-                logger.info(f"delete node {_id}: {e}")
+                client.txn.rollback(transaction)
+            except Exception:
+                pass
+            raise
 
     def get_documents_by_ids(
         self,
         ids: list[ItemID] | None = None,
         collection_name: str | None = None,
         include: list[str] | None = None,
-        **kwargs,
+        **_kwargs: Any,
     ) -> list[Document]:
+        del include
+        if not ids:
+            raise ValueError("document_ids_required")
         client = self._client_for(collection_name)
-        docs: list[Document] = []
-        if ids:
-            for _id in ids:
-                try:
-                    props = client.nodes.properties(str(_id))
-                except Exception:
-                    props = None
-                if props is not None:
-                    docs.append(self._props_to_doc(str(_id), props))
-        else:
-            try:
-                listing = client.nodes.list() or []
-            except Exception as e:
-                logger.info(f"list nodes: {e}")
-                listing = []
-            for entry in listing:
-                node_id = str(entry[0]) if isinstance(entry, list | tuple) else str(entry)
-                try:
-                    props = client.nodes.properties(node_id)
-                except Exception:
-                    props = None
-                docs.append(self._props_to_doc(node_id, props))
-        return docs
+        identifiers = [str(value) for value in ids]
+        properties = client.nodes.properties_batch(identifiers)
+        return [
+            self._document(identifier, properties.get(identifier))
+            for identifier in identifiers
+            if properties.get(identifier) is not None
+        ]
 
     # ── search ────────────────────────────────────────────────────────────
     def semantic_search(
@@ -234,106 +275,106 @@ class EpistemicGraphVectorDB(VectorDB):
         collection_name: str | None = None,
         n_results: int = 10,
         distance_threshold: float = -1,
-        **kwargs: Any,
+        **_kwargs: Any,
     ) -> QueryResults:
         client = self._client_for(collection_name)
-        results: QueryResults = []
+        output: QueryResults = []
         for query in queries:
-            q_emb = self._embed(query, is_query=True)
-            try:
-                hits = client.graph.semantic_search(q_emb, n_results) or []
-            except Exception as e:
-                logger.error(f"epistemic-graph semantic_search failed: {e}")
-                hits = []
-            query_result: list[tuple[Document, float]] = []
-            for item in hits:
-                if isinstance(item, list | tuple) and len(item) >= 2:
-                    node_id, score = str(item[0]), float(item[1])
-                elif isinstance(item, dict):
-                    node_id = str(item.get("id", ""))
-                    score = float(item.get("_similarity", item.get("score", 0.0)) or 0.0)
-                else:
+            hits = client.graph.semantic_search(
+                self._embedding(query, query=True), n_results
+            )
+            identifiers = [str(identifier) for identifier, _score in hits]
+            properties = (
+                client.nodes.properties_batch(identifiers) if identifiers else {}
+            )
+            values: list[tuple[Document, float]] = []
+            for identifier, score in hits:
+                similarity = float(score)
+                if distance_threshold >= 0 and 1.0 - similarity > distance_threshold:
                     continue
-                if not node_id:
-                    continue
-                distance = 1.0 - score
-                if distance_threshold >= 0 and distance > distance_threshold:
-                    continue
-                try:
-                    props = client.nodes.properties(node_id)
-                except Exception:
-                    props = None
-                query_result.append((self._props_to_doc(node_id, props), distance))
-            results.append(query_result)
-        return results
+                values.append(
+                    (
+                        self._document(
+                            str(identifier), properties.get(str(identifier))
+                        ),
+                        similarity,
+                    )
+                )
+            output.append(values)
+        return output
 
     def lexical_search(
         self,
         queries: list[str],
         collection_name: str | None = None,
         n_results: int = 10,
-        **kwargs: Any,
+        **_kwargs: Any,
     ) -> QueryResults:
         """Keyword search over the engine's scalable index.
 
         Routes through the engine's one-round-trip ``discover`` op — it ranks nodes by
         keyword overlap over the indexed text (the chunk text lives in ``description``)
-        AND semantic similarity, returning a hydrated top-k. Falls back to a client-side
-        term scan only if the engine is too old to support ``discover``.
+        AND semantic similarity, returning a hydrated top-k with no N+1 metadata fetch.
+        Falls back to a bounded client-side term scan only if the engine is too old to
+        support ``discover``.
         """
         client = self._client_for(collection_name)
-        results: QueryResults = []
+        output: QueryResults = []
         for query in queries:
-            terms = list(dict.fromkeys(t for t in query.lower().split() if t))
-            try:
-                q_emb = self._embed(query, is_query=True)
-            except Exception:
-                q_emb = []  # discover degrades to a bounded keyword-only scan
-            try:
-                hits = client.graph.discover(terms, q_emb, n_results) or []
-            except Exception as e:
-                logger.info(f"discover unavailable, using client scan: {e}")
-                results.append(self._lexical_scan(client, terms, n_results))
+            keywords = list(
+                dict.fromkeys(word.casefold() for word in _WORD.findall(query))
+            )
+            if not keywords:
+                output.append([])
                 continue
-            query_result: list[tuple[Document, float]] = []
-            for item in hits[:n_results]:
-                if isinstance(item, dict):
-                    node_id = str(item.get("id", ""))
-                    score = float(item.get("score", 0.0) or 0.0)
-                    # discover hydrates text in-band; fetch full props for metadata.
-                    try:
-                        props = client.nodes.properties(node_id) or item
-                    except Exception:
-                        props = item
-                else:
-                    node_id, score, props = str(item), 0.0, None
-                if not node_id:
+            try:
+                embedding = self._embedding(query, query=True)
+            except Exception:
+                embedding = []  # discover degrades to a bounded keyword-only scan
+            try:
+                hits = client.graph.discover(keywords, embedding, n_results) or []
+            except Exception as exc:
+                logger.info(f"discover unavailable, using client scan: {exc}")
+                output.append(self._lexical_scan(client, keywords, n_results))
+                continue
+            values: list[tuple[Document, float]] = []
+            for hit in hits[:n_results]:
+                properties = dict(hit)
+                identifier = str(properties.pop("id", "") or "")
+                if not identifier:
                     continue
-                query_result.append((self._props_to_doc(node_id, props), score))
-            results.append(query_result)
-        return results
+                values.append(
+                    (self._document(identifier, properties), float(hit.get("score", 0.0) or 0.0))
+                )
+            output.append(values)
+        return output
 
     def _lexical_scan(
-        self, client: Any, terms: list[str], n_results: int
+        self, client: Any, keywords: list[str], n_results: int
     ) -> list[tuple[Document, float]]:
         """Fallback term-frequency scan (only when the engine lacks ``discover``)."""
         try:
             listing = client.nodes.list() or []
-        except Exception as e:
-            logger.info(f"lexical scan (list nodes): {e}")
+        except Exception as exc:
+            logger.info(f"lexical scan (list nodes): {exc}")
             return []
         scored: list[tuple[Document, float]] = []
         for entry in listing:
-            node_id = str(entry[0]) if isinstance(entry, list | tuple) else str(entry)
+            node_id = str(entry[0]) if isinstance(entry, (list, tuple)) else str(entry)
             try:
-                props = client.nodes.properties(node_id) or {}
+                properties = client.nodes.properties(node_id) or {}
             except Exception:
                 continue
-            content = str(props.get(_TEXT_KEY, "") or "").lower()
+            content = str(properties.get(_TEXT_KEY, "") or "").casefold()
             if not content:
                 continue
-            freq = sum(content.count(t) for t in terms)
+            freq = sum(content.count(term) for term in keywords)
             if freq > 0:
-                scored.append((self._props_to_doc(node_id, props), float(freq)))
-        scored.sort(key=lambda x: x[1], reverse=True)
+                scored.append((self._document(node_id, properties), float(freq)))
+        scored.sort(key=lambda item: item[1], reverse=True)
         return scored[:n_results]
+
+    def close(self) -> None:
+        for client in self._clients.values():
+            client.close()
+        self._clients.clear()

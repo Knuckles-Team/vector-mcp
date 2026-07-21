@@ -3,20 +3,20 @@
 # slim multi-stage (build in a builder, ship only /usr/local — no dev-tools/source):
 #
 #   --target agent  (DEFAULT)  installs vector-mcp[agent] = the FULL runtime
-#                              (agent-utilities[agent]: engine + pydantic-ai + dspy +
-#                              skills). Because [agent] also includes [mcp], this image
+#                              (agent-utilities[agent-runtime]: pydantic-ai + skills;
+#                              the full epistemic-graph engine is a base dependency).
+#                              The provider's [agent] also includes [mcp], so this image
 #                              can run EITHER the agent OR the mcp server. Push as the
 #                              default tags: latest / main / <version>.
 #
-#   --target mcp               installs vector-mcp[mcp]   = MCP-server tooling ONLY
-#                              (agent-utilities[mcp]: fastmcp/fastapi — NO engine,
-#                              pydantic-ai, dspy, llama-index, tree-sitter). The slim
-#                              variant. Push as the :mcp / :mcp-<version> tag.
+#   --target mcp               installs vector-mcp[mcp] = MCP serving plus the
+#                              mandatory self-contained full epistemic-graph engine.
+#                              It omits the optional agent UI/runtime layer.
 #
-#   docker build --target agent -t vector-mcp:latest .
+#   docker build --target agent -t vector-mcp:agent-local .
 #   docker build --target mcp   -t vector-mcp:mcp    .
-FROM python:3.11-slim AS builder-base
-COPY --from=ghcr.io/astral-sh/uv:0.11.7 /uv /uvx /bin/
+FROM python:3.11-slim@sha256:e031123e3d85762b141ad1cbc56452ba69c6e722ebf2f042cc0dc86c47c0d8b3 AS builder-base
+COPY --from=ghcr.io/astral-sh/uv:0.11.7@sha256:240fb85ab0f263ef12f492d8476aa3a2e4e1e333f7d67fbdd923d00a506a516a /uv /uvx /bin/
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_SYSTEM_PYTHON=1 \
@@ -25,7 +25,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Slim MCP-only dependency closure.
+# MCP dependency closure, including the mandatory full engine.
 FROM builder-base AS builder-mcp
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system --upgrade --break-system-packages --prerelease=allow vector-mcp[mcp]>=2.1.2
@@ -35,7 +35,7 @@ FROM builder-base AS builder-agent
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system --upgrade --break-system-packages --prerelease=allow vector-mcp[agent]>=2.1.2
 
-FROM python:3.11-slim AS runtime-base
+FROM python:3.11-slim@sha256:e031123e3d85762b141ad1cbc56452ba69c6e722ebf2f042cc0dc86c47c0d8b3 AS runtime-base
 ARG HOST=0.0.0.0
 ARG PORT=8000
 ARG TRANSPORT="stdio"
@@ -51,7 +51,7 @@ ENV HOST=${HOST} \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
 
-# Slim image: MCP server only.
+# MCP image: server plus the mandatory self-contained engine.
 FROM runtime-base AS mcp
 COPY --from=builder-mcp /usr/local /usr/local
 CMD ["vector-mcp"]

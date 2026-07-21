@@ -1,226 +1,317 @@
-#!/usr/bin/python
+"""Secure PostgreSQL/pgvector backend with HNSW and GIN indexes."""
 
-import os
+from __future__ import annotations
+
+import hashlib
+import math
+import threading
+from collections.abc import Generator
+from contextlib import contextmanager
+from functools import cached_property
 from typing import Any
 
 from agent_utilities import create_embedding_model
-from llama_index.core import (
-    Document as LIDocument,
-)
-from llama_index.core import (
-    SimpleDirectoryReader,
-    StorageContext,
-    VectorStoreIndex,
-)
+from agent_utilities.core.transport_security import ResolvedTLSProfile
 
-from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
-from vector_mcp.vectordb.db_utils import (
-    get_logger,
-    optional_import_block,
-    require_optional_import,
+from vector_mcp.vectordb.base import (
+    Document,
+    ItemID,
+    QueryResults,
+    VectorDB,
+    document_embeddings,
 )
+from vector_mcp.vectordb.db_utils import optional_import_block, require_optional_import
 
 with optional_import_block():
-    from llama_index.vector_stores.postgres import PGVectorStore
-    from sqlalchemy import make_url, text
+    from psycopg import sql
+    from psycopg.types.json import Jsonb
+    from psycopg_pool import ConnectionPool
 
-logger = get_logger(__name__)
+_CATALOG = "vector_mcp_collections"
 
 
-@require_optional_import(
-    ["llama_index.vector_stores.postgres", "psycopg", "llama_index"], "postgres"
-)
+def _table_name(collection_name: str) -> str:
+    digest = hashlib.sha256(collection_name.encode("utf-8")).hexdigest()[:24]
+    return f"vm_{digest}"
+
+
+def _vector(values: Any) -> str:
+    vector = [float(value) for value in values]
+    if not vector or any(not math.isfinite(value) for value in vector):
+        raise ValueError("embedding_invalid")
+    return "[" + ",".join(format(value, ".17g") for value in vector) + "]"
+
+
+@require_optional_import(["psycopg", "psycopg_pool"], "postgres")
 class PostgreSQL(VectorDB):
-    """A vector database that uses PGVector as the backend via LlamaIndex."""
+    """Direct pgvector provider; every query is parameterized and index-backed."""
 
     def __init__(
         self,
         *,
-        connection_string: str | None = None,
-        host: str | int | None = None,
-        port: str | int | None = None,
-        dbname: str | None = None,
-        username: str | None = None,
-        password: str | None = None,
+        host: str,
+        port: int,
+        dbname: str,
+        username: str,
+        password: str,
+        tls_profile: ResolvedTLSProfile,
+        timeout: int = 30,
+        max_pool_size: int = 20,
         embed_model: Any | None = None,
         collection_name: str = "memory",
         metadata: dict[str, Any] | None = None,
-        **kwargs,
+        **_kwargs: Any,
     ) -> None:
-        """Initialize the vector database with LlamaIndex PGVectorStore.
-
-        Args:
-            connection_string: str | Full connection string
-            host, port, dbname, username, password: Connection details if no connection_string
-            embed_model: BaseEmbedding | Custom embedding model
-            collection_name: str | Name of the table/collection
-            metadata: dict | HNSW index params
-        """
-        self.embed_model = embed_model or create_embedding_model()
+        if not tls_profile.verify_enabled:
+            raise ValueError("postgres_tls_profile_invalid")
         self.collection_name = collection_name
-        self.metadata = metadata or {
-            "hnsw_m": 16,
-            "hnsw_ef_construction": 64,
-            "hnsw_ef_search": 40,
-        }
-
-        self.dimension = len(self.embed_model.get_text_embedding("test"))
-
-        if connection_string:
-            url = make_url(connection_string)
-            self._db_params = {
-                "database": url.database,
-                "host": url.host,
-                "password": url.password,
-                "port": url.port or 5432,
-                "user": url.username,
-            }
-        else:
-            self._db_params = {
-                "database": dbname,
-                "host": str(host),
-                "password": password,
-                "port": int(port) if port else 5432,
-                "user": username,
-            }
-
-        self.vector_store = PGVectorStore.from_params(
-            **self._db_params,
-            table_name=self.collection_name,
-            embed_dim=self.dimension,
-            hnsw_kwargs=self.metadata,
-            **kwargs,
-        )
-        self.storage_context = StorageContext.from_defaults(
-            vector_store=self.vector_store
-        )
-        self.active_collection = collection_name
+        self.embed_model = embed_model or create_embedding_model()
+        self.metadata = metadata or {}
         self.type = "postgres"
+        self.active_collection = collection_name
+        connect_kwargs = {
+            "host": host,
+            "port": int(port),
+            "dbname": dbname,
+            "user": username,
+            "password": password,
+            "connect_timeout": int(timeout),
+            **tls_profile.psycopg_kwargs(),
+        }
+        self._pool = ConnectionPool(
+            kwargs=connect_kwargs,
+            min_size=0,
+            max_size=int(max_pool_size),
+            timeout=float(timeout),
+            open=False,
+        )
+        self._open_lock = threading.Lock()
+        self._opened = False
+        self._catalog_ready = False
 
-        self._index = None
+    def _open(self) -> None:
+        if self._opened:
+            return
+        with self._open_lock:
+            if not self._opened:
+                self._pool.open(wait=True)
+                self._opened = True
 
-    def _get_index(self) -> VectorStoreIndex:
-        if self._index is None:
-            self._index = VectorStoreIndex.from_vector_store(
-                self.vector_store,
-                storage_context=self.storage_context,
-                embed_model=self.embed_model,
+    @contextmanager
+    def _connection(self) -> Generator[Any, None, None]:
+        self._open()
+        with self._pool.connection() as connection:
+            if not self._catalog_ready:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        sql.SQL(
+                            "CREATE TABLE IF NOT EXISTS {} ("
+                            "collection_name TEXT PRIMARY KEY, "
+                            "table_name TEXT UNIQUE NOT NULL, "
+                            "dimension INTEGER NOT NULL CHECK (dimension > 0))"
+                        ).format(sql.Identifier(_CATALOG))
+                    )
+                connection.commit()
+                self._catalog_ready = True
+            yield connection
+
+    @cached_property
+    def _embedding_dimension(self) -> int:
+        return len(self.embed_model.get_query_embedding("vector dimension probe"))
+
+    def _dimension(self) -> int:
+        return self._embedding_dimension
+
+    @staticmethod
+    def _document(row: Any) -> Document:
+        return Document(
+            id=str(row[0]),
+            content=str(row[1]),
+            metadata=dict(row[2] or {}),
+        )
+
+    def _exists(self, connection: Any, collection_name: str) -> bool:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                sql.SQL("SELECT 1 FROM {} WHERE collection_name = %s").format(
+                    sql.Identifier(_CATALOG)
+                ),
+                (collection_name,),
             )
-        return self._index
+            return cursor.fetchone() is not None
 
     def create_collection(
         self, collection_name: str, overwrite: bool = False, _get_or_create: bool = True
-    ) -> Any:
-        self.collection_name = collection_name
-        if collection_name != self.vector_store.table_name:
-            self.vector_store = PGVectorStore.from_params(
-                **self._db_params,
-                table_name=collection_name,
-                embed_dim=self.dimension,
-                hnsw_kwargs=self.metadata,
-            )
-            self.storage_context = StorageContext.from_defaults(
-                vector_store=self.vector_store
-            )
-            self._index = None
-
-        if overwrite:
-            pass
-
-        try:
-            collections = self.get_collections()
-            if collection_name not in collections:
-                doc_dir = os.environ.get(
-                    "DOCUMENT_DIRECTORY", os.path.normpath("/documents")
+    ) -> str:
+        table_name = _table_name(collection_name)
+        dimension = self._dimension()
+        with self._connection() as connection, connection.cursor() as cursor:
+            exists = self._exists(connection, collection_name)
+            if exists and overwrite:
+                cursor.execute(
+                    sql.SQL("DROP TABLE {}").format(sql.Identifier(table_name))
                 )
-                loaded_docs = []
-                if os.path.exists(doc_dir) and os.listdir(doc_dir):
-                    try:
-                        logger.info(
-                            f"Loading documents from {doc_dir} for new collection {collection_name}"
-                        )
-                        reader = SimpleDirectoryReader(input_dir=doc_dir)
-                        loaded_docs = reader.load_data()
-                    except Exception as e:
-                        logger.warning(f"Failed to load documents from {doc_dir}: {e}")
-
-                if loaded_docs:
-                    index = self._get_index()
-                    for doc in loaded_docs:
-                        index.insert(doc)
-                    logger.info(
-                        f"Initialized collection {collection_name} with {len(loaded_docs)} documents."
+                cursor.execute(
+                    sql.SQL("DELETE FROM {} WHERE collection_name = %s").format(
+                        sql.Identifier(_CATALOG)
+                    ),
+                    (collection_name,),
+                )
+                exists = False
+            if exists and not _get_or_create:
+                raise ValueError("collection_exists")
+            if exists:
+                cursor.execute(
+                    sql.SQL(
+                        "SELECT dimension FROM {} WHERE collection_name = %s"
+                    ).format(sql.Identifier(_CATALOG)),
+                    (collection_name,),
+                )
+                row = cursor.fetchone()
+                if row is None or int(row[0]) != dimension:
+                    raise ValueError("collection_vector_schema_mismatch")
+            if not exists:
+                cursor.execute(
+                    sql.SQL(
+                        "CREATE TABLE {} ("
+                        "id TEXT PRIMARY KEY, content TEXT NOT NULL, "
+                        "metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb, "
+                        "embedding VECTOR({}) NOT NULL)"
+                    ).format(sql.Identifier(table_name), sql.SQL(str(dimension)))
+                )
+                cursor.execute(
+                    sql.SQL(
+                        "CREATE INDEX {} ON {} USING hnsw (embedding vector_cosine_ops)"
+                    ).format(
+                        sql.Identifier(f"{table_name}_hnsw"), sql.Identifier(table_name)
                     )
-                else:
-                    dummy_doc = LIDocument(
-                        text="initialization", doc_id="init_doc", metadata={}
+                )
+                cursor.execute(
+                    sql.SQL(
+                        "CREATE INDEX {} ON {} USING gin "
+                        "(to_tsvector('simple', content))"
+                    ).format(
+                        sql.Identifier(f"{table_name}_text"), sql.Identifier(table_name)
                     )
-                    index = self._get_index()
-                    index.insert(dummy_doc)
-                    index.delete_ref_doc("init_doc", delete_from_docstore=True)
-                    logger.info(f"Initialized empty collection {collection_name}.")
-        except Exception as e:
-            logger.warning(f"Failed to force create table: {e}")
-
+                )
+                cursor.execute(
+                    sql.SQL(
+                        "INSERT INTO {} (collection_name, table_name, dimension) "
+                        "VALUES (%s, %s, %s)"
+                    ).format(sql.Identifier(_CATALOG)),
+                    (collection_name, table_name, dimension),
+                )
+            connection.commit()
+        self.collection_name = collection_name
         self.active_collection = collection_name
-        return self.vector_store
+        return collection_name
 
-    def get_collection(self, collection_name: str | None = None) -> Any:
-        name = collection_name or self.active_collection
-        if name != self.collection_name:
-            self.create_collection(name)
-        return self.vector_store
+    def get_collection(self, collection_name: str | None = None) -> str:
+        name = collection_name or self.collection_name
+        with self._connection() as connection:
+            if not self._exists(connection, name):
+                raise ValueError("collection_not_found")
+        return name
 
-    def delete_collection(self, collection_name: str) -> Any:
-        try:
-            engine = getattr(self.vector_store, "_engine", None)
-            if not engine:
-                from sqlalchemy import create_engine
-                conn_str = self._db_params.get("connection_string")
-                if not conn_str:
-                    conn_str = f"postgresql://{self._db_params['user']}:{self._db_params['password']}@{self._db_params['host']}:{self._db_params['port']}/{self._db_params['database']}"
-                from sqlalchemy import make_url
-                url = make_url(conn_str)
-                engine = create_engine(url)
+    def get_collections(self) -> list[str]:
+        with self._connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                sql.SQL(
+                    "SELECT collection_name FROM {} ORDER BY collection_name"
+                ).format(sql.Identifier(_CATALOG))
+            )
+            return [str(row[0]) for row in cursor.fetchall()]
 
-            schema_name = getattr(self.vector_store, "schema_name", "public")
-            table_name = f"data_{collection_name}"
-
-            with engine.connect() as connection:
-                from sqlalchemy import text
-                # We can't use parameterized identifiers in DROP TABLE, but we control the collection name somewhat
-                # Note: PGVectorStore actually handles this internally in newer LlamaIndex versions, but we do it manually here.
-                connection.execute(text(f'DROP TABLE IF EXISTS "{schema_name}"."{table_name}" CASCADE'))
-                connection.commit()
-
-                logger.info(f"Deleted collection {collection_name}")
-                if self.active_collection == collection_name:
-                    self.active_collection = ""
-            return True
-        except Exception as e:
-            logger.error(f"Failed to delete collection {collection_name}: {e}")
-            return False
+    def delete_collection(self, collection_name: str) -> None:
+        table_name = _table_name(collection_name)
+        with self._connection() as connection, connection.cursor() as cursor:
+            if not self._exists(connection, collection_name):
+                raise ValueError("collection_not_found")
+            cursor.execute(sql.SQL("DROP TABLE {}").format(sql.Identifier(table_name)))
+            cursor.execute(
+                sql.SQL("DELETE FROM {} WHERE collection_name = %s").format(
+                    sql.Identifier(_CATALOG)
+                ),
+                (collection_name,),
+            )
+            connection.commit()
+        if self.active_collection == collection_name:
+            self.active_collection = ""
 
     def insert_documents(
         self,
         docs: list[Document],
         collection_name: str | None = None,
         _upsert: bool = False,
-        **kwargs,
+        **_kwargs: Any,
     ) -> None:
-        if collection_name:
-            self.create_collection(collection_name)
-
-        li_docs = []
-        for doc in docs:
-            metadata = doc.get("metadata", {}) or {}
-            li_docs.append(
-                LIDocument(text=doc["content"], doc_id=doc["id"], metadata=metadata)
+        name = collection_name or self.collection_name
+        table_name = _table_name(name)
+        rows = []
+        vectors = document_embeddings(docs, self.embed_model)
+        for document, embedding in zip(docs, vectors, strict=True):
+            content = str(document["content"])
+            rows.append(
+                (
+                    str(document["id"]),
+                    content,
+                    Jsonb(dict(document.get("metadata") or {})),
+                    _vector(embedding),
+                )
             )
+        statement = sql.SQL(
+            "INSERT INTO {} (id, content, metadata, embedding) "
+            "VALUES (%s, %s, %s, %s::vector)"
+        ).format(sql.Identifier(table_name))
+        if _upsert:
+            statement += sql.SQL(
+                " ON CONFLICT (id) DO UPDATE SET content = EXCLUDED.content, "
+                "metadata = EXCLUDED.metadata, embedding = EXCLUDED.embedding"
+            )
+        with self._connection() as connection, connection.cursor() as cursor:
+            if not self._exists(connection, name):
+                raise ValueError("collection_not_found")
+            if rows:
+                cursor.executemany(statement, rows)
+            connection.commit()
 
-        index = self._get_index()
-        for li_doc in li_docs:
-            index.insert(li_doc)
+    def update_documents(
+        self, docs: list[Document], collection_name: str | None = None, **kwargs: Any
+    ) -> None:
+        self.insert_documents(docs, collection_name, _upsert=True, **kwargs)
+
+    def delete_documents(
+        self, ids: list[ItemID], collection_name: str | None = None, **_kwargs: Any
+    ) -> None:
+        table_name = _table_name(collection_name or self.collection_name)
+        with self._connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                sql.SQL("DELETE FROM {} WHERE id = ANY(%s)").format(
+                    sql.Identifier(table_name)
+                ),
+                ([str(value) for value in ids],),
+            )
+            connection.commit()
+
+    def get_documents_by_ids(
+        self,
+        ids: list[ItemID] | None = None,
+        collection_name: str | None = None,
+        include: list[str] | None = None,
+        **_kwargs: Any,
+    ) -> list[Document]:
+        del include
+        if not ids:
+            raise ValueError("document_ids_required")
+        table_name = _table_name(collection_name or self.collection_name)
+        with self._connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                sql.SQL(
+                    "SELECT id, content, metadata FROM {} WHERE id = ANY(%s)"
+                ).format(sql.Identifier(table_name)),
+                ([str(value) for value in ids],),
+            )
+            return [self._document(row) for row in cursor.fetchall()]
 
     def semantic_search(
         self,
@@ -228,253 +319,59 @@ class PostgreSQL(VectorDB):
         collection_name: str | None = None,
         n_results: int = 10,
         distance_threshold: float = -1,
-        **kwargs: Any,
+        **_kwargs: Any,
     ) -> QueryResults:
-        if collection_name:
-            self.create_collection(collection_name)
-
-        index = self._get_index()
-        results = []
-        retriever = index.as_retriever(similarity_top_k=n_results)
-
-        for query in queries:
-            nodes = retriever.retrieve(query)
-            query_result = []
-            for node_match in nodes:
-                # node_match.score is already a distance from PGVector (COSINE distance)
-                distance = node_match.score or 0.0
-                if distance_threshold >= 0 and distance > distance_threshold:
-                    continue
-
-                doc = Document(
-                    id=node_match.node.node_id,
-                    content=node_match.node.text,
-                    metadata=node_match.node.metadata,
-                    embedding=node_match.node.embedding,
+        table_name = _table_name(collection_name or self.collection_name)
+        results: QueryResults = []
+        with self._connection() as connection, connection.cursor() as cursor:
+            for query in queries:
+                vector = _vector(self.embed_model.get_query_embedding(query))
+                where = (
+                    sql.SQL("WHERE embedding <=> q.value <= %s")
+                    if distance_threshold >= 0
+                    else sql.SQL("")
                 )
-                query_result.append((doc, 1.0 - distance))
-            results.append(query_result)
+                statement = sql.SQL(
+                    "WITH q AS (SELECT %s::vector AS value) "
+                    "SELECT id, content, metadata, 1 - (embedding <=> q.value) AS score "
+                    "FROM {} CROSS JOIN q {} ORDER BY embedding <=> q.value LIMIT %s"
+                ).format(sql.Identifier(table_name), where)
+                parameters: tuple[Any, ...] = (
+                    (vector, float(distance_threshold), int(n_results))
+                    if distance_threshold >= 0
+                    else (vector, int(n_results))
+                )
+                cursor.execute(statement, parameters)
+                results.append(
+                    [(self._document(row), float(row[3])) for row in cursor.fetchall()]
+                )
         return results
-
-    def get_documents_by_ids(
-        self,
-        ids: list[ItemID] | None = None,
-        collection_name: str | None = None,
-        include: list[str] | None = None,
-        **kwargs: Any,
-    ) -> list[Document]:
-        # LlamaIndex stores our original IDs in metadata as 'doc_id'
-        # PostgreSQL/PGVectorStore stores metadata in JSONB format in the metadata_ column
-        # Table name is 'data_' + collection_name
-        collection_name = collection_name or self.collection_name
-
-        try:
-            # Get the database connection from the vector store
-
-            # Get the engine from the vector store
-            engine = self.vector_store._engine
-
-            # The table name is 'data_' + collection_name
-            table_name = f"data_{collection_name}"
-
-            with engine.connect() as conn:
-                if ids:
-                    # Build query to find documents where metadata_->>'doc_id' is in our ids list
-                    # Use DISTINCT ON to get only one row per doc_id
-                    query = text(f"""
-                        SELECT DISTINCT ON (metadata_->>'doc_id') id, text, metadata_
-                        FROM {table_name}
-                        WHERE metadata_->>'doc_id' = ANY(:ids)
-                    """)  # nosec B608
-
-                    result = conn.execute(query, {"ids": ids})
-                else:
-                    # Get all documents
-                    query = text(f"""
-                        SELECT DISTINCT ON (metadata_->>'doc_id') id, text, metadata_
-                        FROM {table_name}
-                    """)  # nosec B608
-
-                    result = conn.execute(query)
-
-                rows = result.fetchall()
-
-            docs = []
-            for row in rows:
-                # row[0]: id (BIGINT), row[1]: text (VARCHAR), row[2]: metadata_ (JSON)
-                metadata_json = row[2] or {}
-                doc_id = metadata_json.get("doc_id", "")
-                doc_text = row[1] or ""
-
-                # Extract metadata from the metadata_ JSON, filtering out LlamaIndex internal fields
-                doc_metadata = {
-                    k: v
-                    for k, v in metadata_json.items()
-                    if not k.startswith("_")
-                    and k not in ["doc_id", "ref_doc_id", "document_id"]
-                }
-
-                docs.append(
-                    Document(
-                        id=doc_id,
-                        content=doc_text,
-                        metadata=doc_metadata,
-                    )
-                )
-
-            return docs
-
-        except Exception as e:
-            logger.error(f"Error in get_documents_by_ids: {e}")
-            # Fallback: try using LlamaIndex's ref_doc info if available
-            try:
-                # Try to get documents through the index
-                index = self._get_index()
-                # This might not work directly, but let's try
-
-                # Alternative: use docstore if available
-                if hasattr(index, "docstore") and index.docstore and ids:
-                    docs = []
-                    for doc_id in ids:
-                        try:
-                            ref_doc = index.docstore.get_ref_document(doc_id)
-                            if ref_doc:
-                                docs.append(
-                                    Document(
-                                        id=doc_id,
-                                        content=ref_doc.text,
-                                        metadata=ref_doc.metadata or {},
-                                    )
-                                )
-                        except Exception:  # nosec B112
-                            continue
-                    return docs
-            except Exception as fallback_error:
-                logger.warning(f"Fallback also failed: {fallback_error}")
-
-            return []
-
-    def update_documents(
-        self, docs: list[Document], collection_name: str | None = None, **kwargs
-    ) -> None:
-        self.insert_documents(docs, collection_name, upsert=True)
-
-    def delete_documents(
-        self, ids: list[ItemID], collection_name: str | None = None, **kwargs
-    ) -> None:
-        if collection_name:
-            self.create_collection(collection_name)
-        self.vector_store.delete_nodes(ids)
-
-    def get_collections(self) -> Any:
-        try:
-            engine = None
-            if hasattr(self.vector_store, "_engine") and self.vector_store._engine:
-                engine = self.vector_store._engine
-
-            if not engine:
-                from sqlalchemy import create_engine
-
-                conn_str = self._db_params.get("connection_string")
-                if not conn_str:
-                    conn_str = f"postgresql://{self._db_params['user']}:{self._db_params['password']}@{self._db_params['host']}:{self._db_params['port']}/{self._db_params['database']}"
-
-                url = make_url(conn_str)
-                engine = create_engine(url)
-
-            schema_name = "public"
-            if hasattr(self.vector_store, "schema_name"):
-                schema_name = self.vector_store.schema_name
-
-            with engine.connect() as connection:
-                query = text("""
-                    SELECT table_name
-                    FROM information_schema.tables
-                    WHERE table_schema = :schema
-                    AND table_type = 'BASE TABLE'
-                """)  # nosec B608
-                result = connection.execute(query, {"schema": schema_name})
-                tables = []
-                for row in result:
-                    name = row[0]
-                    if name.startswith("data_"):
-                        name = name[5:]
-                    tables.append(name)
-                return tables
-
-        except Exception as e:
-            logger.error(f"Failed to list collections: {e}")
-            return []
 
     def lexical_search(
         self,
         queries: list[str],
         collection_name: str | None = None,
         n_results: int = 10,
-        **kwargs: Any,
+        **_kwargs: Any,
     ) -> QueryResults:
-        if collection_name:
-            self.create_collection(collection_name)
-
-        if not hasattr(self.vector_store, "_engine"):
-            logger.warning(
-                "PGVectorStore engine not accessible. Cannot run BM25 search."
-            )
-            return [[] for _ in queries]
-
-        results = []
-        with self.vector_store._engine.connect() as connection:
+        table_name = _table_name(collection_name or self.collection_name)
+        statement = sql.SQL(
+            "WITH q AS (SELECT plainto_tsquery('simple', %s) AS value) "
+            "SELECT id, content, metadata, "
+            "ts_rank_cd(to_tsvector('simple', content), q.value) AS score "
+            "FROM {} CROSS JOIN q "
+            "WHERE to_tsvector('simple', content) @@ q.value "
+            "ORDER BY score DESC LIMIT %s"
+        ).format(sql.Identifier(table_name))
+        results: QueryResults = []
+        with self._connection() as connection, connection.cursor() as cursor:
             for query in queries:
-                table_name = f"data_{self.collection_name}"
-
-                try:
-                    sql = text(f"""
-                        SELECT id, text, metadata_, paradedb.bm25(text, :q) as score
-                        FROM {table_name}
-                        WHERE paradedb.bm25(text, :q) > 0
-                        ORDER BY score DESC
-                        LIMIT :k
-                    """)  # nosec B608
-
-                    result_proxy = connection.execute(sql, {"q": query, "k": n_results})
-                    query_result = []
-                    for row in result_proxy:
-                        doc = Document(
-                            id=row[0],
-                            content=row[1],
-                            metadata=row[2],
-                            embedding=None,
-                        )
-                        query_result.append((doc, float(row[3])))
-                    results.append(query_result)
-
-                except Exception as e:
-                    logger.warning(
-                        f"ParadeDB BM25 failed, falling back to Postgres native FTS: {e}"
-                    )
-                    try:
-                        sql_fallback = text(f"""
-                            SELECT id, text, metadata_, ts_rank(to_tsvector('english', text), plainto_tsquery('english', :q)) as score
-                            FROM {table_name}
-                            WHERE to_tsvector('english', text) @@ plainto_tsquery('english', :q)
-                            ORDER BY score DESC
-                            LIMIT :k
-                        """)  # nosec B608
-                        result_proxy = connection.execute(
-                            sql_fallback, {"q": query, "k": n_results}
-                        )
-                        query_result = []
-                        for row in result_proxy:
-                            doc = Document(
-                                id=row[0],
-                                content=row[1],
-                                metadata=row[2],
-                                embedding=None,
-                            )
-                            query_result.append((doc, float(row[3])))
-                        results.append(query_result)
-                    except Exception as e2:
-                        logger.error(f"Text search failed: {e2}")
-                        results.append([])
-
+                cursor.execute(statement, (query, int(n_results)))
+                results.append(
+                    [(self._document(row), float(row[3])) for row in cursor.fetchall()]
+                )
         return results
+
+    def close(self) -> None:
+        if self._opened:
+            self._pool.close()

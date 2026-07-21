@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vector MCP Operations"
+  short_description: "Governed vector storage and retrieval"
+  default_prompt: "Use $vector-mcp-operations to run a secure, tenant-scoped vector workflow."

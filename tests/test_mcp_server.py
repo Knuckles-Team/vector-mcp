@@ -1,15 +1,10 @@
+import importlib
 import json
-import os
-import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Ensure LLM_BASE_URL is set in environment for imports / get_client
-os.environ["LLM_BASE_URL"] = "http://test-url"
 
-
-# Mock the missing vector_api module so that get_client works
 class MockApiClient:
     def __init__(self):
         self.create_collection = MagicMock()
@@ -32,24 +27,16 @@ class MockApiClient:
 
 mock_api_instance = MockApiClient()
 
-# Share the same vector_api mock across all tests to prevent import-caching issues
-if "vector_mcp.vector_api" not in sys.modules:
-    mock_vector_api = MagicMock()
-    mock_vector_api.Api = MagicMock()
-    sys.modules["vector_mcp.vector_api"] = mock_vector_api
-else:
-    mock_vector_api = sys.modules["vector_mcp.vector_api"]
-
-MockApiClass = mock_vector_api.Api
-MockApiClass.return_value = mock_api_instance
-
-from vector_mcp.mcp_server import get_mcp_instance, mcp_server
+mcp_server_module = importlib.import_module("vector_mcp.mcp_server")
+get_mcp_instance = mcp_server_module.get_mcp_instance
+mcp_server = mcp_server_module.mcp_server
 
 
 @pytest.fixture
-def mock_client_methods():
+def mock_client_methods(monkeypatch):
     """Reset the mock client methods."""
     mock_api_instance.reset_mock()
+    monkeypatch.setattr(mcp_server_module, "get_client", lambda: mock_api_instance)
     yield mock_api_instance
 
 
@@ -57,10 +44,12 @@ def mock_client_methods():
 async def test_health_check_route():
     """Assert the /health custom endpoint returns OK."""
     mcp, _, _ = get_mcp_instance()
-    route = mcp._additional_http_routes[0]
+    route = next(
+        route for route in mcp._additional_http_routes if route.path == "/health"
+    )
     response = await route.endpoint(None)
     assert response.status_code == 200
-    assert json.loads(response.body.decode()) == {"status": "OK"}
+    assert json.loads(response.body.decode()) == {"status": "ok"}
 
 
 @pytest.mark.asyncio
@@ -74,8 +63,8 @@ async def test_vector_collection_management_tools(mock_client_methods):
         "vector_collection_management",
         {
             "action": "create_collection",
-            "db_type": "chromadb",
-            "collection_name": "test-collection",
+            "db_type": "epistemic_graph",
+            "collection_name": "test_collection",
             "overwrite": True,
         },
     )
@@ -83,7 +72,7 @@ async def test_vector_collection_management_tools(mock_client_methods):
     assert "status" in res.content[0].text
     assert "created" in res.content[0].text
     mock_client_methods.create_collection.assert_called_once_with(
-        db_type="chromadb", collection_name="test-collection", overwrite=True
+        db_type="epistemic_graph", collection_name="test_collection", overwrite=True
     )
 
     # 2. Test add_documents
@@ -93,16 +82,16 @@ async def test_vector_collection_management_tools(mock_client_methods):
         "vector_collection_management",
         {
             "action": "add_documents",
-            "db_type": "chromadb",
-            "collection_name": "test-collection",
+            "db_type": "epistemic_graph",
+            "collection_name": "test_collection",
             "document_contents": ["Hello world"],
         },
     )
     assert "status" in res.content[0].text
     assert "added" in res.content[0].text
     mock_client_methods.add_documents.assert_called_once_with(
-        db_type="chromadb",
-        collection_name="test-collection",
+        db_type="epistemic_graph",
+        collection_name="test_collection",
         document_contents=["Hello world"],
     )
 
@@ -113,15 +102,15 @@ async def test_vector_collection_management_tools(mock_client_methods):
         "vector_collection_management",
         {
             "action": "delete_collection",
-            "db_type": "chromadb",
-            "collection_name": "test-collection",
+            "db_type": "epistemic_graph",
+            "collection_name": "test_collection",
             "confirm": True,
         },
     )
     assert "status" in res.content[0].text
     assert "deleted" in res.content[0].text
     mock_client_methods.delete_collection.assert_called_once_with(
-        db_type="chromadb", collection_name="test-collection", confirm=True
+        db_type="epistemic_graph", collection_name="test_collection", confirm=True
     )
 
     # 4. Test list_collections
@@ -133,11 +122,13 @@ async def test_vector_collection_management_tools(mock_client_methods):
         "vector_collection_management",
         {
             "action": "list_collections",
-            "db_type": "chromadb",
+            "db_type": "epistemic_graph",
         },
     )
     assert "col1" in res.content[0].text
-    mock_client_methods.list_collections.assert_called_once_with(db_type="chromadb")
+    mock_client_methods.list_collections.assert_called_once_with(
+        db_type="epistemic_graph"
+    )
 
     # 5. Test unknown action
     with pytest.raises(Exception, match="Unknown action 'invalid_action'"):
@@ -157,16 +148,16 @@ async def test_vector_search_tools(mock_client_methods):
         "vector_search",
         {
             "action": "semantic_search",
-            "db_type": "chromadb",
-            "collection_name": "test-collection",
+            "db_type": "epistemic_graph",
+            "collection_name": "test_collection",
             "question": "What is AI?",
             "number_results": 5,
         },
     )
     assert "results" in res.content[0].text
     mock_client_methods.semantic_search.assert_called_once_with(
-        db_type="chromadb",
-        collection_name="test-collection",
+        db_type="epistemic_graph",
+        collection_name="test_collection",
         question="What is AI?",
         number_results=5,
     )
@@ -178,16 +169,16 @@ async def test_vector_search_tools(mock_client_methods):
         "vector_search",
         {
             "action": "lexical_search",
-            "db_type": "chromadb",
-            "collection_name": "test-collection",
+            "db_type": "epistemic_graph",
+            "collection_name": "test_collection",
             "question": "What is AI?",
             "number_results": 3,
         },
     )
     assert "results" in res.content[0].text
     mock_client_methods.lexical_search.assert_called_once_with(
-        db_type="chromadb",
-        collection_name="test-collection",
+        db_type="epistemic_graph",
+        collection_name="test_collection",
         question="What is AI?",
         number_results=3,
     )
@@ -199,23 +190,23 @@ async def test_vector_search_tools(mock_client_methods):
         "vector_search",
         {
             "action": "search",
-            "db_type": "chromadb",
-            "collection_name": "test-collection",
+            "db_type": "epistemic_graph",
+            "collection_name": "test_collection",
             "question": "What is AI?",
             "number_results": 2,
             "semantic_weight": 0.7,
-            "bm25_weight": 0.3,
+            "lexical_weight": 0.3,
             "rrf_k": 60,
         },
     )
     assert "results" in res.content[0].text
     mock_client_methods.search.assert_called_once_with(
-        db_type="chromadb",
-        collection_name="test-collection",
+        db_type="epistemic_graph",
+        collection_name="test_collection",
         question="What is AI?",
         number_results=2,
         semantic_weight=0.7,
-        bm25_weight=0.3,
+        lexical_weight=0.3,
         rrf_k=60,
     )
 

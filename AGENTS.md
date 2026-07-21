@@ -1,284 +1,125 @@
 # AGENTS.md
 
-> Claude Code loads this file via `CLAUDE.md` (`@AGENTS.md` import) — the two stay
-> in sync. Edit **this** file, not `CLAUDE.md`.
+## Scope
 
-## Tech Stack & Architecture
-- Language/Version: Python 3.10+
+This repository provides the action-routed `vector-mcp` server, optional vector provider
+adapters, an agent entry point, packaged skills/prompts, a vector ontology, and a read-only
+collection-inventory connector preset.
+
+- Language/Version: Python 3.11+
 - Core Libraries: `agent-utilities`, `fastmcp`, `pydantic-ai`
 - Key principles: Functional patterns, Pydantic for data validation, asynchronous tool execution.
-- Architecture:
-    - `mcp_server.py`: Main MCP server entry point and tool registration.
-    - `agent.py`: Pydantic AI agent definition and logic.
-    - `skills/`: Directory containing modular agent skills (if applicable).
-    - `vectordb/`: Vector database implementations for multiple backends.
-    - `retriever/`: Retriever implementations for each backend.
 
-### Architecture Diagram
-```mermaid
-graph TD
-    User([User/A2A]) --> Server[A2A Server / FastAPI]
-    Server --> Agent[Pydantic AI Agent]
-    Agent --> Skills[Modular Skills]
-    Agent --> MCP[MCP Server / FastMCP]
-    MCP --> VectorDB[Vector Database Layer]
-    VectorDB --> Backend[Backend Implementation]
-    Backend --> Storage[(Vector Storage)]
-```
+## Current architecture
 
-### Workflow Diagram
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant S as Server
-    participant A as Agent
-    participant T as MCP Tool
-    participant V as VectorDB
-    participant B as Backend
-
-    U->>S: Request
-    S->>A: Process Query
-    A->>T: Invoke Tool
-    T->>V: VectorDB Operation
-    V->>B: Backend Call
-    B-->>V: Backend Response
-    V-->>T: VectorDB Result
-    T-->>A: Tool Result
-    A-->>S: Final Response
-    S-->>U: Output
-```
-
-## Commands (run these exactly)
-# Installation
-pip install .[all]
-
-# Quality & Linting (run from project root)
-pre-commit run --all-files
-
-# Execution Commands
-# vector-mcp\nvector_mcp.mcp:mcp_server\n# vector-agent\nvector_mcp.agent:agent_server
-
-# Testing
-# Start test databases
-podman-compose -f docker-compose.test.yml up -d
-
-# Run all tests
-python -m pytest tests/test_all_backends.py -v
-
-# Run specific backend tests
-python -m pytest tests/test_all_backends.py -k chromadb -v
-python -m pytest tests/test_all_backends.py -k postgres -v
-python -m pytest tests/test_all_backends.py -k mongodb -v
-python -m pytest tests/test_all_backends.py -k qdrant -v
-python -m pytest tests/test_all_backends.py -k couchbase -v
-
-# Stop test databases
-podman-compose -f docker-compose.test.yml down
-
-## Project Structure Quick Reference
-- MCP Entry Point → `mcp_server.py`
-- Agent Entry Point → `agent.py`
-- Source Code → `vector_mcp/`
-- Skills → `skills/` (if exists)
-- VectorDB Implementations → `vector_mcp/vectordb/`
-- Retriever Implementations → `vector_mcp/retriever/`
-- Tests → `tests/`
-
-### File Tree
 ```text
-├── .bumpversion.cfg
-├── .dockerignore
-├── .env
-├── .gitattributes
-├── .github
-│   └── workflows
-│       └── pipeline.yml
-├── .gitignore
-├── .pre-commit-config.yaml
-├── AGENTS.md
-├── Dockerfile
-├── LICENSE
-├── MANIFEST.in
-├── README.md
-├── compose.yml
-├── debug.Dockerfile
-├── docker-compose.test.yml
-├── mcp
-│   ├── documents
-│   └── pgdata
-├── mcp.compose.yml
-├── pyproject.toml
-├── pytest.ini
-├── requirements.txt
-├── scripts
-│   ├── debug_embedding.py
-│   ├── debug_full.py
-│   ├── debug_pg.py
-│   ├── investigate_timeout.py
-│   ├── test_embedding.py
-│   ├── validate_a2a_agent.py
-│   ├── validate_agents.py
-│   ├── validate_all_dbs.py
-│   └── verify_deps.py
-├── tests
-│   ├── README.md
-│   ├── TEST_RESULTS.md
-│   ├── reproduce_chunking.py
-│   ├── test_all_backends.py
-│   ├── test_databases.py
-│   ├── test_optional_dependencies.py
-│   ├── test_protocol_compliance.py
-│   ├── test_pruning.py
-│   └── test_vector_mcp_server.py
-└── vector_mcp
-    ├── __init__.py
-    ├── __main__.py
-    ├── agent.py
-    ├── mcp_server.py
-    ├── retriever
-    │   ├── __init__.py
-    │   ├── chromadb_retriever.py
-    │   ├── couchbase_retriever.py
-    │   ├── llamaindex_retriever.py
-    │   ├── mongodb_retriever.py
-    │   ├── postgres_retriever.py
-    │   ├── qdrant_retriever.py
-    │   └── retriever.py
-    └── vectordb
-        ├── __init__.py
-        ├── base.py
-        ├── chromadb.py
-        ├── couchbase.py
-        ├── db_utils.py
-        ├── mongodb.py
-        ├── postgres.py
-        └── qdrant.py
+MCP client
+  -> vector_collection_management / vector_search
+  -> validation, privacy, and backend policy
+  -> verified GraphSession boundary
+  -> configured provider
 ```
 
-## Code Style & Conventions
-**Always:**
-- Use `agent-utilities` for common patterns (e.g., `create_mcp_server`, `create_agent`).
-- Define input/output models using Pydantic.
-- Include descriptive docstrings for all tools (they are used as tool descriptions for LLMs).
-- Check for optional dependencies using `try/except ImportError`.
-- Use manual vector operations when SDK authentication issues arise (see MongoDB/Couchbase implementations).
+Epistemic-graph is the native default. Optional providers are isolated behind extras and imported
+only when selected.
 
-**Good example:**
-```python
-from agent_utilities import create_mcp_server
-from mcp.server.fastmcp import FastMCP
+## Non-negotiable design rules
 
-mcp = create_mcp_server("my-agent")
+- Do not add legacy paths, fallback implementations, deprecated aliases, compatibility shims, or
+  backward-compatibility branches. Migrate the current contract directly.
+- Do not accept credentials or local database paths as MCP tool arguments.
+- Do not persist endpoints, credentials, personal identity, raw content, hostnames, or local
+  filesystem paths in source, skills, docs, traces, reports, fixtures, or generated evidence.
+- Resolve runtime values through AgentConfig, environment variables, and supported secret
+  references.
+- Resolve TLS through the shared transport profile. Do not add certificate-verification bypasses.
+- Keep document ingestion confined to the configured root and relative caller-selected paths.
+- Keep optional dependencies lazy; importing `vector_mcp` must not start services or require
+  every provider SDK.
+- Never fabricate connector signatures, live test evidence, trace evidence, or safe dependency
+  versions.
 
-@mcp.tool()
-async def my_tool(param: str) -> str:
-    """Description for LLM."""
-    return f"Result: {param}"
-```
+## Source layout
 
-## Vector Database Backends
+- `vector_mcp/mcp_server.py`: condensed MCP registration and request boundary
+- `vector_mcp/vector_api.py`: verified session, privacy, secret, TLS, and provider boundary
+- `vector_mcp/vectordb/`: optional provider adapters
+- `vector_mcp/backend_policy.py`: canonical backend and exposure policy
+- `vector_mcp/document_inputs.py`: bounded root-confined ingestion inputs
+- `vector_mcp/doctor.py`: privacy-safe readiness output
+- `vector_mcp/skills/`, `prompts/`, `ontology/`, `connectors/`: packaged extensions
+- `tests/`: unit and explicitly configured integration tests
+- `docs/`: operator documentation
 
-### Supported Backends
+### Supported backends
+
 - **Epistemic-Graph** (**DEFAULT**): the native local AI-native engine — durable
   (redb-authoritative) with a native ANN/HNSW index, so semantic search is the engine's
   O(log N) vector search. Zero external infra (autostarts). Selected when `db_type` is
-  unspecified (override with `VECTOR_DB_TYPE`).
-- **ChromaDB**: Local filesystem-based vector database (no container required). Opt-in via the `[chromadb]` extra.
-- **PostgreSQL/PGVector**: PostgreSQL with pgvector extension (container required)
-- **MongoDB**: MongoDB with manual cosine similarity calculation (container required)
-- **Qdrant**: Qdrant vector database (container required)
-- **Couchbase**: Couchbase with REST API fallback and manual cosine similarity (container required, partially functional)
+  unspecified (override with `DATABASE_TYPE`, alias `VECTOR_DB_TYPE`).
+- **PostgreSQL/PGVector**, **Qdrant**, **MongoDB**: secure opt-in providers, TLS-verified and
+  secret-reference-only — the current, certified contract (`VectorDBFactory.PREDEFINED_VECTOR_DB`
+  and `backend_policy.ensure_backend_available` agree on exactly these four names, and both the
+  factory and the MCP tool boundary reject any other `db_type`, including legacy spellings like
+  `eg`/`epistemic-graph`).
+- **ChromaDB / Couchbase — removed from the supported contract.** `vector_mcp/vectordb/chromadb.py`
+  and `couchbase.py` remain in the tree (real, previously-shipped adapters) but are no longer wired
+  into `VectorDBFactory`, `vectordb.__init__`'s exports, or the packaged extras —
+  `db_type="chroma"|"couchbase"` raises `vector_database_type_unsupported` (see
+  `tests/test_protocol_compliance.py`, `tests/test_database_transport_security.py`). They can still
+  be imported directly (`from vector_mcp.vectordb.chromadb import ChromaVectorDB`) by a caller who
+  installs `chromadb`/`couchbase` + `llama-index` themselves, but that path is unsupported/untested
+  by the current contract.
 
-### Implementation Notes
+### Implementation notes
+
 - **Epistemic-Graph**: stores each chunk as an engine node (text in the indexed
   `description` property, plus metadata) with its embedding in the engine's native ANN
-  index via `SyncEpistemicGraphClient` (`.nodes.add` + `.graph.add_embedding`). Semantic
-  search is `.graph.semantic_search` (native ANN); lexical/keyword search is the engine's
-  one-round-trip `.graph.discover` (keyword overlap + semantic, scalable — a client-side
-  term scan is only a fallback for an engine too old for `discover`). A collection maps to
-  an engine graph (`graph_name`); embeddings come from the shared `create_embedding_model`.
-- **MongoDB**: Uses raw MongoClient instead of MongoDBAtlasVectorSearch to avoid authentication issues with local test containers. Implements manual cosine similarity calculation for semantic search.
-- **Couchbase**: Uses simple client approach with REST API fallback to bypass SDK authentication issues. Implements manual cosine similarity calculation for semantic search. Core search functionality working (10/14 tests passing), CRUD operations limited by N1QL service configuration.
-- **PostgreSQL**: Uses native PGVector with proper JSONB querying for get_documents_by_ids.
-- **Qdrant**: Uses Qdrant client with proper payload handling.
-- **ChromaDB**: Uses ChromaDB client with metadata-based ID resolution.
+  index via `SyncEpistemicGraphClient` (transactional `.txn.add_node` + `.txn.add_embedding`,
+  session-authority-cached connections). Semantic search is `.graph.semantic_search` (native
+  ANN); lexical/keyword search is the engine's one-round-trip `.graph.discover` (keyword overlap
+  + semantic, scalable — a client-side term scan is only a fallback for an engine too old for
+  `discover`). A collection maps to an engine graph (`graph_name`); embeddings come from the
+  shared `create_embedding_model`.
+- **PostgreSQL / Qdrant / MongoDB**: rewritten on raw `psycopg`/`qdrant_client`/`pymongo` (no
+  `llama-index` dependency) behind the shared TLS-pinned transport layer.
 
-### Test Coverage
-- **ChromaDB**: 14/14 tests passing (100%)
-- **PostgreSQL**: 14/14 tests passing (100%)
-- **MongoDB**: 14/14 tests passing (100%)
-- **Qdrant**: 14/14 tests passing (100%)
-- **Couchbase**: 10/14 tests passing (71% - search operations working)
-- **Overall**: 66/70 tests passing (94.3%)
+Deleted root-level debug scripts and obsolete test compose artifacts must remain deleted.
+Maintained container definitions live under `docker/`.
 
-See `tests/TEST_RESULTS.md` for detailed test results and known issues.
+## Development rules
 
-## Dos and Don'ts
-**Do:**
-- Run `pre-commit` before pushing changes.
-- Use existing patterns from `agent-utilities`.
-- Keep tools focused and idempotent where possible.
-- Check for optional dependencies before importing backend-specific libraries.
-- Use manual vector operations when SDK authentication issues arise.
-- Run tests after making changes to vector database implementations.
+- Use `agent-utilities` primitives for MCP construction, AgentConfig, secrets, transport
+  security, and observability.
+- Keep public tool schemas bounded and explicit.
+- Use Pydantic fields/models where they define a public validation boundary.
+- Log stable status and exception types, not values or response bodies.
+- Require runtime credentials for integration tests; never supply checked-in password defaults.
+- Preserve unrelated user work and do not commit caches, databases, traces, logs, build outputs,
+  or environment files.
+- Keep `pyproject.toml`, module versions, and `uv.lock` synchronized. Do not regenerate the
+  lock as a side effect of unrelated work.
 
-**Don't:**
-- Use `cd` commands in scripts; use absolute paths or relative to project root.
-- Add new dependencies to `dependencies` in `pyproject.toml` without checking `optional-dependencies` first.
-- Hardcode secrets; use environment variables or `.env` files.
-- Assume all backends are available; check for optional dependencies.
-- Modify vector database implementations without running the corresponding tests.
+## Cheap validation
 
-## Safety & Boundaries
-**Always do:**
-- Run lint/test via `pre-commit`.
-- Use `agent-utilities` base classes.
-- Test vector database implementations with the comprehensive test suite.
-- Check for optional dependencies before using backend-specific features.
-
-**Ask first:**
-- Major refactors of `mcp_server.py` or `agent.py`.
-- Deleting or renaming public tool functions.
-- Changing the VectorDB base class interface.
-- Adding new vector database backends.
-
-**Never do:**
-- Commit `.env` files or secrets.
-- Modify `agent-utilities` or `universal-skills` files from within this package.
-- Skip tests after modifying vector database implementations.
-- Hardcode database credentials; use environment variables.
-
-## When Stuck
-- Propose a plan first before making large changes.
-- Check `agent-utilities` documentation for existing helpers.
-- Review `tests/TEST_RESULTS.md` for known issues and solutions.
-- Check the implementation of working backends for patterns to follow.
-- Run the comprehensive test suite to validate changes.
-
-
-## Testing with Timeout
-
-To run tests with a timeout to prevent hanging, use the `pytest-timeout` plugin. You can combine it with the `-k` flag to run specific tests:
+These checks do not start providers:
 
 ```bash
-uv run pytest --timeout=60 -k "test_name_pattern"
+python scripts/security_sanitizer.py
+python scripts/security_contract.py --contract .security/security-contract.json validate
+python -m compileall -q vector_mcp
 ```
 
-## ⛔ No Scratch or Temporary Files in Repository
+Also parse JSON/TOML/YAML, run `git diff --check`, and run the configured formatter/linter.
+Provider tests, services, lock regeneration, and native compilation are separate serialized gates
+and must not be run concurrently on a constrained workstation.
 
-**NEVER write any of the following to this repository:**
-- Temporary test scripts (`test_*.py`, `debug_*.py` outside of `tests/`)
-- Scratch scripts or experimental one-off files
-- Log files (`.log`, `.txt` command output)
-- Random text files with command output or debug dumps
-- Any file that is NOT production source code, tests in `tests/`, or documentation
+## Connector evidence
 
-**Why:** These files expose private filesystem paths, credentials, and internal infrastructure details when pushed to GitHub publicly.
-
-**Where to put scratch work instead:**
-- Use `~/workspace/scratch/` for temporary scripts and experiments
-- Use `~/workspace/reports/` for command output and reports
-- Keep test scripts in the `tests/` directory following proper pytest conventions
+The source preset follows the installed action-routed tool schema. Exact tool-schema fingerprints,
+connector manifests, and certification files are generated release evidence. Generate them only
+after observing the installed MCP schema and resolving an authorized runtime signing key. If
+source ontology or tool schemas change, old signatures are invalid and must not be copied forward.
 
 ## ⛔ Keep the Repository Root Pristine — No Scratch / Temp / Debug Files
 
@@ -298,11 +139,15 @@ config, docs, lockfiles). The only hidden directories allowed at root are
 - Any file that is NOT production source, a test in `tests/`, documentation, or
   a recognized config/lockfile.
 
-**Why:** scratch at the root leaks private paths/credentials, bloats the tree,
-and erodes a pristine codebase.
+**Why:** these files expose private filesystem paths, credentials, and internal infrastructure
+details when pushed to GitHub publicly; scratch at the root also bloats the tree and erodes a
+pristine codebase.
 
-**Where scratch goes instead:** `~/workspace/scratch/` (experiments),
-`~/workspace/reports/` (command output); tests go in `tests/` (pytest).
+**Where to put scratch work instead:**
+- Use `~/workspace/scratch/` for temporary scripts and experiments
+- Use `~/workspace/reports/` for command output and reports
+- Keep test scripts in the `tests/` directory following proper pytest conventions
+
 Before finishing a task, run `git status` and confirm no stray root files were added.
 
 <!-- BEGIN concept-coordination (generated) -->

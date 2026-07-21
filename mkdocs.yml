@@ -46,3 +46,8 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Overview: overview.md
+  - Installation: installation.md
+  - Configuration: configuration.md
+  - Deployment: deployment.md
+  - Usage: usage.md
+  - Concepts: concepts.md
