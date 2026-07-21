@@ -9,7 +9,7 @@ description = "Governed vector retrieval over native epistemic-graph and secure 
 readme = "README.md"
 classifiers = [ "Development Status :: 5 - Production/Stable", "License :: Public Domain", "Environment :: Console", "Operating System :: POSIX :: Linux", "Programming Language :: Python :: 3",]
 requires-python = ">=3.11"
-dependencies = [ "agent-utilities[embeddings-openai,mcp]>=1.27.1,<2.0.0", "markdownify>=1.2.2", "beautifulsoup4>=4.14.3", "ebooklib>=0.20", "html2text>=2025.4.15", "ipython>=1.0.0", "pypdf>=6.7.2", "protobuf>=6.33.5", "llama-index-core>=0.14.15", "llama-index-readers-file>=0.5.6",]
+dependencies = [ "agent-utilities[embeddings-openai,mcp]>=1.27.1,<2.0.0", "markdownify>=1.2.3", "beautifulsoup4>=4.15.0", "ebooklib>=0.20", "html2text>=2025.4.15", "ipython>=9.15.0", "pypdf>=6.14.2", "protobuf>=7.35.1", "llama-index-core>=0.14.23", "llama-index-readers-file>=0.6.0",]
 [[project.authors]]
 name = "Project Maintainers"
 email = "maintainers@example.invalid"
@@ -19,14 +19,14 @@ text = "MIT"
 
 [project.optional-dependencies]
 mcp = [ "agent-utilities[mcp]>=1.27.1,<2.0.0",]
-postgres = [ "psycopg[pool]>=3.3.3",]
-qdrant = [ "qdrant-client>=1.16.2",]
-mongodb = [ "pymongo>=4.11.0",]
+postgres = [ "psycopg[pool]>=3.3.4",]
+qdrant = [ "qdrant-client>=1.18.0",]
+mongodb = [ "pymongo>=4.17.0",]
 huggingface = [ "agent-utilities[embeddings-huggingface]>=1.27.1,<2.0.0",]
 agent = [ "agent-utilities[agent-runtime,langfuse,logfire]>=1.27.1,<2.0.0",]
 all = [ "vector-mcp[mcp,postgres,qdrant,mongodb,huggingface,agent]>=2.1.2",]
 test = [
-    "pytest-xdist>=3.6.0", "pytest", "pytest-asyncio", "pytest-cov",]
+    "pytest-xdist>=3.8.0", "pytest>=9.1.1", "pytest-asyncio>=1.4.0", "pytest-cov>=7.1.0",]
 
 [project.scripts]
 vector-mcp = "vector_mcp.mcp_server:mcp_server"
