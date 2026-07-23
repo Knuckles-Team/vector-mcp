@@ -28,12 +28,12 @@ RUN apt-get update \
 # MCP dependency closure, including the mandatory full engine.
 FROM builder-base AS builder-mcp
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system --upgrade --break-system-packages --prerelease=allow vector-mcp[mcp]>=2.1.2
+    uv pip install --system --upgrade --break-system-packages --prerelease=allow vector-mcp[mcp]>=3.0.0
 
 # Full agent runtime dependency closure.
 FROM builder-base AS builder-agent
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system --upgrade --break-system-packages --prerelease=allow vector-mcp[agent]>=2.1.2
+    uv pip install --system --upgrade --break-system-packages --prerelease=allow vector-mcp[agent]>=3.0.0
 
 FROM python:3.14-slim@sha256:cea0e6040540fb2b965b6e7fb5ffa00871e632eef63719f0ea54bca189ce14a6 AS runtime-base
 ARG HOST=0.0.0.0

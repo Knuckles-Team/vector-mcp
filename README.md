@@ -4,7 +4,7 @@ Action-routed MCP and agent interfaces for governed vector collection management
 The native default is epistemic-graph. Secure opt-in providers cover PostgreSQL/pgvector,
 Qdrant, and MongoDB Atlas.
 
-*Version: 2.1.2*
+*Version: 3.0.0*
 
 <!-- GOVERNED-CAPABILITY:START -->
 ## Governed capability
