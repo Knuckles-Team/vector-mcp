@@ -8,7 +8,7 @@ version = "2.1.2"
 description = "Governed vector retrieval over native epistemic-graph and secure opt-in providers."
 readme = "README.md"
 classifiers = [ "Development Status :: 5 - Production/Stable", "License :: Public Domain", "Environment :: Console", "Operating System :: POSIX :: Linux", "Programming Language :: Python :: 3",]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [ "agent-utilities[embeddings-openai,mcp]>=1.27.1,<2.0.0", "markdownify>=1.2.3", "beautifulsoup4>=4.15.0", "ebooklib>=0.20", "html2text>=2025.4.15", "ipython>=9.15.0", "pypdf>=6.14.2", "protobuf>=7.35.1", "llama-index-core>=0.14.23", "llama-index-readers-file>=0.6.0",]
 [[project.authors]]
 name = "Project Maintainers"
