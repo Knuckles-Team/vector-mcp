@@ -25,7 +25,7 @@ Use the smallest extra set required by the deployment:
 uvx --from 'vector-mcp[mcp]' vector-mcp
 ```
 
-The runtime requires `agent-utilities>=1.27.1` and its self-contained full
+The runtime requires `agent-utilities>=2.0.0` and its self-contained full
 epistemic-graph engine contract. A bare numeric-only or partial engine profile is not a
 supported deployment.
 

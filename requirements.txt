@@ -1,4 +1,4 @@
-agent-utilities[embeddings-openai,mcp]>=1.27.1,<2.0.0
+agent-utilities[embeddings-openai,mcp]>=2.0.0,<3.0.0
 markdownify>=1.2.2
 beautifulsoup4>=4.14.3
 ebooklib>=0.20
