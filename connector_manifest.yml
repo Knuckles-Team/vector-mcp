@@ -55,6 +55,11 @@ resources:
     target: VectorBackend
     lpg_rel_type: ''
 actions:
+- id: epistemic-answer
+  name: Epistemic Answer
+  description: 'Answers epistemic_status/why/what_changed queries over the shared knowledge graph: calibrated
+    confidence, evidence/source citations, belief justification trees, bitemporal valid/tx history, and
+    policy-redaction-aware provenance.'
 - id: run_graph_flow
   name: Graph Flow Execution
   description: Execute a workflow through the agent's graph orchestration engine
@@ -186,7 +191,7 @@ sync:
     doc_type: vector_collection
 provenance:
   generated_by: scripts/generate_connector_manifests.py
-  generated_at: '2026-07-18T14:21:05Z'
+  generated_at: '2026-07-31T04:00:00Z'
   source_artifacts:
   - a2a.json
   - vector_mcp/connectors/mcp_source_presets.json
@@ -194,12 +199,12 @@ provenance:
   - vector_mcp/ontology/vector.ttl
   integrity:
     algorithm: urdna2015-sha256
-    hash: d96e6b77d78f42fe92be2a06b5d490c67aaa48a2264d682b1d37b2c95ebe2e22
-    triple_count: 83
+    hash: bbf8e7a1f5ad06f76aa55e10589503d05c6b9412b7dabed0fa26a63c6a1bef2d
+    triple_count: 86
   signer: ontology-manifest-generator
   signature_algorithm: ed25519
-  signing_public_key: q0Cp7bmQMqJhbofGKKw8xXC6KbFzukBDDke0UYVi8y4
-  signature: G3tbCg9BpVkgrZgOPzyrk0DuDrtIb1LMfNHEDZ-NYUeej_8Ny_dWHh47tP4ZRk7y2z0L9fVzoafJjbLiNvkBDQ
+  signing_public_key: QkigdPNpcUU7x7NcSkwCsUXIQpaFncMQbYSoiSgI2SY
+  signature: 7nbcLHz9vXHzE59DV1EzLTEU9h8EJ7pdcch2ta5XRc3DmIXcvLKENpHVO3ZFnfbK0aZ1K-Fe3URAaBF9wTajDQ
 policy:
   pii_fields: {}
   tenant_boundary: null
@@ -219,36 +224,3 @@ review_todos:
   \ \u2014 verify manually before relying on this crosswalk for reasoning/joins."
 - "schema_mappings.VectorCollection.ontology_class = None [UNRESOLVED \u2014 no crosswalk found by any\
   \ heuristic] \u2014 verify manually before relying on this crosswalk for reasoning/joins."
-- "auth: dual \u2014 the default backend (epistemic-graph engine) uses an HMAC secret over Unix socket/TCP;\
-  \ a separate embedding/LLM endpoint uses a Bearer token; alternate backends (Qdrant/Chroma/Postgres/Mongo/Couchbase)\
-  \ carry their own auth via constructor params, not directly env-driven in the code inspected. Env: GRAPH_SERVICE_SOCKET,\
-  \ GRAPH_SERVICE_AUTH_SECRET (alias EPISTEMIC_GRAPH_SECRET), GRAPH_SERVICE_TCP_ADDR, LLM_BASE_URL, LLM_TOKEN/LLM_API_KEY,\
-  \ LLM_SSL_VERIFY, DATABASE_TYPE (alias VECTOR_DB_TYPE). required_scopes: none found. Shape: single shared HMAC secret/socket\
-  \ + shared LLM bearer token; no per-user delegation. KNOWN DOC DRIFT: README documents a generic VECTOR_API_KEY\
-  \ not actually referenced anywhere in vector_mcp/ source."
-- "change_support: none \u2014 this connector is NOT wired into any source_sync delta/hydrate/materialize\
-  \ ingestion path today (see docs/architecture/kg_connectors_and_ingestion.md section 8 connector inventory,\
-  \ which omits it entirely); it is an action/ops MCP connector (control-plane calls), not a KG data-ingestion\
-  \ source. cdc: none. webhook: none (any 'webhook' hits in this package's source manage webhooks/admission-hooks\
-  \ IN THE REMOTE SYSTEM \u2014 they are not an inbound push-ingestion receiver into this KG)."
-- "policy.classification / policy.retention: UNKNOWN \u2014 this connector declares no data classification\
-  \ (e.g. public/internal/confidential/restricted) or retention/legal-hold policy anywhere in its shipped\
-  \ artifacts; do not assume a default. Treat both as manifest_status=draft until an operator reviews\
-  \ the actual data handled and states a classification + retention period explicitly (see policy.pii_fields\
-  \ above for the one heuristic that IS populated)."
-- "quality (SHACL shapes / freshness SLA): UNKNOWN \u2014 no SHACL shape set or freshness contract is\
-  \ declared for this connector's resources; manifest_status=draft for quality until a shape set + freshness\
-  \ SLA is authored and referenced here."
-- "manifest_status: draft \u2014 resources/schema_mappings/sync/actions/events were generated deterministically\
-  \ (zero LLM, zero network) from this connector's OWN shipped artifacts via scripts/generate_connector_manifests.py;\
-  \ the auth/required_scopes/change_support/policy/quality annotations above were added by a manual read-only\
-  \ code survey (not re-verified against a live deployment) as part of AU-P1-6 making this connector's\
-  \ manifest MANDATORY for enterprise activation \u2014 operator sign-off on the ontology_class crosswalks,\
-  \ PII/RLS policy, and the classification/retention/quality gaps above is still required before this\
-  \ manifest should be treated as fully authoritative."
-- "provenance.integrity/signature: STALE \u2014 this manifest was reconciled from two diverged branches\
-  \ (git merge) on 2026-07-21; the ontology/tool-schema content changed as part of that merge\
-  \ (DATABASE_TYPE/VECTOR_DB_TYPE aliasing, lexical_search hybrid-discover fix), so the\
-  \ carried-forward integrity.hash/signature no longer attest to the current source_artifacts. Re-run\
-  \ scripts/generate_connector_manifests.py with an authorized signing key before treating this manifest\
-  \ as cryptographically authoritative."
