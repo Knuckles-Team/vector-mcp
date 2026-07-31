@@ -183,3 +183,33 @@ is what Dependabot flags. Rules:
    Dependabot/security surface.
 4. **Patch CVEs with a version floor at the source, then re-lock.** `uv` resolves one version
    graph-wide, so a lower-bound in the extra that pulls a dependency raises it for the whole lock.
+
+## Upstream currency edict — target the newest release; a pin is a hypothesis, not a fact (READ BEFORE capping, deferring, or opt-in-gating an upgrade)
+
+This governs how we treat **other people's** releases, deprecations, and version caps in
+this repo (fleet-wide edict, propagated from `agent-utilities/AGENTS.md`).
+
+1. **Latest by default.** Target the newest upstream release -- including a pre-release
+   where the ecosystem has already moved onto it. Sitting on an old major because the
+   upgrade is work is not a reason to defer it.
+2. **A conservative upstream pin is a hypothesis, not a fact -- test it, don't inherit
+   it.** Upstream maintainers cap defensively (an unreleased major, an untested surface)
+   as often as they cap for a known break. Worked example (from `agent-utilities`):
+   `pydantic-ai-slim` 2.18.0 declared `fastmcp-slim[client]>=3.3.0` with no upper bound;
+   2.19.0 added `<4` purely as a defensive guard while fastmcp 4 was still pre-release --
+   not because of an observed incompatibility. Blocking an upgrade on that kind of cap
+   without testing it is the wrong default.
+3. **Forward-fix only.** When an upgrade breaks something, fix the break to proceed --
+   do not pin backwards, vendor a fork, or route around it. If a break is genuinely
+   unfixable inside this repo, say exactly what and why, and carry a plan to unblock it
+   -- never an indefinite pin.
+4. **Deprecations are fixed on sight, in code AND in tests.** A `DeprecationWarning` from
+   an upstream library is a defect to fix now, not noise to filter. **Never** silence one
+   with a warning filter, `# noqa`, or a pytest `filterwarnings` entry in order to go
+   green.
+5. **Adopt upstream features rather than reimplementing them.** If upstream ships a
+   capability this repo hand-rolled, migrate to theirs and delete the local one.
+6. **Nothing built on an upgrade ships opt-in.** A new capability an upgrade unlocks is
+   default-on unless it genuinely costs compute, in which case it is policy-selected,
+   never flag-gated. An opt-in extra or a dependency-conflict fork is an interim state
+   that must carry a written plan to become the default, never a resting place.
