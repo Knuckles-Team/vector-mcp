@@ -86,7 +86,7 @@ _Auto-generated from the live MCP server — do not edit by hand._
 _1 action-routed tool(s) (default) · 7 verbose 1:1 tool(s). Each is enabled unless its `<DOMAIN>TOOL` toggle is set false; `MCP_TOOL_MODE` selects the surface (`condensed` default · `verbose` 1:1 · `both`). Auto-generated — do not edit._
 <!-- MCP-TOOLS-TABLE:END -->
 
-Detailed tool schemas, parameter shapes, and validation constraints are preserved in [docs/mcp.md](docs/mcp.md).
+Detailed tool schemas, parameter shapes, and validation constraints are preserved in [the usage guide](docs/usage.md).
 
 ### Dynamic Tool Selection & Visibility
 
@@ -235,7 +235,7 @@ consumed from a **remote deployment**. The
 - **Local container / uv** — launch the server from `mcp_config.json` via `uvx`,
   `docker run`, or `podman run`, or point at a local streamable-http container by `url`.
 - **Remote URL** — connect to a server deployed behind Caddy at
-  `http://vector-mcp.arpa/mcp` using the `"url"` key.
+  `https://vector-mcp.example.invalid/mcp` using the `"url"` key.
 <!-- END GENERATED: additional-deployment-options -->
 
 ---
