@@ -126,19 +126,19 @@ uv run vector-mcp --transport streamable-http --port 8000
 ### 4. Remote URL (deployed behind Caddy)
 
 When the server is deployed remotely (e.g. as a Docker service) and published through
-Caddy on the internal `*.arpa` zone, connect with the `"url"` key — no local process or
+Caddy at a deployment-selected HTTPS hostname, connect with the `"url"` key — no local process or
 image required:
 
 ```json
 {
   "mcpServers": {
-    "vector-mcp": { "url": "http://vector-mcp.arpa/mcp" }
+    "vector-mcp": { "url": "https://vector-mcp.example.invalid/mcp" }
   }
 }
 ```
 
-Caddy reverse-proxies `http://vector-mcp.arpa` to the container's `:8000`
-streamable-http listener; `http://vector-mcp.arpa/health` returns
+Caddy reverse-proxies `https://vector-mcp.example.invalid` to the container's `:8000`
+streamable-http listener; `https://vector-mcp.example.invalid/health` returns
 `{"status":"OK"}` when the service is live.
 <!-- END GENERATED: deployment-options -->
 
