@@ -45,6 +45,9 @@ vector-mcp = "vector_mcp.connectors"
 [project.entry-points."agent_utilities.prompt_providers"]
 vector-mcp = "vector_mcp.prompts"
 
+[tool.uv.workspace]
+members = ["."]
+
 [tool.setuptools]
 include-package-data = true
 
