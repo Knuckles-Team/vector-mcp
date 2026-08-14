@@ -7,17 +7,12 @@
         "vector-mcp"
       ],
       "env": {
-        "MCP_TOOL_MODE": "condensed",
+        "MCP_TOOL_MODE": "intent",
         "COLLECTION_MANAGEMENTTOOL": "True",
-        "LLM_TOKEN": "",
+        "DATABASE_TYPE": "epistemic_graph",
+        "LLM_SSL_VERIFY": "False",
         "SEARCHTOOL": "True",
-        "TEST_COUCHBASE_DB": "vector_db",
-        "TEST_COUCHBASE_PASSWORD": "password",
-        "TEST_COUCHBASE_USER": "Administrator",
-        "TEST_MONGODB_DB": "vectordb",
-        "TEST_MONGODB_HOST": "localhost",
-        "TEST_MONGODB_PORT": "27017",
-        "TEST_QDRANT_LOCATION": "http://localhost:6333"
+        "VECTOR_DB_TYPE": "epistemic_graph"
       }
     }
   }

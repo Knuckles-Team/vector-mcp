@@ -1902,7 +1902,7 @@ wheels = [
 
 [[package]]
 name = "langfuse-agent"
-version = "2.0.0"
+version = "2.1.0"
 source = { editable = ".uv-workspace-siblings/agent-utilities/.uv-workspace-siblings/langfuse-agent" }
 dependencies = [
     { name = "agent-utilities", extra = ["mcp"] },
@@ -4831,7 +4831,7 @@ wheels = [
 
 [[package]]
 name = "vector-mcp"
-version = "3.0.0"
+version = "3.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "agent-utilities", extra = ["embeddings-openai", "mcp"] },
