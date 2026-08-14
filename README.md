@@ -4,7 +4,7 @@ Action-routed MCP and agent interfaces for governed vector collection management
 The native default is epistemic-graph. Secure opt-in providers cover PostgreSQL/pgvector,
 Qdrant, and MongoDB Atlas.
 
-*Version: 3.0.0*
+*Version: 3.1.0*
 
 <!-- GOVERNED-CAPABILITY:START -->
 ## Governed capability
@@ -60,30 +60,14 @@ _Auto-generated from the live MCP server — do not edit by hand._
 
 <!-- MCP-TOOLS-TABLE:START -->
 
-#### Condensed action-routed tools (default — `MCP_TOOL_MODE=condensed`)
+#### Condensed action-routed tools (`MCP_TOOL_MODE=condensed`)
 
 | MCP Tool | Toggle Env Var | Description |
 |----------|----------------|-------------|
 | `vector_collection_management` | `COLLECTION_MANAGEMENTTOOL` | Manage collection management operations. |
+| `vector_search` | `SEARCHTOOL` | Manage search operations. |
 
-#### Verbose 1:1 API-mapped tools (`MCP_TOOL_MODE=verbose` or `both`)
-
-<details>
-<summary>7 per-operation tools — one per public API method (click to expand)</summary>
-
-| MCP Tool | Toggle Env Var | Description |
-|----------|----------------|-------------|
-| `vector_add_documents` | `APITOOL` | Add documents. |
-| `vector_create_collection` | `APITOOL` | Create a collection. |
-| `vector_delete_collection` | `APITOOL` | Delete a collection. |
-| `vector_lexical_search` | `APITOOL` | Perform lexical search. |
-| `vector_list_collections` | `APITOOL` | List collections. |
-| `vector_search` | `SEARCHTOOL` | Perform hybrid search. |
-| `vector_semantic_search` | `APITOOL` | Perform semantic search. |
-
-</details>
-
-_1 action-routed tool(s) (default) · 7 verbose 1:1 tool(s). Each is enabled unless its `<DOMAIN>TOOL` toggle is set false; `MCP_TOOL_MODE` selects the surface (`condensed` default · `verbose` 1:1 · `both`). Auto-generated — do not edit._
+_2 action-routed tool(s) · 0 verbose 1:1 tool(s). Each is enabled unless its `<DOMAIN>TOOL` toggle is set false; `MCP_TOOL_MODE` selects the surface (**`intent` default** — the six verb-tools, granular set loaded on demand · `condensed` action-routed · `verbose` 1:1 · `both`). Auto-generated — do not edit._
 <!-- MCP-TOOLS-TABLE:END -->
 
 Detailed tool schemas, parameter shapes, and validation constraints are preserved in [the usage guide](docs/usage.md).
@@ -113,15 +97,12 @@ When query strings or parameters are supplied, an LLM-free **Knowledge Graph res
 
 <!-- MCP-CONFIG-EXAMPLES:START -->
 
-> **Install the slim `[mcp]` extra.** All examples install `vector-mcp[mcp]` — the
-> MCP-server extra that pulls only the FastMCP / FastAPI tooling (`agent-utilities[mcp]`).
-> It deliberately **excludes** the heavy agent runtime (`pydantic-ai`, the epistemic-graph
-> engine, `dspy`, `llama-index`), so `uvx` / container installs are far smaller. Use the
-> full `[agent]` extra only when you need the integrated Pydantic AI agent.
+> **Install the connector-focused `[mcp]` extra.** Examples use `vector-mcp[mcp]` to add
+> FastMCP / FastAPI through `agent-utilities[mcp]`; the required Agent Utilities core
+> still carries `epistemic-graph[full]`. The `[agent-runtime]` extra additionally
+> enables model orchestration.
 
 #### stdio Transport (local IDEs — Cursor, Claude Desktop, VS Code)
-
-A client launch entry can remain equally small:
 
 ```json
 {
@@ -134,15 +115,21 @@ A client launch entry can remain equally small:
         "vector-mcp"
       ],
       "env": {
-        "MCP_TOOL_MODE": "condensed",
+        "MCP_TOOL_MODE": "intent",
         "COLLECTION_MANAGEMENTTOOL": "True",
+        "DATABASE_TYPE": "epistemic_graph",
+        "LLM_SSL_VERIFY": "False",
         "SEARCHTOOL": "True",
-        "DATABASE_TYPE": "epistemic_graph"
+        "VECTOR_DB_TYPE": "epistemic_graph"
       }
     }
   }
 }
 ```
+
+Runtime references require an alias-aware launcher such as GraphOS. Other
+launchers must omit those entries and inject the resolved values through their
+own runtime secret boundary.
 
 #### Streamable-HTTP Transport (networked / production)
 
@@ -162,63 +149,56 @@ A client launch entry can remain equally small:
       ],
       "env": {
         "TRANSPORT": "streamable-http",
-        "HOST": "0.0.0.0",
+        "HOST": "127.0.0.1",
         "PORT": "8000",
-        "MCP_TOOL_MODE": "condensed",
+        "MCP_TOOL_MODE": "intent",
         "COLLECTION_MANAGEMENTTOOL": "True",
+        "DATABASE_TYPE": "epistemic_graph",
+        "LLM_SSL_VERIFY": "False",
         "SEARCHTOOL": "True",
-        "DATABASE_TYPE": "epistemic_graph"
+        "VECTOR_DB_TYPE": "epistemic_graph"
       }
     }
   }
 }
 ```
 
-Alternatively, connect to a pre-deployed Streamable-HTTP instance by `url`. Do not put concrete
-endpoints, certificate paths, credentials, or user directories in the repository. Durable
-credentials and TLS profiles should be supplied by secret reference.
+Alternatively, connect to a pre-deployed Streamable-HTTP instance by `url`:
 
-## Tool surface
+```json
+{
+  "mcpServers": {
+    "vector-mcp": {
+      "url": "http://localhost:8000/vector-mcp/mcp"
+    }
+  }
+}
+```
 
-### `vector_collection_management`
-
-Supported actions:
-
-- `create_collection`
-- `add_documents`
-- `delete_collection`
-- `list_collections`
-
-Database credentials and local database paths are not accepted as tool arguments. Document
-files are selected only by paths relative to the administrator-owned `DOCUMENT_DIRECTORY`.
-Absolute paths, URLs, traversal, symbolic links, unbounded file sets, and oversized content are
-rejected before delegation.
-
-### `vector_search`
-
-Supported actions:
-
-- `semantic_search`
-- `lexical_search`
-- `search` (hybrid retrieval)
-
-Backend names, collection identifiers, result counts, search weights, and request sizes are
-validated at the MCP boundary. Legacy aliases and providers without the common indexed,
-authenticated, verified-TLS contract are not advertised or accepted.
-
-## Runtime trust
-
-Embedding providers are selected through the shared AgentConfig `EMBEDDING_MODELS` registry.
-Model credentials remain references in that registry, and model trust is selected through
-`EMBEDDING_TLS_PROFILE` or `EMBEDDING_TLS_PROFILE_REF`. Database credentials likewise use only
-`env://`, `vault://`, or `secret://` references. Complete-chain PEM bundles, system trust, mTLS,
-and proxy policy are resolved by Agent Utilities at runtime; boolean certificate-verification
-bypasses are not supported. The doctor reports configuration booleans and
-readiness without printing endpoints, hostnames, paths, identities, or secret references:
+Run a reviewed container image as a least-privilege stdio child (no
+listener or published port):
 
 ```bash
-vector-mcp-doctor
+docker run -i --rm \
+  --read-only \
+  --cap-drop=ALL \
+  --security-opt=no-new-privileges \
+  --pids-limit=256 \
+  --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
+  -e TRANSPORT=stdio \
+  -e MCP_TOOL_MODE=intent \
+  -e COLLECTION_MANAGEMENTTOOL=True \
+  -e DATABASE_TYPE=epistemic_graph \
+  -e LLM_SSL_VERIFY=False \
+  -e SEARCHTOOL=True \
+  -e VECTOR_DB_TYPE=epistemic_graph \
+  registry.example.invalid/vector-mcp@sha256:<digest> vector-mcp
 ```
+
+For containerized network HTTP, supply an authenticated TLS ingress (or
+direct server TLS), exact `MCP_ALLOWED_HOSTS`, and an exact trusted-proxy
+CIDR policy through the operator-owned deployment profile. The generator
+does not emit an unauthenticated non-loopback listener.
 
 _Auto-generated from the code-read env surface (`MCP_TOOL_MODE` + package vars) — do not edit._
 <!-- MCP-CONFIG-EXAMPLES:END -->
@@ -248,22 +228,26 @@ consumed from a **remote deployment**. The
 
 | Variable | Example | Description |
 |----------|---------|-------------|
-| `HOST` | `0.0.0.0` |  |
+| `HOST` | `127.0.0.1` |  |
 | `PORT` | `8000` |  |
 | `TRANSPORT` | `stdio` | options: stdio, streamable-http, sse |
-| `ENABLE_OTEL` | `True` |  |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:8080/api/public/otel` |  |
-| `OTEL_EXPORTER_OTLP_PUBLIC_KEY` | `pk-...` |  |
-| `OTEL_EXPORTER_OTLP_SECRET_KEY` | `sk-...` |  |
-| `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf` |  |
-| `EUNOMIA_TYPE` | `none` | options: none, embedded, remote |
-| `EUNOMIA_POLICY_FILE` | `mcp_policies.json` |  |
-| `EUNOMIA_REMOTE_URL` | `http://eunomia-server:8000` |  |
+| `ENABLE_OTEL` | — |  |
+| `EMBEDDING_TLS_PROFILE_REF` | `secret://runtime/embedding-tls-profile` | Configure AgentConfig EMBEDDING_MODELS and its referenced runtime credentials. |
 | `LLM_BASE_URL` | `http://localhost:8000/v1` | embedding/LLM API base url |
-| `LLM_TOKEN` | — | bearer token for the embedding/LLM endpoint |
-| `LLM_API_KEY` | — | alias accepted if LLM_TOKEN is unset |
+| `LLM_TOKEN` | secret-injected | bearer token for the embedding/LLM endpoint |
+| `LLM_API_KEY` | secret-injected | alias accepted if LLM_TOKEN is unset |
 | `LLM_SSL_VERIFY` | `False` | verify TLS for the embedding/LLM endpoint |
-| `DOCUMENT_DIRECTORY` | `/documents` | default directory for ingested documents |
+| `DOCUMENT_DIRECTORY` | — | Required only for filesystem ingestion. Supply the operator-owned root at runtime. |
+| `DATABASE_TYPE` | `epistemic_graph` | Backend used when db_type is unspecified. Default is the native epistemic-graph engine (local, zero-infra, durable). Options: epistemic_graph, postgres, mongodb, qdrant. DATABASE_TYPE is the canonical variable; VECTOR_DB_TYPE is accepted as an alias for backward compatibility. |
+| `VECTOR_DB_TYPE` | `epistemic_graph` |  |
+| `DB_HOST` | — | postgres/qdrant host |
+| `DBNAME` | — | postgres/mongodb database name |
+| `DB_PORT` | `5432` |  |
+| `DB_USERNAME_REF` | `secret://runtime/db-username` |  |
+| `DB_PASSWORD_REF` | `secret://runtime/db-password` |  |
+| `MONGODB_URI_REF` | `secret://runtime/mongodb-uri` |  |
+| `QDRANT_API_KEY_REF` | `secret://runtime/qdrant-api-key` |  |
+| `QDRANT_HTTP_ALLOWED_PRIVATE_HOSTS` | — | comma-separated SSRF allowlist for a private Qdrant host |
 | `COLLECTION_MANAGEMENTTOOL` | `True` |  |
 | `SEARCHTOOL` | `True` |  |
 | `TEST_POSTGRES_CONNECTION_STRING` | `postgresql://postgres:password@localhost:5432/vectordb` |  |
@@ -273,21 +257,27 @@ consumed from a **remote deployment**. The
 | `TEST_QDRANT_LOCATION` | `http://localhost:6333` |  |
 | `TEST_COUCHBASE_CONNECTION` | `couchbase://localhost` |  |
 | `TEST_COUCHBASE_USER` | `Administrator` |  |
-| `TEST_COUCHBASE_PASSWORD` | `password` |  |
+| `TEST_COUCHBASE_PASSWORD` | secret-injected |  |
 | `TEST_COUCHBASE_DB` | `vector_db` |  |
 
 #### Inherited agent-utilities variables (apply to every connector)
 
 | Variable | Example | Description |
 |----------|---------|-------------|
-| `MCP_TOOL_MODE` | `condensed` | Tool surface: `condensed` | `verbose` | `both` |
+| `MCP_TOOL_MODE` | `intent` | Tool surface: `intent` \| `condensed` \| `verbose` \| `both` |
 | `MCP_ENABLED_TOOLS` | — | Comma-separated tool allow-list |
 | `MCP_DISABLED_TOOLS` | — | Comma-separated tool deny-list |
 | `MCP_ENABLED_TAGS` | — | Comma-separated tag allow-list |
 | `MCP_DISABLED_TAGS` | — | Comma-separated tag deny-list |
-| `MCP_CLIENT_AUTH` | — | Outbound MCP auth (`oidc-client-credentials` for fleet calls) |
+| `EUNOMIA_TYPE` | `none` | Authorization mode: `none` \| `embedded` \| `remote` |
+| `EUNOMIA_POLICY_FILE` | `mcp_policies.json` | Embedded Eunomia policy file |
+| `EUNOMIA_REMOTE_URL` | — | Remote Eunomia authorization server URL |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | — | OTLP collector endpoint |
+| `MCP_CLIENT_AUTH` | — | Outbound MCP child auth: `oidc-client-credentials` \| `basic` \| `none` |
 | `OIDC_CLIENT_ID` | — | OIDC client id (service-account auth) |
-| `OIDC_CLIENT_SECRET` | — | OIDC client secret (service-account auth) |
+| `OIDC_CLIENT_SECRET_REF` | `secret://identity/oidc-client-secret` | Runtime secret reference for the OIDC service account |
+| `MCP_BASIC_AUTH_USERNAME` | — | HTTP Basic username (`MCP_CLIENT_AUTH=basic`) |
+| `MCP_BASIC_AUTH_PASSWORD_REF` | `secret://identity/mcp-basic-password` | Runtime secret reference for HTTP Basic auth (`MCP_CLIENT_AUTH=basic`) |
 | `DEBUG` | `False` | Verbose logging |
 | `PYTHONUNBUFFERED` | `1` | Unbuffered stdout (recommended in containers) |
 | `MCP_URL` | `http://localhost:8000/mcp` | URL of the MCP server the agent connects to |
@@ -295,7 +285,7 @@ consumed from a **remote deployment**. The
 | `MODEL_ID` | `gpt-4o` | Model id for the agent |
 | `ENABLE_WEB_UI` | `True` | Serve the AG-UI web interface |
 
-_27 package + 14 inherited variable(s). Auto-generated from `.env.example` + the shared agent-utilities set — do not edit._
+_31 package + 20 inherited variable(s). Auto-generated from `.env.example` + the shared agent-utilities set — do not edit._
 <!-- ENV-VARS-TABLE:END -->
 
 
