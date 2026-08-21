@@ -191,9 +191,8 @@ sync:
     doc_type: vector_collection
 provenance:
   generated_by: scripts/generate_connector_manifests.py
-  generated_at: '2026-07-31T04:00:00Z'
+  generated_at: '2026-08-21T04:30:39Z'
   source_artifacts:
-  - a2a.json
   - vector_mcp/connectors/mcp_source_presets.json
   - vector_mcp/connectors/tool_schema_fingerprints.json
   - vector_mcp/ontology/vector.ttl
@@ -201,10 +200,11 @@ provenance:
     algorithm: urdna2015-sha256
     hash: bbf8e7a1f5ad06f76aa55e10589503d05c6b9412b7dabed0fa26a63c6a1bef2d
     triple_count: 86
-  signer: ontology-manifest-generator
-  signature_algorithm: ed25519
-  signing_public_key: QkigdPNpcUU7x7NcSkwCsUXIQpaFncMQbYSoiSgI2SY
-  signature: 7nbcLHz9vXHzE59DV1EzLTEU9h8EJ7pdcch2ta5XRc3DmIXcvLKENpHVO3ZFnfbK0aZ1K-Fe3URAaBF9wTajDQ
+  signer: UNSIGNED-PREVIEW
+  signature_algorithm: none
+  signing_public_key: ''
+  signature: null
+  dependency_lock_digest: d9a7a8eafa985d82a117af04bd873825c6ee2cae172ea813fdad13e2db9df1fd
 policy:
   pii_fields: {}
   tenant_boundary: null
