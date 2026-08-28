@@ -166,6 +166,19 @@ class QdrantRetriever(RAGRetriever):
                 "Query index is not initialized. Please call initialize_collection or connect_database first."
             )
 
+    def _load_directory_documents(self, input_dir: Path | str) -> list:
+        logger.info(f"Loading docs from directory: {input_dir}")
+        if not os.path.exists(input_dir):
+            raise ValueError(f"Input directory not found: {input_dir}")
+        return SimpleDirectoryReader(input_dir=input_dir).load_data()
+
+    def _load_path_documents(self, input_docs: Sequence[Path | str]) -> list:
+        for doc in input_docs:
+            logger.info(f"Loading input doc: {doc}")
+            if not os.path.exists(doc):
+                raise ValueError(f"Document file not found: {doc}")
+        return SimpleDirectoryReader(input_files=input_docs).load_data()
+
     def _load_doc(
         self,
         input_dir: Path | str | None = None,
@@ -175,21 +188,10 @@ class QdrantRetriever(RAGRetriever):
         """Loads documents from a directory or a list of file paths."""
         loaded_documents = []
         if input_dir:
-            logger.info(f"Loading docs from directory: {input_dir}")
-            if not os.path.exists(input_dir):
-                raise ValueError(f"Input directory not found: {input_dir}")
-            loaded_documents.extend(
-                SimpleDirectoryReader(input_dir=input_dir).load_data()
-            )
+            loaded_documents.extend(self._load_directory_documents(input_dir))
 
         if input_docs:
-            for doc in input_docs:
-                logger.info(f"Loading input doc: {doc}")
-                if not os.path.exists(doc):
-                    raise ValueError(f"Document file not found: {doc}")
-            loaded_documents.extend(
-                SimpleDirectoryReader(input_files=input_docs).load_data()
-            )
+            loaded_documents.extend(self._load_path_documents(input_docs))
 
         if input_contents:
             logger.info(f"Loading {len(input_contents)} strings as documents")

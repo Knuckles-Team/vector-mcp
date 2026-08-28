@@ -145,6 +145,19 @@ class PGVectorRetriever(RAGRetriever):
                 "Query index is not initialized. Please call initialize_collection or connect_database first."
             )
 
+    def _load_directory_documents(self, input_dir: Path | str) -> list:
+        logger.info("Loading docs from directory: %s", input_dir)
+        if not os.path.exists(input_dir):
+            raise ValueError(f"Input directory not found: {input_dir}")
+        return SimpleDirectoryReader(input_dir=input_dir).load_data()
+
+    def _load_path_documents(self, input_docs: Sequence[Path | str]) -> list:
+        for doc in input_docs:
+            logger.info("Loading input doc: %s", doc)
+            if not os.path.exists(doc):
+                raise ValueError(f"Document file not found: {doc}")
+        return SimpleDirectoryReader(input_files=input_docs).load_data()
+
     def _load_doc(
         self,
         input_dir: Path | str | None = None,
@@ -153,21 +166,10 @@ class PGVectorRetriever(RAGRetriever):
     ) -> Sequence["LlamaDocument"]:
         loaded_documents = []
         if input_dir:
-            logger.info("Loading docs from directory: %s", input_dir)
-            if not os.path.exists(input_dir):
-                raise ValueError(f"Input directory not found: {input_dir}")
-            loaded_documents.extend(
-                SimpleDirectoryReader(input_dir=input_dir).load_data()
-            )
+            loaded_documents.extend(self._load_directory_documents(input_dir))
 
         if input_docs:
-            for doc in input_docs:
-                logger.info("Loading input doc: %s", doc)
-                if not os.path.exists(doc):
-                    raise ValueError(f"Document file not found: {doc}")
-            loaded_documents.extend(
-                SimpleDirectoryReader(input_files=input_docs).load_data()
-            )
+            loaded_documents.extend(self._load_path_documents(input_docs))
 
         if input_contents:
             logger.info("Loading %d strings as documents", len(input_contents))
