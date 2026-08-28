@@ -50,66 +50,92 @@ def _tls_status(service: str) -> tuple[bool, dict[str, bool]]:
         }
 
 
+def _finalize_backend_status(
+    status: dict, *, endpoint_configured: bool, credentials_configured: bool, tls_valid: bool
+) -> None:
+    status["configured"] = bool(endpoint_configured and credentials_configured and tls_valid)
+    status["available"] = bool(status["available"] and status["configured"])
+    status["reason"] = (
+        "available" if status["available"] else "backend configuration incomplete"
+    )
+
+
+def _qdrant_connection_status(status: dict) -> dict:
+    endpoint_configured = bool(setting("DB_HOST", None))
+    credential_configured = _credential_available("QDRANT_API_KEY_REF")
+    tls_valid, tls_summary = _tls_status("QDRANT")
+    _finalize_backend_status(
+        status,
+        endpoint_configured=endpoint_configured,
+        credentials_configured=credential_configured,
+        tls_valid=tls_valid,
+    )
+    status["connection"] = {
+        "endpoint_configured": endpoint_configured,
+        "credential_configured": credential_configured,
+        "private_host_allowlist_configured": bool(
+            setting("QDRANT_HTTP_ALLOWED_PRIVATE_HOSTS", [])
+        ),
+        "tls": tls_summary,
+    }
+    return status
+
+
+def _mongodb_connection_status(status: dict) -> dict:
+    uri_configured = _credential_available("MONGODB_URI_REF")
+    endpoint_configured = bool(uri_configured)
+    credentials_configured = bool(uri_configured)
+    tls_valid, tls_summary = _tls_status("MONGODB")
+    _finalize_backend_status(
+        status,
+        endpoint_configured=endpoint_configured,
+        credentials_configured=credentials_configured,
+        tls_valid=tls_valid,
+    )
+    status["connection"] = {
+        "endpoint_configured": endpoint_configured,
+        "credentials_configured": credentials_configured,
+        "tls": tls_summary,
+    }
+    return status
+
+
+def _postgres_connection_status(status: dict) -> dict:
+    endpoint_configured = bool(setting("DB_HOST", None) and setting("DBNAME", None))
+    credentials_configured = bool(
+        _credential_available("DB_USERNAME_REF")
+        and _credential_available("DB_PASSWORD_REF")
+    )
+    tls_valid, tls_summary = _tls_status("POSTGRES")
+    _finalize_backend_status(
+        status,
+        endpoint_configured=endpoint_configured,
+        credentials_configured=credentials_configured,
+        tls_valid=tls_valid,
+    )
+    status["connection"] = {
+        "endpoint_configured": endpoint_configured,
+        "credentials_configured": credentials_configured,
+        "tls": tls_summary,
+    }
+    return status
+
+
+_BACKEND_CONNECTION_CHECKS = {
+    "qdrant": _qdrant_connection_status,
+    "mongodb": _mongodb_connection_status,
+    "postgres": _postgres_connection_status,
+}
+
+
 def main() -> int:
     status = dict(
         backend_status(setting("DATABASE_TYPE", "epistemic_graph") or "epistemic_graph")
     )
     status["configured"] = bool(status["available"])
-    if status["backend"] == "qdrant" and status["available"]:
-        endpoint_configured = bool(setting("DB_HOST", None))
-        credential_configured = _credential_available("QDRANT_API_KEY_REF")
-        tls_valid, tls_summary = _tls_status("QDRANT")
-        status["configured"] = bool(
-            endpoint_configured and credential_configured and tls_valid
-        )
-        status["available"] = bool(status["available"] and status["configured"])
-        status["reason"] = (
-            "available" if status["available"] else "backend configuration incomplete"
-        )
-        status["connection"] = {
-            "endpoint_configured": endpoint_configured,
-            "credential_configured": credential_configured,
-            "private_host_allowlist_configured": bool(
-                setting("QDRANT_HTTP_ALLOWED_PRIVATE_HOSTS", [])
-            ),
-            "tls": tls_summary,
-        }
-    elif status["backend"] == "mongodb" and status["available"]:
-        uri_configured = _credential_available("MONGODB_URI_REF")
-        endpoint_configured = bool(uri_configured)
-        credentials_configured = bool(uri_configured)
-        tls_valid, tls_summary = _tls_status("MONGODB")
-        status["configured"] = bool(
-            endpoint_configured and credentials_configured and tls_valid
-        )
-        status["available"] = bool(status["available"] and status["configured"])
-        status["reason"] = (
-            "available" if status["available"] else "backend configuration incomplete"
-        )
-        status["connection"] = {
-            "endpoint_configured": endpoint_configured,
-            "credentials_configured": credentials_configured,
-            "tls": tls_summary,
-        }
-    elif status["backend"] == "postgres" and status["available"]:
-        endpoint_configured = bool(setting("DB_HOST", None) and setting("DBNAME", None))
-        credentials_configured = bool(
-            _credential_available("DB_USERNAME_REF")
-            and _credential_available("DB_PASSWORD_REF")
-        )
-        tls_valid, tls_summary = _tls_status("POSTGRES")
-        status["configured"] = bool(
-            endpoint_configured and credentials_configured and tls_valid
-        )
-        status["available"] = bool(status["available"] and status["configured"])
-        status["reason"] = (
-            "available" if status["available"] else "backend configuration incomplete"
-        )
-        status["connection"] = {
-            "endpoint_configured": endpoint_configured,
-            "credentials_configured": credentials_configured,
-            "tls": tls_summary,
-        }
+    check = _BACKEND_CONNECTION_CHECKS.get(status["backend"])
+    if check and status["available"]:
+        status = check(status)
     print(json.dumps(status, sort_keys=True))
     return 0 if status["available"] else 2
 
