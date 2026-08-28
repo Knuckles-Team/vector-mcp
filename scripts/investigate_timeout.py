@@ -19,6 +19,41 @@ except ImportError as e:
     OllamaEmbedding = None
 
 
+def _print_client_timeout(embed_model):
+    if not hasattr(embed_model, "_get_client"):
+        return
+    print("Calling _get_client()")
+    client = embed_model._get_client()
+    print(f"Client type: {type(client)}")
+    if hasattr(client, "timeout"):
+        print(f"Client.timeout: {client.timeout}")
+    else:
+        print("Client does not have 'timeout' attribute")
+
+
+def _print_injected_client_timeout():
+    try:
+        import httpx
+
+        custom_client = httpx.Client(timeout=32400.0)
+        print("\nTesting explicit http_client injection...")
+        embed_model_custom = OpenAIEmbedding(
+            model="text-embedding-3-small", http_client=custom_client
+        )
+
+        if hasattr(embed_model_custom, "_get_client"):
+            client_c = embed_model_custom._get_client()
+            if hasattr(client_c, "_client"):
+                print(
+                    f"OpenAI Internal HTTPX Client Timeout: {client_c._client.timeout}"
+                )
+            elif hasattr(client_c, "timeout"):
+                print(f"OpenAI Client Wrapper Timeout: {client_c.timeout}")
+
+    except Exception as e:
+        print(f"Error testing http_client injection: {e}")
+
+
 def inspect_openai():
     if not OpenAIEmbedding:
         return
@@ -28,35 +63,8 @@ def inspect_openai():
         embed_model = OpenAIEmbedding(model="text-embedding-3-small", timeout=32400.0)
         print("Initialized OpenAIEmbedding with timeout=32400.0")
 
-        if hasattr(embed_model, "_get_client"):
-            print("Calling _get_client()")
-            client = embed_model._get_client()
-            print(f"Client type: {type(client)}")
-            if hasattr(client, "timeout"):
-                print(f"Client.timeout: {client.timeout}")
-            else:
-                print("Client does not have 'timeout' attribute")
-
-        try:
-            import httpx
-
-            custom_client = httpx.Client(timeout=32400.0)
-            print("\nTesting explicit http_client injection...")
-            embed_model_custom = OpenAIEmbedding(
-                model="text-embedding-3-small", http_client=custom_client
-            )
-
-            if hasattr(embed_model_custom, "_get_client"):
-                client_c = embed_model_custom._get_client()
-                if hasattr(client_c, "_client"):
-                    print(
-                        f"OpenAI Internal HTTPX Client Timeout: {client_c._client.timeout}"
-                    )
-                elif hasattr(client_c, "timeout"):
-                    print(f"OpenAI Client Wrapper Timeout: {client_c.timeout}")
-
-        except Exception as e:
-            print(f"Error testing http_client injection: {e}")
+        _print_client_timeout(embed_model)
+        _print_injected_client_timeout()
 
         if hasattr(embed_model, "_client") and embed_model._client:
             print(f"_client.timeout: {embed_model._client.timeout}")

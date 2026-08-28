@@ -16,6 +16,137 @@ AGENTS = {
 }
 
 
+def _initial_request_payload(question):
+    return {
+        "jsonrpc": "2.0",
+        "method": "message/send",
+        "params": {
+            "message": {
+                "kind": "message",
+                "role": "user",
+                "parts": [{"kind": "text", "text": question}],
+                "messageId": str(uuid.uuid4()),
+            }
+        },
+        "id": 1,
+    }
+
+
+async def _send_initial_request(client, name, url, question):
+    print(f"[{name}] Sending request: '{question}'")
+    payload = _initial_request_payload(question)
+    resp = None
+    for retry in range(15):
+        try:
+            resp = await client.post(
+                url, json=payload, headers={"Content-Type": "application/json"}
+            )
+            break
+        except (httpx.ConnectError, httpx.ReadError) as err:
+            print(
+                f"[{name}] Connection attempt {retry + 1} failed ({err}). Retrying in 5s..."
+            )
+            await asyncio.sleep(5)
+    return resp
+
+
+def _extract_task_id(name, resp):
+    if resp is None:
+        print(f"[{name}] \033[91mFAILED\033[0m: Could not connect after retries.")
+        return None
+    if resp.status_code != 200:
+        print(
+            f"[{name}] \033[91mFAILED\033[0m: Initial request returned {resp.status_code}"
+        )
+        return None
+    data = resp.json()
+    if "result" not in data or "id" not in data["result"]:
+        print(f"[{name}] \033[91mFAILED\033[0m: No task ID in response")
+        return None
+    task_id = data["result"]["id"]
+    print(f"[{name}] Task {task_id} submitted. Polling...")
+    return task_id
+
+
+def _text_from_message_parts(msg):
+    parts_text = [
+        part["text"] if "text" in part else part["content"]
+        for part in msg.get("parts", [])
+        if "text" in part or "content" in part
+    ]
+    return "\n".join(parts_text) if parts_text else None
+
+
+def _extract_result_text(poll_result):
+    history = poll_result.get("history")
+    if not history:
+        return "No text content found."
+    for msg in reversed(history):
+        if msg.get("role") == "user":
+            continue
+        if "parts" in msg:
+            text = _text_from_message_parts(msg)
+            if text:
+                return text
+        elif "content" in msg:
+            return msg["content"]
+    return "No text content found."
+
+
+def _report_outcome(name, state, poll_result, start_time):
+    duration = time.time() - start_time
+    print(f"[{name}] Finished with state: {state}")
+    result_text = _extract_result_text(poll_result)
+
+    if state in ("completed", "done"):
+        print(f"[{name}] \033[92mPASSED\033[0m")
+        print(f"[{name}] Final Output:\n{result_text}\n")
+        return True, duration
+    if state in ("failed", "error"):
+        print(f"[{name}] \033[91mFAILED\033[0m: Agent reported failure")
+        if "error" in poll_result:
+            print(f"[{name}] Error details: {poll_result['error']}")
+        print(f"[{name}] Final Output (if any):\n{result_text}\n")
+        return False, duration
+    print(f"[{name}] \033[93mFINISHED (State: {state})\033[0m")
+    print(f"[{name}] Final Output:\n{result_text}\n")
+    return True, duration
+
+
+async def _poll_task(client, name, url, task_id, start_time):
+    attempts = 0
+    max_attempts = 9600
+
+    while attempts < max_attempts:
+        await asyncio.sleep(2)
+        attempts += 1
+
+        poll_payload = {
+            "jsonrpc": "2.0",
+            "method": "tasks/get",
+            "params": {"id": task_id},
+            "id": 2,
+        }
+        poll_resp = await client.post(
+            url, json=poll_payload, headers={"Content-Type": "application/json"}
+        )
+
+        if poll_resp.status_code != 200:
+            print(f"[{name}] Polling failed: {poll_resp.status_code}")
+            continue
+        poll_data = poll_resp.json()
+        if "result" not in poll_data:
+            print(f"[{name}] Polling response missing 'result'")
+            continue
+        state = poll_data["result"]["status"]["state"]
+        if state in ("submitted", "running", "working"):
+            continue
+        return _report_outcome(name, state, poll_data["result"], start_time)
+
+    print(f"[{name}] \033[91mTIMEOUT\033[0m: Validation timed out after 15 minutes")
+    return False, time.time() - start_time
+
+
 async def validate_agent(name, port, question):
     url = f"http://127.0.0.1:{port}/a2a/"
     print(f"[{name}] Starting validation at {url}...")
@@ -23,134 +154,11 @@ async def validate_agent(name, port, question):
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
-            payload = {
-                "jsonrpc": "2.0",
-                "method": "message/send",
-                "params": {
-                    "message": {
-                        "kind": "message",
-                        "role": "user",
-                        "parts": [{"kind": "text", "text": question}],
-                        "messageId": str(uuid.uuid4()),
-                    }
-                },
-                "id": 1,
-            }
-
-            print(f"[{name}] Sending request: '{question}'")
-            resp = None
-            for _retry in range(15):
-                try:
-                    resp = await client.post(
-                        url, json=payload, headers={"Content-Type": "application/json"}
-                    )
-                    break
-                except (httpx.ConnectError, httpx.ReadError) as err:
-                    print(
-                        f"[{name}] Connection attempt {_retry + 1} failed ({err}). Retrying in 5s..."
-                    )
-                    await asyncio.sleep(5)
-
-            if resp is None:
-                print(
-                    f"[{name}] \033[91mFAILED\033[0m: Could not connect after retries."
-                )
+            resp = await _send_initial_request(client, name, url, question)
+            task_id = _extract_task_id(name, resp)
+            if task_id is None:
                 return False, 0
-
-            if resp.status_code != 200:
-                print(
-                    f"[{name}] \033[91mFAILED\033[0m: Initial request returned {resp.status_code}"
-                )
-                return False, 0
-
-            data = resp.json()
-            if "result" not in data or "id" not in data["result"]:
-                print(f"[{name}] \033[91mFAILED\033[0m: No task ID in response")
-                return False, 0
-
-            task_id = data["result"]["id"]
-            print(f"[{name}] Task {task_id} submitted. Polling...")
-
-            attempts = 0
-            max_attempts = 9600
-
-            while attempts < max_attempts:
-                await asyncio.sleep(2)
-                attempts += 1
-
-                poll_payload = {
-                    "jsonrpc": "2.0",
-                    "method": "tasks/get",
-                    "params": {"id": task_id},
-                    "id": 2,
-                }
-
-                poll_resp = await client.post(
-                    url,
-                    json=poll_payload,
-                    headers={"Content-Type": "application/json"},
-                )
-
-                if poll_resp.status_code == 200:
-                    poll_data = poll_resp.json()
-                    if "result" in poll_data:
-                        state = poll_data["result"]["status"]["state"]
-
-                        if state not in ["submitted", "running", "working"]:
-                            duration = time.time() - start_time
-                            print(f"[{name}] Finished with state: {state}")
-
-                            result_text = "No text content found."
-                            if "history" in poll_data["result"]:
-                                history = poll_data["result"]["history"]
-                                for msg in reversed(history):
-                                    if msg.get("role") != "user":
-                                        if "parts" in msg:
-                                            parts_text = []
-                                            for part in msg["parts"]:
-                                                if "text" in part:
-                                                    parts_text.append(part["text"])
-                                                elif "content" in part:
-                                                    parts_text.append(part["content"])
-                                            if parts_text:
-                                                result_text = "\n".join(parts_text)
-                                                break
-                                        elif "content" in msg:
-                                            result_text = msg["content"]
-                                            break
-
-                            if state == "completed" or state == "done":
-                                print(f"[{name}] \033[92mPASSED\033[0m")
-                                print(f"[{name}] Final Output:\n{result_text}\n")
-                                return True, duration
-                            elif state == "failed" or state == "error":
-                                print(
-                                    f"[{name}] \033[91mFAILED\033[0m: Agent reported failure"
-                                )
-                                if "error" in poll_data["result"]:
-                                    print(
-                                        f"[{name}] Error details: {poll_data['result']['error']}"
-                                    )
-                                print(
-                                    f"[{name}] Final Output (if any):\n{result_text}\n"
-                                )
-                                return False, duration
-                            else:
-                                print(
-                                    f"[{name}] \033[93mFINISHED (State: {state})\033[0m"
-                                )
-                                print(f"[{name}] Final Output:\n{result_text}\n")
-                                return True, duration
-                    else:
-                        print(f"[{name}] Polling response missing 'result'")
-                else:
-                    print(f"[{name}] Polling failed: {poll_resp.status_code}")
-
-            print(
-                f"[{name}] \033[91mTIMEOUT\033[0m: Validation timed out after 15 minutes"
-            )
-            return False, time.time() - start_time
-
+            return await _poll_task(client, name, url, task_id, start_time)
         except httpx.ConnectError:
             print(
                 f"[{name}] \033[91mFAILED\033[0m: Connection refused (is the container running?)"
