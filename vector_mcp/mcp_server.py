@@ -22,6 +22,7 @@ warnings.filterwarnings("ignore", message=".*urllib3.*or charset_normalizer.*")
 import logging
 import re
 import sys
+from dataclasses import dataclass
 from typing import Any
 
 from agent_utilities.core.config import load_config, setting
@@ -80,6 +81,98 @@ def _entitled(namespace: str, names: list[str]) -> list[str]:
         return list(names)
 
 
+async def _create_collection_action(
+    client,
+    db_type: str | None,
+    collection_name: str | None,
+    overwrite: bool | None,
+    include_configured_directory: bool,
+    document_paths: list[str] | None,
+    document_contents: list[str] | None,
+):
+    document_directory, resolved_paths = resolve_document_inputs(
+        configured_root=str(setting("DOCUMENT_DIRECTORY", "") or ""),
+        include_configured_directory=include_configured_directory,
+        relative_paths=document_paths,
+        document_contents=document_contents,
+    )
+    kwargs = {
+        "db_type": db_type,
+        "collection_name": collection_name,
+        "overwrite": overwrite,
+        "document_directory": document_directory,
+        "document_paths": resolved_paths,
+        "document_contents": document_contents,
+    }
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+    return await run_blocking(client.create_collection, **kwargs)
+
+
+async def _add_documents_action(
+    client,
+    db_type: str | None,
+    collection_name: str | None,
+    include_configured_directory: bool,
+    document_paths: list[str] | None,
+    document_contents: list[str] | None,
+):
+    if (
+        not include_configured_directory
+        and not document_paths
+        and not document_contents
+    ):
+        raise ValueError("At least one configured document input is required")
+    document_directory, resolved_paths = resolve_document_inputs(
+        configured_root=str(setting("DOCUMENT_DIRECTORY", "") or ""),
+        include_configured_directory=include_configured_directory,
+        relative_paths=document_paths,
+        document_contents=document_contents,
+    )
+    kwargs = {
+        "db_type": db_type,
+        "collection_name": collection_name,
+        "document_directory": document_directory,
+        "document_paths": resolved_paths,
+        "document_contents": document_contents,
+    }
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+    return await run_blocking(client.add_documents, **kwargs)
+
+
+async def _delete_collection_action(
+    client, db_type: str | None, collection_name: str | None, confirm: bool | None
+):
+    kwargs = {
+        "db_type": db_type,
+        "collection_name": collection_name,
+        "confirm": confirm,
+    }
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+    return await run_blocking(client.delete_collection, **kwargs)
+
+
+def _filter_entitled_collections(result):
+    if not (isinstance(result, dict) and "collections" in result):
+        return result
+    entries = result["collections"]
+    names = [
+        str(entry.get("collection_name", "")) if isinstance(entry, dict) else str(entry)
+        for entry in entries
+    ]
+    allowed = set(_entitled("collection", names))
+    return {
+        **result,
+        "collections": [
+            entry for entry, name in zip(entries, names, strict=True) if name in allowed
+        ],
+    }
+
+
+async def _list_collections_action(client, db_type: str | None):
+    result = await run_blocking(client.list_collections, db_type=db_type)
+    return _filter_entitled_collections(result)
+
+
 def register_collection_management_tools(mcp: FastMCP):
     @mcp.tool(tags={"collection_management"})
     async def vector_collection_management(
@@ -128,75 +221,112 @@ def register_collection_management_tools(mcp: FastMCP):
         action = resolved
         selected_backend = _backend(db_type)
         selected_collection = _collection(collection_name)
-        kwargs: dict[str, Any]
         if action == "create_collection":
-            document_directory, resolved_paths = resolve_document_inputs(
-                configured_root=str(setting("DOCUMENT_DIRECTORY", "") or ""),
-                include_configured_directory=include_configured_directory,
-                relative_paths=document_paths,
-                document_contents=document_contents,
+            return await _create_collection_action(
+                client,
+                selected_backend,
+                selected_collection,
+                overwrite,
+                include_configured_directory,
+                document_paths,
+                document_contents,
             )
-            kwargs = {
-                "db_type": selected_backend,
-                "collection_name": selected_collection,
-                "overwrite": overwrite,
-                "document_directory": document_directory,
-                "document_paths": resolved_paths,
-                "document_contents": document_contents,
-            }
-            kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return await run_blocking(client.create_collection, **kwargs)
         if action == "add_documents":
-            if (
-                not include_configured_directory
-                and not document_paths
-                and not document_contents
-            ):
-                raise ValueError("At least one configured document input is required")
-            document_directory, resolved_paths = resolve_document_inputs(
-                configured_root=str(setting("DOCUMENT_DIRECTORY", "") or ""),
-                include_configured_directory=include_configured_directory,
-                relative_paths=document_paths,
-                document_contents=document_contents,
+            return await _add_documents_action(
+                client,
+                selected_backend,
+                selected_collection,
+                include_configured_directory,
+                document_paths,
+                document_contents,
             )
-            kwargs = {
-                "db_type": selected_backend,
-                "collection_name": selected_collection,
-                "document_directory": document_directory,
-                "document_paths": resolved_paths,
-                "document_contents": document_contents,
-            }
-            kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return await run_blocking(client.add_documents, **kwargs)
         if action == "delete_collection":
-            kwargs = {
-                "db_type": selected_backend,
-                "collection_name": selected_collection,
-                "confirm": confirm,
-            }
-            kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return await run_blocking(client.delete_collection, **kwargs)
+            return await _delete_collection_action(
+                client, selected_backend, selected_collection, confirm
+            )
         if action == "list_collections":
-            result = await run_blocking(client.list_collections, db_type=selected_backend)
-            if isinstance(result, dict) and "collections" in result:
-                entries = result["collections"]
-                names = [
-                    str(entry.get("collection_name", ""))
-                    if isinstance(entry, dict)
-                    else str(entry)
-                    for entry in entries
-                ]
-                allowed = set(_entitled("collection", names))
-                result = {
-                    **result,
-                    "collections": [
-                        entry
-                        for entry, name in zip(entries, names, strict=True)
-                        if name in allowed
-                    ],
-                }
-            return result
+            return await _list_collections_action(client, selected_backend)
         raise ValueError("collection_action_invalid")
+
+
+def _validate_search_question(question: str | None, number_results: int | None) -> None:
+    if not question or len(question.encode("utf-8")) > 1_048_576:
+        raise ValueError("Search question is invalid")
+    if number_results is not None and not 1 <= number_results <= 1_000:
+        raise ValueError("Result count is invalid")
+
+
+def _validate_fusion_weights(
+    semantic_weight: float | None, lexical_weight: float | None, rrf_k: int | None
+) -> None:
+    if semantic_weight is not None and not 0 <= semantic_weight <= 1:
+        raise ValueError("Semantic weight is invalid")
+    if lexical_weight is not None and not 0 <= lexical_weight <= 1:
+        raise ValueError("Lexical weight is invalid")
+    if rrf_k is not None and not 1 <= rrf_k <= 10_000:
+        raise ValueError("RRF constant is invalid")
+
+
+def _validate_search_request(
+    question: str | None,
+    number_results: int | None,
+    semantic_weight: float | None,
+    lexical_weight: float | None,
+    rrf_k: int | None,
+) -> None:
+    _validate_search_question(question, number_results)
+    _validate_fusion_weights(semantic_weight, lexical_weight, rrf_k)
+
+
+async def _semantic_search_action(
+    client, db_type, collection_name, question, number_results
+):
+    kwargs = {
+        "db_type": db_type,
+        "collection_name": collection_name,
+        "question": question,
+        "number_results": number_results,
+    }
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+    return await run_blocking(client.semantic_search, **kwargs)
+
+
+async def _lexical_search_action(
+    client, db_type, collection_name, question, number_results
+):
+    kwargs = {
+        "db_type": db_type,
+        "collection_name": collection_name,
+        "question": question,
+        "number_results": number_results,
+    }
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+    return await run_blocking(client.lexical_search, **kwargs)
+
+
+@dataclass
+class FusionWeights:
+    """Bounds the RRF fusion tuning knobs into one boundary-crossing value."""
+
+    semantic_weight: float | None
+    lexical_weight: float | None
+    rrf_k: int | None
+
+
+async def _fused_search_action(
+    client, db_type, collection_name, question, number_results, weights: FusionWeights
+):
+    kwargs = {
+        "db_type": db_type,
+        "collection_name": collection_name,
+        "question": question,
+        "number_results": number_results,
+        "semantic_weight": weights.semantic_weight,
+        "lexical_weight": weights.lexical_weight,
+        "rrf_k": weights.rrf_k,
+    }
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+    return await run_blocking(client.search, **kwargs)
 
 
 def register_search_tools(mcp: FastMCP):
@@ -245,47 +375,27 @@ def register_search_tools(mcp: FastMCP):
         action = resolved
         selected_backend = _backend(db_type)
         selected_collection = _collection(collection_name)
-        if not question or len(question.encode("utf-8")) > 1_048_576:
-            raise ValueError("Search question is invalid")
-        if number_results is not None and not 1 <= number_results <= 1_000:
-            raise ValueError("Result count is invalid")
-        if semantic_weight is not None and not 0 <= semantic_weight <= 1:
-            raise ValueError("Semantic weight is invalid")
-        if lexical_weight is not None and not 0 <= lexical_weight <= 1:
-            raise ValueError("Lexical weight is invalid")
-        if rrf_k is not None and not 1 <= rrf_k <= 10_000:
-            raise ValueError("RRF constant is invalid")
-        kwargs: dict[str, Any]
+        _validate_search_request(
+            question, number_results, semantic_weight, lexical_weight, rrf_k
+        )
         if action == "semantic_search":
-            kwargs = {
-                "db_type": selected_backend,
-                "collection_name": selected_collection,
-                "question": question,
-                "number_results": number_results,
-            }
-            kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return await run_blocking(client.semantic_search, **kwargs)
+            return await _semantic_search_action(
+                client, selected_backend, selected_collection, question, number_results
+            )
         if action == "lexical_search":
-            kwargs = {
-                "db_type": selected_backend,
-                "collection_name": selected_collection,
-                "question": question,
-                "number_results": number_results,
-            }
-            kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return await run_blocking(client.lexical_search, **kwargs)
+            return await _lexical_search_action(
+                client, selected_backend, selected_collection, question, number_results
+            )
         if action == "search":
-            kwargs = {
-                "db_type": selected_backend,
-                "collection_name": selected_collection,
-                "question": question,
-                "number_results": number_results,
-                "semantic_weight": semantic_weight,
-                "lexical_weight": lexical_weight,
-                "rrf_k": rrf_k,
-            }
-            kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            return await run_blocking(client.search, **kwargs)
+            weights = FusionWeights(semantic_weight, lexical_weight, rrf_k)
+            return await _fused_search_action(
+                client,
+                selected_backend,
+                selected_collection,
+                question,
+                number_results,
+                weights,
+            )
         raise ValueError("search_action_invalid")
 
 
