@@ -131,7 +131,8 @@ def is_placeholder(match_str: str) -> bool:
     return False
 
 
-def get_repo_files(repo_path: Path):
+def _git_tracked_files(repo_path: Path) -> list[Path] | None:
+    """List candidate files via git; None signals the caller to fall back."""
     try:
         result = subprocess.run(
             ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
@@ -140,24 +141,94 @@ def get_repo_files(repo_path: Path):
             text=True,
             check=True,
         )
-        files = []
-        for line in result.stdout.splitlines():
-            if line.strip():
-                # Avoid files inside excluded directories
-                parts = Path(line.strip()).parts
-                if not any(part in EXCLUDED_DIRS for part in parts):
-                    files.append(repo_path / line.strip())
-        return files
     except Exception:
-        # Fallback to manual recursive scan
-        files = []
-        for root, dirs, walk_files in os.walk(str(repo_path)):
-            dirs[:] = [
-                d for d in dirs if d not in EXCLUDED_DIRS and not d.startswith(".")
-            ]
-            for file in walk_files:
-                files.append(Path(root) / file)
+        return None
+    files = []
+    for line in result.stdout.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Avoid files inside excluded directories
+        parts = Path(stripped).parts
+        if not any(part in EXCLUDED_DIRS for part in parts):
+            files.append(repo_path / stripped)
+    return files
+
+
+def _walk_all_files(repo_path: Path) -> list[Path]:
+    """Manual recursive scan fallback when git is unavailable."""
+    files = []
+    for root, dirs, walk_files in os.walk(str(repo_path)):
+        dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS and not d.startswith(".")]
+        for file in walk_files:
+            files.append(Path(root) / file)
+    return files
+
+
+def get_repo_files(repo_path: Path):
+    files = _git_tracked_files(repo_path)
+    if files is not None:
         return files
+    return _walk_all_files(repo_path)
+
+
+def _root_level_naming_violation(file_path: Path, repo_path: Path) -> str | None:
+    """Flag disallowed root-level text files or transient scripts."""
+    if file_path.parent != repo_path:
+        return None
+    if file_path.suffix == ".txt":
+        if file_path.name.lower() not in ALLOWED_TXT_NAMES:
+            return (
+                f"Non-standard root-level text file detected: '{file_path.name}'. "
+                "Only 'requirements.txt' and 'requirements-dev.txt' are allowed."
+            )
+        return None
+    if file_path.suffix == ".py":
+        for pattern in TRANSIENT_PY_PATTERNS:
+            if pattern.match(file_path.name):
+                return (
+                    f"Transient/temporary script detected in root: "
+                    f"'{file_path.name}'. Please move it to a subfolder or delete it."
+                )
+    return None
+
+
+_BYPASS_MARKERS = ("# sanitizer:ignore", "# sanitizer-ignore", "# nosec")
+
+
+def _line_has_bypass_marker(line: str) -> bool:
+    return any(marker in line for marker in _BYPASS_MARKERS)
+
+
+def _secret_violations_in_line(line: str, idx: int, rel_path: Path) -> list[str]:
+    violations = []
+    for label, pattern in SECRET_PATTERNS:
+        for match in pattern.findall(line):
+            match_str = match[0] if isinstance(match, tuple) else match
+            if not is_placeholder(match_str):
+                violations.append(
+                    f"Potential unmasked secret ({label}) detected in {rel_path}:{idx}\n"
+                    f"  Line: {line.strip()}"
+                )
+    return violations
+
+
+def _scan_file_for_secrets(file_path: Path, repo_path: Path) -> list[str]:
+    if file_path.suffix.lower() in EXCLUDED_EXTENSIONS:
+        return []
+    if file_path.name == "security_sanitizer.py":
+        return []
+    violations: list[str] = []
+    try:
+        content = file_path.read_text(encoding="utf-8", errors="ignore")
+        rel_path = file_path.relative_to(repo_path)
+        for idx, line in enumerate(content.splitlines(), 1):
+            if _line_has_bypass_marker(line):
+                continue
+            violations.extend(_secret_violations_in_line(line, idx, rel_path))
+    except Exception:
+        pass
+    return violations
 
 
 def scan_repository(repo_path: Path):
@@ -168,56 +239,11 @@ def scan_repository(repo_path: Path):
         if not file_path.is_file():
             continue
 
-        # 1. Check root level naming constraints
-        if file_path.parent == repo_path:
-            # Check txt files
-            if file_path.suffix == ".txt":
-                if file_path.name.lower() not in ALLOWED_TXT_NAMES:
-                    violations.append(
-                        f"Non-standard root-level text file detected: '{file_path.name}'. Only 'requirements.txt' and 'requirements-dev.txt' are allowed."
-                    )
-            # Check transient py files
-            elif file_path.suffix == ".py":
-                for pattern in TRANSIENT_PY_PATTERNS:
-                    if pattern.match(file_path.name):
-                        violations.append(
-                            f"Transient/temporary script detected in root: '{file_path.name}'. Please move it to a subfolder or delete it."
-                        )
-                        break
+        naming_violation = _root_level_naming_violation(file_path, repo_path)
+        if naming_violation:
+            violations.append(naming_violation)
 
-        # 2. Check for secrets
-        if file_path.suffix.lower() in EXCLUDED_EXTENSIONS:
-            continue
-
-        if file_path.name == "security_sanitizer.py":
-            continue
-
-        try:
-            content = file_path.read_text(encoding="utf-8", errors="ignore")
-            lines = content.splitlines()
-
-            for idx, line in enumerate(lines, 1):
-                if any(
-                    bypass in line
-                    for bypass in [
-                        "# sanitizer:ignore",
-                        "# sanitizer-ignore",
-                        "# nosec",
-                    ]
-                ):
-                    continue
-
-                for label, pattern in SECRET_PATTERNS:
-                    for match in pattern.findall(line):
-                        match_str = match[0] if isinstance(match, tuple) else match
-                        if not is_placeholder(match_str):
-                            rel_path = file_path.relative_to(repo_path)
-                            violations.append(
-                                f"Potential unmasked secret ({label}) detected in {rel_path}:{idx}\n"
-                                f"  Line: {line.strip()}"
-                            )
-        except Exception:
-            pass
+        violations.extend(_scan_file_for_secrets(file_path, repo_path))
 
     return violations
 
