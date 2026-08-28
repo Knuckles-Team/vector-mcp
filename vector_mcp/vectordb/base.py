@@ -31,13 +31,10 @@ The response is a list of query results, each query result is a list of tuples c
 QueryResults = list[list[tuple[Document, float]]]
 
 
-def document_embeddings(docs: list[Document], embed_model: Any) -> list[list[float]]:
-    """Resolve one finite, dimension-consistent vector per document.
-
-    Missing vectors use the model's batch API when available, collapsing up to the
-    public ingestion bound into one model request instead of one request per document.
-    """
-
+def _partition_embeddings(
+    docs: list[Document],
+) -> tuple[list[list[float] | None], list[int], list[str]]:
+    """Split documents into already-embedded vectors and texts still needing one."""
     resolved: list[list[float] | None] = [None] * len(docs)
     missing: list[int] = []
     texts: list[str] = []
@@ -48,21 +45,18 @@ def document_embeddings(docs: list[Document], embed_model: Any) -> list[list[flo
             texts.append(str(document["content"]))
             continue
         resolved[index] = [float(value) for value in supplied]
+    return resolved, missing, texts
 
-    if missing:
-        batch = getattr(embed_model, "get_text_embedding_batch", None)
-        generated = (
-            batch(texts)
-            if callable(batch)
-            else [embed_model.get_text_embedding(text) for text in texts]
-        )
-        if len(generated) != len(missing):
-            raise ValueError("embedding_batch_invalid")
-        for index, vector in zip(missing, generated, strict=True):
-            resolved[index] = [float(value) for value in vector]
 
-    vectors = [vector for vector in resolved if vector is not None]
-    if len(vectors) != len(docs):
+def _generate_missing_embeddings(embed_model: Any, texts: list[str]) -> list[list[float]]:
+    batch = getattr(embed_model, "get_text_embedding_batch", None)
+    if callable(batch):
+        return batch(texts)
+    return [embed_model.get_text_embedding(text) for text in texts]
+
+
+def _validate_embedding_vectors(vectors: list[list[float]], doc_count: int) -> None:
+    if len(vectors) != doc_count:
         raise ValueError("embedding_batch_invalid")
     dimensions = {len(vector) for vector in vectors}
     if (
@@ -72,6 +66,26 @@ def document_embeddings(docs: list[Document], embed_model: Any) -> list[list[flo
         or any(not math.isfinite(value) for vector in vectors for value in vector)
     ):
         raise ValueError("embedding_invalid")
+
+
+def document_embeddings(docs: list[Document], embed_model: Any) -> list[list[float]]:
+    """Resolve one finite, dimension-consistent vector per document.
+
+    Missing vectors use the model's batch API when available, collapsing up to the
+    public ingestion bound into one model request instead of one request per document.
+    """
+
+    resolved, missing, texts = _partition_embeddings(docs)
+
+    if missing:
+        generated = _generate_missing_embeddings(embed_model, texts)
+        if len(generated) != len(missing):
+            raise ValueError("embedding_batch_invalid")
+        for index, vector in zip(missing, generated, strict=True):
+            resolved[index] = [float(value) for value in vector]
+
+    vectors = [vector for vector in resolved if vector is not None]
+    _validate_embedding_vectors(vectors, len(docs))
     return vectors
 
 

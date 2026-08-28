@@ -156,12 +156,52 @@ class CouchbaseVectorDB(VectorDB):
         self.active_collection = collection_name
         return self._get_collection(collection_name)
 
+    def _collection_exists_via_rest(
+        self, scopes_url: str, auth: Any, collection_name: str
+    ) -> bool:
+        response = requests.get(scopes_url, auth=auth, timeout=10)
+        if response.status_code != 200:
+            return False
+        result = response.json()
+        for scope in result.get("scopes", []):
+            if scope.get("name") != self.scope_name:
+                continue
+            for coll in scope.get("collections", []):
+                if coll.get("name") == collection_name:
+                    return True
+        return False
+
+    def _create_collection_via_n1ql(self, collection_name: str, auth: Any) -> bool:
+        query_url = f"http://{self.host}:{self.query_port}/query/service"
+        query = f"CREATE COLLECTION IF NOT EXISTS `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}`"
+        response = requests.post(
+            query_url, json={"statement": query}, auth=auth, timeout=10
+        )
+        if response.status_code == 200:
+            result = response.json()
+            if result.get("status") == "success":
+                logger.info(f"Collection {collection_name} created via N1QL")
+                return True
+        return False
+
+    def _create_collection_via_rest_fallback(
+        self, collection_name: str, auth: Any
+    ) -> None:
+        url = f"http://{self.host}:{self.port}/pools/default/buckets/{self.bucket_name}/scopes/{self.scope_name}/collections"
+        data = {"name": collection_name}
+        response = requests.post(url, json=data, auth=auth, timeout=10)
+        if response.status_code in [200, 201, 202]:
+            logger.info(f"Collection {collection_name} created via REST API")
+        else:
+            logger.warning(
+                f"Failed to create collection via REST API: {response.status_code}"
+            )
+
     def _create_collection_via_rest(
         self, collection_name: str, overwrite: bool = False
     ):
         """Create collection via Couchbase REST API."""
         try:
-            # Check if collection already exists
             scopes_url = f"http://{self.host}:{self.port}/pools/default/buckets/{self.bucket_name}/scopes"
             auth = (
                 (self.username, self.password)
@@ -169,49 +209,44 @@ class CouchbaseVectorDB(VectorDB):
                 else None
             )
 
-            response = requests.get(scopes_url, auth=auth, timeout=10)
-            if response.status_code == 200:
-                result = response.json()
-                for scope in result.get("scopes", []):
-                    if scope.get("name") == self.scope_name:
-                        for coll in scope.get("collections", []):
-                            if coll.get("name") == collection_name:
-                                if overwrite:
-                                    self._delete_collection_via_rest(collection_name)
-                                else:
-                                    logger.info(
-                                        f"Collection {collection_name} already exists"
-                                    )
-                                    return
-
-            # Try to create collection using N1QL
-            query_url = f"http://{self.host}:{self.query_port}/query/service"
-            query = f"CREATE COLLECTION IF NOT EXISTS `{self.bucket_name}`.`{self.scope_name}`.`{collection_name}`"
-            response = requests.post(
-                query_url, json={"statement": query}, auth=auth, timeout=10
-            )
-
-            if response.status_code == 200:
-                result = response.json()
-                if result.get("status") == "success":
-                    logger.info(f"Collection {collection_name} created via N1QL")
+            if self._collection_exists_via_rest(scopes_url, auth, collection_name):
+                if overwrite:
+                    self._delete_collection_via_rest(collection_name)
+                else:
+                    logger.info(f"Collection {collection_name} already exists")
                     return
 
-            # Fallback to REST API
-            url = f"http://{self.host}:{self.port}/pools/default/buckets/{self.bucket_name}/scopes/{self.scope_name}/collections"
-            data = {"name": collection_name}
-            response = requests.post(url, json=data, auth=auth, timeout=10)
-            if response.status_code in [200, 201, 202]:
-                logger.info(f"Collection {collection_name} created via REST API")
-            else:
-                logger.warning(
-                    f"Failed to create collection via REST API: {response.status_code}"
-                )
+            if self._create_collection_via_n1ql(collection_name, auth):
+                return
+
+            self._create_collection_via_rest_fallback(collection_name, auth)
         except Exception as e:
             logger.error(f"Error creating collection via REST API: {e}")
 
     def get_collection(self, collection_name: str | None = None) -> Any:
         return self._get_collection(collection_name or self.collection_name)
+
+    def _persist_document(
+        self,
+        collection: Any,
+        doc_id: Any,
+        document: dict,
+        collection_name: str,
+        upsert: bool,
+    ) -> None:
+        if collection:
+            try:
+                if upsert:
+                    collection.upsert(doc_id, document)
+                else:
+                    collection.insert(doc_id, document)
+            except Exception as e:
+                logger.error(f"Error inserting document {doc_id}: {e}")
+            return
+        # Fall back to REST API
+        self._insert_document_via_rest(
+            str(doc_id) if doc_id else "", document, collection_name, upsert
+        )
 
     def insert_documents(
         self,
@@ -220,7 +255,8 @@ class CouchbaseVectorDB(VectorDB):
         _upsert: bool = False,
         **kwargs,
     ) -> None:
-        collection = self._get_collection(collection_name or self.collection_name)
+        resolved_name = collection_name or self.collection_name
+        collection = self._get_collection(resolved_name)
 
         for doc in docs:
             doc_id = doc.get("id")
@@ -238,22 +274,7 @@ class CouchbaseVectorDB(VectorDB):
                 "embedding": embedding,
             }
 
-            if collection:
-                try:
-                    if _upsert:
-                        collection.upsert(doc_id, document)
-                    else:
-                        collection.insert(doc_id, document)
-                except Exception as e:
-                    logger.error(f"Error inserting document {doc_id}: {e}")
-            else:
-                # Fall back to REST API
-                self._insert_document_via_rest(
-                    str(doc_id) if doc_id else "",
-                    document,
-                    collection_name or self.collection_name,
-                    _upsert,
-                )
+            self._persist_document(collection, doc_id, document, resolved_name, _upsert)
 
     def _insert_document_via_rest(
         self, doc_id: str, document: dict, collection_name: str, upsert: bool = False
@@ -310,6 +331,52 @@ class CouchbaseVectorDB(VectorDB):
         except Exception as e:
             logger.error(f"Error inserting document via N1QL: {e}")
 
+    @staticmethod
+    def _cosine_similarity(
+        query_embedding: list[float], doc_embedding: list[float]
+    ) -> float | None:
+        dot_product = sum(
+            q * d for q, d in zip(query_embedding, doc_embedding, strict=True)
+        )
+        magnitude_q = math.sqrt(sum(q * q for q in query_embedding))
+        magnitude_d = math.sqrt(sum(d * d for d in doc_embedding))
+        if magnitude_q == 0 or magnitude_d == 0:
+            return None
+        return dot_product / (magnitude_q * magnitude_d)
+
+    def _scored_documents(
+        self,
+        query_embedding: list[float],
+        documents: list,
+        distance_threshold: float,
+    ) -> list[tuple[Document, float]]:
+        scored = []
+        for doc in documents:
+            doc_embedding = doc.get("embedding", [])
+            if not doc_embedding:
+                continue
+
+            similarity = self._cosine_similarity(query_embedding, doc_embedding)
+            if similarity is None:
+                continue
+
+            distance = 1.0 - similarity  # Convert similarity to distance
+            if distance_threshold >= 0 and distance > distance_threshold:
+                continue
+
+            scored.append(
+                (
+                    Document(
+                        id=doc.get("id"),
+                        content=doc.get("text"),
+                        metadata=doc.get("metadata", {}),
+                        embedding=doc.get("embedding"),
+                    ),
+                    similarity,
+                )
+            )
+        return scored
+
     def semantic_search(
         self,
         queries: list[str],
@@ -318,56 +385,21 @@ class CouchbaseVectorDB(VectorDB):
         distance_threshold: float = -1,
         **kwargs: Any,
     ) -> QueryResults:
-        collection = self._get_collection(collection_name or self.collection_name)
+        resolved_name = collection_name or self.collection_name
+        collection = self._get_collection(resolved_name)
         results = []
 
         for query in queries:
             query_embedding = self.embed_model.get_query_embedding(query)
-            query_result = []
-
             # Get all documents and calculate cosine similarity
-            documents = self._get_all_documents(
-                collection, collection_name or self.collection_name
+            documents = self._get_all_documents(collection, resolved_name)
+            query_result = self._scored_documents(
+                query_embedding, documents, distance_threshold
             )
-
-            for doc in documents:
-                doc_embedding = doc.get("embedding", [])
-                if not doc_embedding:
-                    continue
-
-                # Calculate cosine similarity
-                dot_product = sum(
-                    q * d for q, d in zip(query_embedding, doc_embedding, strict=True)
-                )
-                magnitude_q = math.sqrt(sum(q * q for q in query_embedding))
-                magnitude_d = math.sqrt(sum(d * d for d in doc_embedding))
-
-                if magnitude_q == 0 or magnitude_d == 0:
-                    continue
-
-                similarity = dot_product / (magnitude_q * magnitude_d)
-                distance = 1.0 - similarity  # Convert similarity to distance
-
-                if distance_threshold >= 0 and distance > distance_threshold:
-                    continue
-
-                query_result.append(
-                    (
-                        Document(
-                            id=doc.get("id"),
-                            content=doc.get("text"),
-                            metadata=doc.get("metadata", {}),
-                            embedding=doc.get("embedding"),
-                        ),
-                        similarity,
-                    )
-                )
 
             # Sort by similarity (descending) and limit results
             query_result.sort(key=lambda x: x[1], reverse=True)
-            query_result = query_result[:n_results]
-
-            results.append(query_result)
+            results.append(query_result[:n_results])
 
         return results
 
@@ -419,6 +451,23 @@ class CouchbaseVectorDB(VectorDB):
 
         return []
 
+    def _fetch_document_by_id(
+        self, collection: Any, _id: Any, collection_name: str
+    ) -> Document | None:
+        if collection:
+            try:
+                res = collection.get(_id)
+                content = res.content_as[dict]
+                return Document(
+                    id=_id,
+                    content=content.get("text", ""),
+                    metadata=content.get("metadata", {}),
+                )
+            except Exception as e:
+                logger.error(f"Error getting document {_id}: {e}")
+        # Try REST API as fallback (or as the only path when there is no collection)
+        return self._get_document_via_rest(str(_id), collection_name)
+
     def get_documents_by_ids(
         self,
         ids: list[ItemID] | None = None,
@@ -426,40 +475,16 @@ class CouchbaseVectorDB(VectorDB):
         include=None,
         **kwargs,
     ) -> list[Document]:
-        collection = self._get_collection(collection_name or self.collection_name)
-        docs = []
-
         if not ids:
             return []
 
-        if collection:
-            for _id in ids:
-                try:
-                    res = collection.get(_id)
-                    content = res.content_as[dict]
-                    docs.append(
-                        Document(
-                            id=_id,
-                            content=content.get("text", ""),
-                            metadata=content.get("metadata", {}),
-                        )
-                    )
-                except Exception as e:
-                    logger.error(f"Error getting document {_id}: {e}")
-                    # Try REST API as fallback
-                    doc = self._get_document_via_rest(
-                        str(_id), collection_name or self.collection_name
-                    )
-                    if doc:
-                        docs.append(doc)
-        else:
-            # Use REST API
-            for _id in ids:
-                doc = self._get_document_via_rest(
-                    str(_id), collection_name or self.collection_name
-                )
-                if doc:
-                    docs.append(doc)
+        resolved_name = collection_name or self.collection_name
+        collection = self._get_collection(resolved_name)
+        docs = []
+        for _id in ids:
+            doc = self._fetch_document_by_id(collection, _id, resolved_name)
+            if doc:
+                docs.append(doc)
 
         return docs
 
@@ -639,6 +664,24 @@ class CouchbaseVectorDB(VectorDB):
 
         return []
 
+    def _lexical_search_via_sdk(
+        self, query_text: str, collection_name: str, n_results: int
+    ) -> list:
+        from couchbase.search import MatchQuery, SearchOptions
+
+        search_result = self.cluster.search_query(
+            collection_name,
+            MatchQuery(query_text),
+            SearchOptions(limit=n_results),
+        )
+
+        query_result = []
+        for row in search_result.rows():
+            doc = self._get_document_via_rest(row.id, collection_name)
+            if doc:
+                query_result.append((doc, row.score))
+        return query_result
+
     def lexical_search(
         self,
         queries: list[str],
@@ -654,20 +697,11 @@ class CouchbaseVectorDB(VectorDB):
                 # Try to use SDK for search if available
                 if self.cluster:
                     try:
-                        from couchbase.search import MatchQuery, SearchOptions
-
-                        search_result = self.cluster.search_query(
-                            collection_name,
-                            MatchQuery(query_text),
-                            SearchOptions(limit=n_results),
+                        results.append(
+                            self._lexical_search_via_sdk(
+                                query_text, collection_name, n_results
+                            )
                         )
-
-                        query_result = []
-                        for row in search_result.rows():
-                            doc = self._get_document_via_rest(row.id, collection_name)
-                            if doc:
-                                query_result.append((doc, row.score))
-                        results.append(query_result)
                         continue
                     except Exception as e:
                         logger.error(f"SDK search failed: {e}")

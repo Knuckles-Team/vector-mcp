@@ -55,6 +55,10 @@ _RESERVED = {_TEXT_KEY, "name", "type", "label", "id", "score", "_similarity"}
 _WORD = re.compile(r"[A-Za-z0-9_]{2,}")
 
 
+def _query_keywords(query: str) -> list[str]:
+    return list(dict.fromkeys(word.casefold() for word in _WORD.findall(query)))
+
+
 @require_optional_import(["epistemic_graph", "agent_utilities"], "epistemic-graph")
 class EpistemicGraphVectorDB(VectorDB):
     """A vector database backed by the native epistemic-graph engine.
@@ -187,6 +191,32 @@ class EpistemicGraphVectorDB(VectorDB):
             self.active_collection = ""
 
     # ── documents ─────────────────────────────────────────────────────────
+    @staticmethod
+    def _document_node_properties(document: Document, identifier: str) -> dict:
+        content = str(document["content"])
+        return {
+            **dict(document.get("metadata") or {}),
+            _TEXT_KEY: content,
+            "name": identifier,
+            "type": _LABEL,
+            "label": _LABEL,
+        }
+
+    @staticmethod
+    def _run_transaction(client: Any, populate) -> None:
+        """Run ``populate(transaction)`` and commit, rolling back on any failure."""
+        transaction = client.txn.begin()
+        try:
+            populate(transaction)
+            if not client.txn.commit(transaction):
+                raise ValueError("transaction_conflict")
+        except Exception:
+            try:
+                client.txn.rollback(transaction)
+            except Exception:
+                pass
+            raise
+
     def insert_documents(
         self,
         docs: list[Document],
@@ -203,29 +233,16 @@ class EpistemicGraphVectorDB(VectorDB):
             if any(existing.get(identifier, False) for identifier in identifiers):
                 raise ValueError("document_exists")
         vectors = document_embeddings(docs, self.embed_model)
-        transaction = client.txn.begin()
-        try:
+
+        def populate(transaction: Any) -> None:
             for document, identifier, vector in zip(
                 docs, identifiers, vectors, strict=True
             ):
-                content = str(document["content"])
-                properties = {
-                    **dict(document.get("metadata") or {}),
-                    _TEXT_KEY: content,
-                    "name": identifier,
-                    "type": _LABEL,
-                    "label": _LABEL,
-                }
+                properties = self._document_node_properties(document, identifier)
                 client.txn.add_node(transaction, identifier, properties)
                 client.txn.add_embedding(transaction, identifier, vector)
-            if not client.txn.commit(transaction):
-                raise ValueError("transaction_conflict")
-        except Exception:
-            try:
-                client.txn.rollback(transaction)
-            except Exception:
-                pass
-            raise
+
+        self._run_transaction(client, populate)
 
     def update_documents(
         self, docs: list[Document], collection_name: str | None = None, **kwargs: Any
@@ -236,18 +253,12 @@ class EpistemicGraphVectorDB(VectorDB):
         self, ids: list[ItemID], collection_name: str | None = None, **_kwargs: Any
     ) -> None:
         client = self._client_for(collection_name)
-        transaction = client.txn.begin()
-        try:
+
+        def populate(transaction: Any) -> None:
             for identifier in ids:
                 client.txn.remove_node(transaction, str(identifier))
-            if not client.txn.commit(transaction):
-                raise ValueError("transaction_conflict")
-        except Exception:
-            try:
-                client.txn.rollback(transaction)
-            except Exception:
-                pass
-            raise
+
+        self._run_transaction(client, populate)
 
     def get_documents_by_ids(
         self,
@@ -303,6 +314,40 @@ class EpistemicGraphVectorDB(VectorDB):
             output.append(values)
         return output
 
+    def _query_embedding_or_empty(self, query: str) -> list[float]:
+        try:
+            return self._embedding(query, query=True)
+        except Exception:
+            return []  # discover degrades to a bounded keyword-only scan
+
+    def _hits_to_values(
+        self, hits: list, n_results: int
+    ) -> list[tuple[Document, float]]:
+        values: list[tuple[Document, float]] = []
+        for hit in hits[:n_results]:
+            properties = dict(hit)
+            identifier = str(properties.pop("id", "") or "")
+            if not identifier:
+                continue
+            values.append(
+                (self._document(identifier, properties), float(hit.get("score", 0.0) or 0.0))
+            )
+        return values
+
+    def _lexical_search_query(
+        self, client: Any, query: str, n_results: int
+    ) -> list[tuple[Document, float]]:
+        keywords = _query_keywords(query)
+        if not keywords:
+            return []
+        embedding = self._query_embedding_or_empty(query)
+        try:
+            hits = client.graph.discover(keywords, embedding, n_results) or []
+        except Exception as exc:
+            logger.info(f"discover unavailable, using client scan: {exc}")
+            return self._lexical_scan(client, keywords, n_results)
+        return self._hits_to_values(hits, n_results)
+
     def lexical_search(
         self,
         queries: list[str],
@@ -319,35 +364,25 @@ class EpistemicGraphVectorDB(VectorDB):
         support ``discover``.
         """
         client = self._client_for(collection_name)
-        output: QueryResults = []
-        for query in queries:
-            keywords = list(
-                dict.fromkeys(word.casefold() for word in _WORD.findall(query))
-            )
-            if not keywords:
-                output.append([])
-                continue
-            try:
-                embedding = self._embedding(query, query=True)
-            except Exception:
-                embedding = []  # discover degrades to a bounded keyword-only scan
-            try:
-                hits = client.graph.discover(keywords, embedding, n_results) or []
-            except Exception as exc:
-                logger.info(f"discover unavailable, using client scan: {exc}")
-                output.append(self._lexical_scan(client, keywords, n_results))
-                continue
-            values: list[tuple[Document, float]] = []
-            for hit in hits[:n_results]:
-                properties = dict(hit)
-                identifier = str(properties.pop("id", "") or "")
-                if not identifier:
-                    continue
-                values.append(
-                    (self._document(identifier, properties), float(hit.get("score", 0.0) or 0.0))
-                )
-            output.append(values)
-        return output
+        return [
+            self._lexical_search_query(client, query, n_results) for query in queries
+        ]
+
+    def _score_node_by_term_frequency(
+        self, client: Any, entry: Any, keywords: list[str]
+    ) -> tuple[Document, float] | None:
+        node_id = str(entry[0]) if isinstance(entry, (list, tuple)) else str(entry)
+        try:
+            properties = client.nodes.properties(node_id) or {}
+        except Exception:
+            return None
+        content = str(properties.get(_TEXT_KEY, "") or "").casefold()
+        if not content:
+            return None
+        freq = sum(content.count(term) for term in keywords)
+        if freq <= 0:
+            return None
+        return self._document(node_id, properties), float(freq)
 
     def _lexical_scan(
         self, client: Any, keywords: list[str], n_results: int
@@ -360,17 +395,9 @@ class EpistemicGraphVectorDB(VectorDB):
             return []
         scored: list[tuple[Document, float]] = []
         for entry in listing:
-            node_id = str(entry[0]) if isinstance(entry, (list, tuple)) else str(entry)
-            try:
-                properties = client.nodes.properties(node_id) or {}
-            except Exception:
-                continue
-            content = str(properties.get(_TEXT_KEY, "") or "").casefold()
-            if not content:
-                continue
-            freq = sum(content.count(term) for term in keywords)
-            if freq > 0:
-                scored.append((self._document(node_id, properties), float(freq)))
+            result = self._score_node_by_term_frequency(client, entry, keywords)
+            if result is not None:
+                scored.append(result)
         scored.sort(key=lambda item: item[1], reverse=True)
         return scored[:n_results]
 

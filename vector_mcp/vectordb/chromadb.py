@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+import shutil
+from pathlib import Path
 from typing import Any
 
 from agent_utilities import create_embedding_model
@@ -23,6 +25,27 @@ with optional_import_block():
     from llama_index.vector_stores.chroma import ChromaVectorStore
 
 logger = get_logger(__name__)
+
+
+def _migrate_legacy_chromadb_directory(legacy_dir: Path, new_dir: Path) -> None:
+    if not legacy_dir.exists() or legacy_dir == new_dir:
+        return
+    try:
+        new_dir.parent.mkdir(parents=True, exist_ok=True)
+        if not new_dir.exists():
+            shutil.copytree(legacy_dir, new_dir, symlinks=True, dirs_exist_ok=True)
+            logger.info(f"Successfully migrated ChromaDB from {legacy_dir} to {new_dir}")
+    except Exception as e:
+        logger.warning(f"Failed to migrate legacy ChromaDB directory: {e}")
+
+
+def _default_chromadb_dir() -> Path:
+    from agent_utilities.core import paths
+
+    legacy_dir = Path.home() / "Documents" / "ChromaDB"
+    new_dir = paths.data_dir() / "vectordb"
+    _migrate_legacy_chromadb_directory(legacy_dir, new_dir)
+    return new_dir
 
 
 @require_optional_import(["chromadb", "llama_index"], "chromadb")
@@ -54,36 +77,12 @@ class ChromaVectorDB(VectorDB):
 
         if client:
             self.client = client
+        elif path:
+            self.path = path
+            self.client = chromadb.PersistentClient(path=self.path)
         else:
-            if path:
-                self.path = path
-                self.client = chromadb.PersistentClient(path=self.path)
-            else:
-                import shutil
-                from pathlib import Path
-
-                from agent_utilities.core import paths
-
-                legacy_dir = Path.home() / "Documents" / "ChromaDB"
-                new_dir = paths.data_dir() / "vectordb"
-
-                if legacy_dir.exists() and legacy_dir != new_dir:
-                    try:
-                        new_dir.parent.mkdir(parents=True, exist_ok=True)
-                        if not new_dir.exists():
-                            shutil.copytree(
-                                legacy_dir, new_dir, symlinks=True, dirs_exist_ok=True
-                            )
-                            logger.info(
-                                f"Successfully migrated ChromaDB from {legacy_dir} to {new_dir}"
-                            )
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to migrate legacy ChromaDB directory: {e}"
-                        )
-
-                self.path = str(new_dir)
-                self.client = chromadb.PersistentClient(path=self.path)
+            self.path = str(_default_chromadb_dir())
+            self.client = chromadb.PersistentClient(path=self.path)
 
         self.chroma_collection = self.client.get_or_create_collection(
             self.collection_name
@@ -183,6 +182,22 @@ class ChromaVectorDB(VectorDB):
             results.append(query_result)
         return results
 
+    def _document_from_chroma_row(
+        self,
+        index: int,
+        fallback_id: str,
+        results: dict,
+        ids: list[ItemID] | None,
+    ) -> Document | None:
+        metadata = results["metadatas"][index] if results["metadatas"] else {}
+        # With ids: return the original ID, no UUID fallback.
+        # Without ids: fall back to the chroma-assigned UUID.
+        doc_id = metadata.get("doc_id") if ids else metadata.get("doc_id", fallback_id)
+        if ids and doc_id not in ids:
+            return None
+        content = results["documents"][index] if results["documents"] else ""
+        return Document(id=doc_id, content=content, metadata=metadata)
+
     def get_documents_by_ids(
         self,
         ids: list[ItemID] | None = None,
@@ -194,47 +209,15 @@ class ChromaVectorDB(VectorDB):
 
         # LlamaIndex stores our original IDs in metadata as 'doc_id'
         # So we need to query by metadata instead of primary IDs
-        if ids:
-            # Get all documents and filter by metadata
-            results = collection.get(include=include or ["metadatas", "documents"])
-            docs = []
-            if results and results["ids"]:
-                for i, _id in enumerate(results["ids"]):
-                    metadata = results["metadatas"][i] if results["metadatas"] else {}
-                    doc_id = metadata.get("doc_id")
-                    if doc_id in ids:
-                        docs.append(
-                            Document(
-                                id=doc_id,  # Return the original ID
-                                content=(
-                                    results["documents"][i]
-                                    if results["documents"]
-                                    else ""
-                                ),
-                                metadata=metadata,
-                            )
-                        )
+        results = collection.get(include=include or ["metadatas", "documents"])
+        docs: list[Document] = []
+        if not results or not results["ids"]:
             return docs
-        else:
-            # Return all documents
-            results = collection.get(include=include or ["metadatas", "documents"])
-            docs = []
-            if results and results["ids"]:
-                for i, _id in enumerate(results["ids"]):
-                    metadata = results["metadatas"][i] if results["metadatas"] else {}
-                    doc_id = metadata.get(
-                        "doc_id", _id
-                    )  # Use doc_id from metadata or fall back to UUID
-                    docs.append(
-                        Document(
-                            id=doc_id,
-                            content=(
-                                results["documents"][i] if results["documents"] else ""
-                            ),
-                            metadata=metadata,
-                        )
-                    )
-            return docs
+        for i, _id in enumerate(results["ids"]):
+            document = self._document_from_chroma_row(i, _id, results, ids)
+            if document is not None:
+                docs.append(document)
+        return docs
 
     def update_documents(
         self, docs: list[Document], collection_name: str | None = None, **kwargs

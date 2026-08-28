@@ -107,23 +107,31 @@ class MongoDBAtlasVectorDB(VectorDB):
             for field in fields
         )
 
+    @staticmethod
+    def _find_vector_index(collection: Any) -> dict[str, Any] | None:
+        return next(
+            (
+                item
+                for item in collection.list_search_indexes(_VECTOR_INDEX)
+                if item.get("name") == _VECTOR_INDEX
+            ),
+            None,
+        )
+
+    @staticmethod
+    def _index_ready(index: dict[str, Any]) -> bool:
+        status = str(index.get("status", "")).upper()
+        return index.get("queryable") is True or status in {"READY", "STEADY"}
+
     def _wait_for_vector_index(self, collection: Any, dimension: int) -> None:
         deadline = time.monotonic() + self._timeout_ms / 1_000
         poll_interval = 0.1
         while time.monotonic() < deadline:
-            index = next(
-                (
-                    item
-                    for item in collection.list_search_indexes(_VECTOR_INDEX)
-                    if item.get("name") == _VECTOR_INDEX
-                ),
-                None,
-            )
+            index = self._find_vector_index(collection)
             if index is not None:
                 if not self._vector_index_valid(index, dimension):
                     raise ValueError("collection_vector_schema_mismatch")
-                status = str(index.get("status", "")).upper()
-                if index.get("queryable") is True or status in {"READY", "STEADY"}:
+                if self._index_ready(index):
                     return
             remaining = deadline - time.monotonic()
             if remaining > 0:

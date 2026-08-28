@@ -165,31 +165,26 @@ class QdrantVectorDB(VectorDB):
         if self.active_collection == collection_name:
             self.active_collection = ""
 
-    def insert_documents(
-        self,
-        docs: list[Document],
-        collection_name: str | None = None,
-        _upsert: bool = False,
-        **_kwargs: Any,
+    def _reject_existing_documents(
+        self, name: str, identifiers: list[str], upsert: bool
     ) -> None:
-        name = collection_name or self.collection_name
+        if upsert or not identifiers:
+            return
+        existing = self.client.retrieve(
+            name,
+            [_point_id(identifier) for identifier in identifiers],
+            with_payload=False,
+            with_vectors=False,
+        )
+        if existing:
+            raise ValueError("document_exists")
+
+    @staticmethod
+    def _build_points(
+        docs: list[Document], identifiers: list[str], vectors: list[list[float]]
+    ) -> list:
         points = []
-        identifiers = [str(document["id"]) for document in docs]
-        if len(set(identifiers)) != len(identifiers):
-            raise ValueError("document_ids_duplicate")
-        vectors = document_embeddings(docs, self.embed_model)
-        if not _upsert and identifiers:
-            existing = self.client.retrieve(
-                name,
-                [_point_id(identifier) for identifier in identifiers],
-                with_payload=False,
-                with_vectors=False,
-            )
-            if existing:
-                raise ValueError("document_exists")
-        for document, identifier, vector in zip(
-            docs, identifiers, vectors, strict=True
-        ):
+        for document, identifier, vector in zip(docs, identifiers, vectors, strict=True):
             content = str(document["content"])
             points.append(
                 models.PointStruct(
@@ -202,6 +197,22 @@ class QdrantVectorDB(VectorDB):
                     },
                 )
             )
+        return points
+
+    def insert_documents(
+        self,
+        docs: list[Document],
+        collection_name: str | None = None,
+        _upsert: bool = False,
+        **_kwargs: Any,
+    ) -> None:
+        name = collection_name or self.collection_name
+        identifiers = [str(document["id"]) for document in docs]
+        if len(set(identifiers)) != len(identifiers):
+            raise ValueError("document_ids_duplicate")
+        vectors = document_embeddings(docs, self.embed_model)
+        self._reject_existing_documents(name, identifiers, _upsert)
+        points = self._build_points(docs, identifiers, vectors)
         if points:
             self.client.upsert(collection_name=name, points=points, wait=True)
 
