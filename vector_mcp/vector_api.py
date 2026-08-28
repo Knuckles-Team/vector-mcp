@@ -316,19 +316,21 @@ class Api:
             metadata=self._sanitize_metadata(metadata),
         )
 
-    def _load_documents(
+    def _validate_document_input_types(
         self,
-        *,
-        document_directory: Path | None = None,
-        document_paths: list[Path] | None = None,
-        document_contents: list[str] | None = None,
-    ) -> list[Document]:
+        document_directory: Path | None,
+        document_paths: list[Path] | None,
+    ) -> None:
         if document_directory is not None and not isinstance(document_directory, Path):
             raise ValueError("resolved_document_input_required")
         if document_paths and any(
             not isinstance(value, Path) for value in document_paths
         ):
             raise ValueError("resolved_document_input_required")
+
+    def _inline_documents(
+        self, document_contents: list[str] | None
+    ) -> tuple[list[Document], int]:
         if len(document_contents or []) > _MAX_DOCUMENTS:
             raise ValueError("document_count_exceeded")
         total_bytes = sum(
@@ -339,14 +341,28 @@ class Api:
         if total_bytes > _MAX_DOCUMENT_TOTAL_BYTES:
             raise ValueError("document_total_size_exceeded")
         documents = [self._document(text) for text in (document_contents or [])]
-        loaded: Iterable[Any] = ()
+        return documents, total_bytes
+
+    def _load_external_items(
+        self,
+        document_directory: Path | None,
+        document_paths: list[Path] | None,
+    ) -> Iterable[Any]:
         try:
             if document_directory:
-                loaded = SimpleDirectoryReader(input_dir=document_directory).load_data()
-            elif document_paths:
-                loaded = SimpleDirectoryReader(input_files=document_paths).load_data()
+                return SimpleDirectoryReader(input_dir=document_directory).load_data()
+            if document_paths:
+                return SimpleDirectoryReader(input_files=document_paths).load_data()
         except Exception:
             raise RuntimeError("document_loading_failed") from None
+        return ()
+
+    def _append_external_documents(
+        self,
+        documents: list[Document],
+        loaded: Iterable[Any],
+        total_bytes: int,
+    ) -> int:
         for item in loaded:
             text = (
                 item.get_content() if hasattr(item, "get_content") else str(item.text)
@@ -358,6 +374,19 @@ class Api:
             documents.append(self._document(text, metadata))
             if len(documents) > _MAX_DOCUMENTS:
                 raise ValueError("document_count_exceeded")
+        return total_bytes
+
+    def _load_documents(
+        self,
+        *,
+        document_directory: Path | None = None,
+        document_paths: list[Path] | None = None,
+        document_contents: list[str] | None = None,
+    ) -> list[Document]:
+        self._validate_document_input_types(document_directory, document_paths)
+        documents, total_bytes = self._inline_documents(document_contents)
+        loaded = self._load_external_items(document_directory, document_paths)
+        self._append_external_documents(documents, loaded, total_bytes)
         if not documents:
             raise ValueError("document_input_required")
         unique: dict[str, Document] = {}
@@ -515,21 +544,12 @@ class Api:
         )
         return {"results": self._sanitizer.sanitize(self._serialize(results))}
 
-    def search(
+    def _validate_search_weights(
         self,
-        *,
-        db_type: str | None = None,
-        collection_name: str | None = None,
-        question: str,
-        number_results: int = 10,
-        semantic_weight: float = 0.5,
-        lexical_weight: float = 0.5,
-        rrf_k: int = 60,
-    ) -> dict[str, Any]:
-        name = self._collection(collection_name)
-        physical = self._physical_collection(name, "kg:read")
-        question = self._question(question)
-        limit = self._limit(number_results)
+        semantic_weight: float,
+        lexical_weight: float,
+        rrf_k: int,
+    ) -> tuple[float, float, int]:
         rrf_is_bool = isinstance(rrf_k, bool)
         try:
             semantic_weight = float(semantic_weight)
@@ -545,6 +565,40 @@ class Api:
             raise ValueError("search_weights_invalid")
         if rrf_is_bool or not 1 <= rrf_k <= 10_000:
             raise ValueError("rrf_k_invalid")
+        return semantic_weight, lexical_weight, rrf_k
+
+    @staticmethod
+    def _fuse_rankings(
+        weighted_results: tuple[tuple[float, list], tuple[float, list]],
+        rrf_k: int,
+        limit: int,
+    ) -> list[tuple[Document, float]]:
+        ranked: dict[str, tuple[Document, float]] = {}
+        for weight, values in weighted_results:
+            for rank, (document, _score) in enumerate(values, start=1):
+                identifier = str(document.get("id", ""))
+                prior = ranked.get(identifier, (document, 0.0))[1]
+                ranked[identifier] = (document, prior + weight / (int(rrf_k) + rank))
+        return heapq.nlargest(limit, ranked.values(), key=lambda item: item[1])
+
+    def search(
+        self,
+        *,
+        db_type: str | None = None,
+        collection_name: str | None = None,
+        question: str,
+        number_results: int = 10,
+        semantic_weight: float = 0.5,
+        lexical_weight: float = 0.5,
+        rrf_k: int = 60,
+    ) -> dict[str, Any]:
+        name = self._collection(collection_name)
+        physical = self._physical_collection(name, "kg:read")
+        question = self._question(question)
+        limit = self._limit(number_results)
+        semantic_weight, lexical_weight, rrf_k = self._validate_search_weights(
+            semantic_weight, lexical_weight, rrf_k
+        )
         safe_question = self._sanitize_text(question)
         database = self._database(db_type, physical)
         semantic = self._invoke(
@@ -553,16 +607,11 @@ class Api:
         lexical = self._invoke(
             database.lexical_search, [safe_question], physical, limit
         )[0]
-        ranked: dict[str, tuple[Document, float]] = {}
-        for weight, values in (
-            (float(semantic_weight), semantic),
-            (float(lexical_weight), lexical),
-        ):
-            for rank, (document, _score) in enumerate(values, start=1):
-                identifier = str(document.get("id", ""))
-                prior = ranked.get(identifier, (document, 0.0))[1]
-                ranked[identifier] = (document, prior + weight / (int(rrf_k) + rank))
-        fused = heapq.nlargest(limit, ranked.values(), key=lambda item: item[1])
+        fused = self._fuse_rankings(
+            ((float(semantic_weight), semantic), (float(lexical_weight), lexical)),
+            rrf_k,
+            limit,
+        )
         return {"results": self._sanitizer.sanitize(self._serialize([fused]))}
 
 
