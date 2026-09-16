@@ -121,7 +121,6 @@ When query strings or parameters are supplied, an LLM-free **Knowledge Graph res
         "DB_PASSWORD_REF": "secret://runtime/db-password",
         "DB_PORT": "5432",
         "DB_USERNAME_REF": "secret://runtime/db-username",
-        "LLM_SSL_VERIFY": "False",
         "MONGODB_MAX_POOL_SIZE": "20",
         "MONGODB_REQUEST_TIMEOUT_MS": "30000",
         "MONGODB_URI_REF": "secret://runtime/mongodb-uri",
@@ -167,7 +166,6 @@ own runtime secret boundary.
         "DB_PASSWORD_REF": "secret://runtime/db-password",
         "DB_PORT": "5432",
         "DB_USERNAME_REF": "secret://runtime/db-username",
-        "LLM_SSL_VERIFY": "False",
         "MONGODB_MAX_POOL_SIZE": "20",
         "MONGODB_REQUEST_TIMEOUT_MS": "30000",
         "MONGODB_URI_REF": "secret://runtime/mongodb-uri",
@@ -212,7 +210,6 @@ docker run -i --rm \
   -e DB_PASSWORD_REF \
   -e DB_PORT=5432 \
   -e DB_USERNAME_REF \
-  -e LLM_SSL_VERIFY=False \
   -e MONGODB_MAX_POOL_SIZE=20 \
   -e MONGODB_REQUEST_TIMEOUT_MS=30000 \
   -e MONGODB_URI_REF \
@@ -263,10 +260,6 @@ consumed from a **remote deployment**. The
 | `TRANSPORT` | `stdio` | options: stdio, streamable-http, sse |
 | `ENABLE_OTEL` | — |  |
 | `EMBEDDING_TLS_PROFILE_REF` | `secret://runtime/embedding-tls-profile` | Configure AgentConfig EMBEDDING_MODELS and its referenced runtime credentials. |
-| `LLM_BASE_URL` | `http://localhost:8000/v1` | embedding/LLM API base url |
-| `LLM_TOKEN` | secret-injected | bearer token for the embedding/LLM endpoint |
-| `LLM_API_KEY` | secret-injected | alias accepted if LLM_TOKEN is unset |
-| `LLM_SSL_VERIFY` | `False` | verify TLS for the embedding/LLM endpoint |
 | `DOCUMENT_DIRECTORY` | — | Required only for filesystem ingestion. Supply the operator-owned root at runtime. |
 | `DATABASE_TYPE` | `epistemic_graph` | Backend used when db_type is unspecified. Default is the native epistemic-graph engine (local, zero-infra, durable). Options: epistemic_graph, postgres, mongodb, qdrant. DATABASE_TYPE is the canonical variable; VECTOR_DB_TYPE is accepted as an alias for backward compatibility. |
 | `VECTOR_DB_TYPE` | `epistemic_graph` |  |
@@ -313,7 +306,7 @@ consumed from a **remote deployment**. The
 | `MODEL_ID` | — | Operator-configured model id for the agent |
 | `ENABLE_WEB_UI` | `True` | Serve the AG-UI web interface |
 
-_29 package + 20 inherited variable(s). Auto-generated from `.env.example` + the shared agent-utilities set — do not edit._
+_25 package + 20 inherited variable(s). Auto-generated from `.env.example` + the shared agent-utilities set — do not edit._
 <!-- ENV-VARS-TABLE:END -->
 
 
