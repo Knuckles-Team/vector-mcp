@@ -24,7 +24,7 @@ runs every container-backed store on one network. Deploy the one you need:
     # docker/postgres.compose.yml
     services:
       postgres:
-        image: docker.io/paradedb/paradedb:latest-pg16
+        image: docker.io/paradedb/paradedb@sha256:ac8ad72f57da6fa35738d346b9970811a4ab9ce0ba7f183bea27e0ad7b037222  # paradedb, originally tagged `latest-pg16`
         container_name: vector-postgres
         restart: unless-stopped
         environment:
@@ -51,7 +51,7 @@ runs every container-backed store on one network. Deploy the one you need:
     # docker/qdrant.compose.yml
     services:
       qdrant:
-        image: docker.io/qdrant/qdrant:latest
+        image: docker.io/qdrant/qdrant@sha256:12364fe851b9f17356fc88189fc06d1b521262e04659ec7345975b00c9246a10  # qdrant/qdrant, originally tagged `latest`
         container_name: vector-qdrant
         restart: unless-stopped
         ports:
@@ -70,7 +70,7 @@ runs every container-backed store on one network. Deploy the one you need:
     # docker/mongodb.compose.yml
     services:
       mongodb:
-        image: docker.io/mongo:latest
+        image: docker.io/mongo@sha256:2609aaf7a1abbff404101af896e05f243d22be742471ed857b50b9ce0270fdbd  # mongo, originally tagged `latest`
         container_name: vector-mongodb
         restart: unless-stopped
         ports:
@@ -88,7 +88,7 @@ runs every container-backed store on one network. Deploy the one you need:
     # docker/couchbase.compose.yml
     services:
       couchbase:
-        image: docker.io/couchbase:latest
+        image: docker.io/couchbase@sha256:c4254e37f5a5db3d13eb990d89862765db44b4f96b6283190c2e6c8a20d760d7  # couchbase, originally tagged `latest`
         container_name: vector-couchbase
         restart: unless-stopped
         environment:
@@ -141,7 +141,7 @@ server reaches the store by container name:
 # docker/stack.compose.yml
 services:
   postgres:
-    image: docker.io/paradedb/paradedb:latest-pg16
+    image: docker.io/paradedb/paradedb@sha256:ac8ad72f57da6fa35738d346b9970811a4ab9ce0ba7f183bea27e0ad7b037222  # paradedb, originally tagged `latest-pg16`
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -149,7 +149,7 @@ services:
     volumes: ["pgdata:/var/lib/postgresql/data"]
 
   vector-mcp:
-    image: knucklessg1/vector-mcp:latest
+    image: knucklessg1/vector-mcp@sha256:<digest>  # resolve via `docker manifest inspect knucklessg1/vector-mcp:mcp` or your release process
     depends_on: [postgres]
     environment:
       - DATABASE_TYPE=postgres

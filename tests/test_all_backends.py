@@ -9,9 +9,11 @@ Tests the VectorDB protocol implementation across:
 - Couchbase
 
 Usage:
-1. Start test databases: podman-compose -f docker-compose.test.yml up -d
-2. Run tests: pytest tests/test_all_backends.py -v
-3. Stop databases: podman-compose -f docker-compose.test.yml down
+1. Start test databases: podman-compose -f docker/compose.test.yml up -d
+2. Connection settings default to that compose file (see
+   tests/test-connections.env.example to override any of them).
+3. Run tests: pytest tests/test_all_backends.py -v
+4. Stop databases: podman-compose -f docker/compose.test.yml down
 
 Individual backends can be tested by running specific markers:
     pytest tests/test_all_backends.py -m chromadb -v
