@@ -118,7 +118,17 @@ When query strings or parameters are supplied, an LLM-free **Knowledge Graph res
         "MCP_TOOL_MODE": "intent",
         "COLLECTION_MANAGEMENTTOOL": "True",
         "DATABASE_TYPE": "epistemic_graph",
+        "DB_PASSWORD_REF": "secret://runtime/db-password",
+        "DB_PORT": "5432",
+        "DB_USERNAME_REF": "secret://runtime/db-username",
         "LLM_SSL_VERIFY": "False",
+        "MONGODB_MAX_POOL_SIZE": "20",
+        "MONGODB_REQUEST_TIMEOUT_MS": "30000",
+        "MONGODB_URI_REF": "secret://runtime/mongodb-uri",
+        "POSTGRES_MAX_POOL_SIZE": "20",
+        "POSTGRES_REQUEST_TIMEOUT": "30",
+        "QDRANT_API_KEY_REF": "secret://runtime/qdrant-api-key",
+        "QDRANT_REQUEST_TIMEOUT": "30",
         "SEARCHTOOL": "True",
         "VECTOR_DB_TYPE": "epistemic_graph"
       }
@@ -154,7 +164,17 @@ own runtime secret boundary.
         "MCP_TOOL_MODE": "intent",
         "COLLECTION_MANAGEMENTTOOL": "True",
         "DATABASE_TYPE": "epistemic_graph",
+        "DB_PASSWORD_REF": "secret://runtime/db-password",
+        "DB_PORT": "5432",
+        "DB_USERNAME_REF": "secret://runtime/db-username",
         "LLM_SSL_VERIFY": "False",
+        "MONGODB_MAX_POOL_SIZE": "20",
+        "MONGODB_REQUEST_TIMEOUT_MS": "30000",
+        "MONGODB_URI_REF": "secret://runtime/mongodb-uri",
+        "POSTGRES_MAX_POOL_SIZE": "20",
+        "POSTGRES_REQUEST_TIMEOUT": "30",
+        "QDRANT_API_KEY_REF": "secret://runtime/qdrant-api-key",
+        "QDRANT_REQUEST_TIMEOUT": "30",
         "SEARCHTOOL": "True",
         "VECTOR_DB_TYPE": "epistemic_graph"
       }
@@ -189,7 +209,17 @@ docker run -i --rm \
   -e MCP_TOOL_MODE=intent \
   -e COLLECTION_MANAGEMENTTOOL=True \
   -e DATABASE_TYPE=epistemic_graph \
+  -e DB_PASSWORD_REF \
+  -e DB_PORT=5432 \
+  -e DB_USERNAME_REF \
   -e LLM_SSL_VERIFY=False \
+  -e MONGODB_MAX_POOL_SIZE=20 \
+  -e MONGODB_REQUEST_TIMEOUT_MS=30000 \
+  -e MONGODB_URI_REF \
+  -e POSTGRES_MAX_POOL_SIZE=20 \
+  -e POSTGRES_REQUEST_TIMEOUT=30 \
+  -e QDRANT_API_KEY_REF \
+  -e QDRANT_REQUEST_TIMEOUT=30 \
   -e SEARCHTOOL=True \
   -e VECTOR_DB_TYPE=epistemic_graph \
   registry.example.invalid/vector-mcp@sha256:<digest> vector-mcp
@@ -248,17 +278,15 @@ consumed from a **remote deployment**. The
 | `MONGODB_URI_REF` | `secret://runtime/mongodb-uri` |  |
 | `QDRANT_API_KEY_REF` | `secret://runtime/qdrant-api-key` |  |
 | `QDRANT_HTTP_ALLOWED_PRIVATE_HOSTS` | — | comma-separated SSRF allowlist for a private Qdrant host |
+| `POSTGRES_REQUEST_TIMEOUT` | `30` | seconds, 1-300 |
+| `POSTGRES_MAX_POOL_SIZE` | `20` | connections, 1-100 |
+| `MONGODB_REQUEST_TIMEOUT_MS` | `30000` | milliseconds, 1-300000 |
+| `MONGODB_MAX_POOL_SIZE` | `20` | connections, 1-100 |
+| `QDRANT_REQUEST_TIMEOUT` | `30` | seconds, 1-300 |
 | `COLLECTION_MANAGEMENTTOOL` | `True` |  |
 | `SEARCHTOOL` | `True` |  |
-| `TEST_POSTGRES_CONNECTION_STRING` | `postgresql://postgres:password@localhost:5432/vectordb` |  |
-| `TEST_MONGODB_HOST` | `localhost` |  |
-| `TEST_MONGODB_PORT` | `27017` |  |
-| `TEST_MONGODB_DB` | `vectordb` |  |
-| `TEST_QDRANT_LOCATION` | `http://localhost:6333` |  |
-| `TEST_COUCHBASE_CONNECTION` | `couchbase://localhost` |  |
-| `TEST_COUCHBASE_USER` | `Administrator` |  |
-| `TEST_COUCHBASE_PASSWORD` | secret-injected |  |
-| `TEST_COUCHBASE_DB` | `vector_db` |  |
+| `VECTOR_MCP_MCP_IMAGE` | — | e.g. registry.example.invalid/vector-mcp@sha256:<digest> |
+| `VECTOR_MCP_AGENT_IMAGE` | — | e.g. registry.example.invalid/vector-mcp@sha256:<digest> |
 
 #### Inherited agent-utilities variables (apply to every connector)
 
@@ -281,11 +309,11 @@ consumed from a **remote deployment**. The
 | `DEBUG` | `False` | Verbose logging |
 | `PYTHONUNBUFFERED` | `1` | Unbuffered stdout (recommended in containers) |
 | `MCP_URL` | `http://localhost:8000/mcp` | URL of the MCP server the agent connects to |
-| `PROVIDER` | `openai` | LLM provider for the agent |
-| `MODEL_ID` | `gpt-4o` | Model id for the agent |
+| `PROVIDER` | — | Operator-configured LLM provider for the agent |
+| `MODEL_ID` | — | Operator-configured model id for the agent |
 | `ENABLE_WEB_UI` | `True` | Serve the AG-UI web interface |
 
-_31 package + 20 inherited variable(s). Auto-generated from `.env.example` + the shared agent-utilities set — do not edit._
+_29 package + 20 inherited variable(s). Auto-generated from `.env.example` + the shared agent-utilities set — do not edit._
 <!-- ENV-VARS-TABLE:END -->
 
 
@@ -428,19 +456,19 @@ One multi-stage `docker/Dockerfile` builds two right-sized images, selected by `
 | Image tag | Build target | Contents | Entrypoint |
 |-----------|--------------|----------|------------|
 | `knucklessg1/vector-mcp:mcp` | `--target mcp` | `vector-mcp[mcp]` — **slim**, no engine/`pydantic-ai`/`dspy`/`llama-index`/`tree-sitter` | `vector-mcp` |
-| `knucklessg1/vector-mcp:latest` | `--target agent` (default) | `vector-mcp[agent]` — **full** agent runtime + epistemic-graph engine | `vector-agent` |
+| `knucklessg1/vector-mcp@sha256:<digest>` (agent build) | `--target agent` (default) | `vector-mcp[agent]` — **full** agent runtime + epistemic-graph engine | `vector-agent` |
 
 ```bash
-docker build --target mcp   -t knucklessg1/vector-mcp:mcp    docker/   # slim MCP server
-docker build --target agent -t knucklessg1/vector-mcp:latest docker/   # full agent
+docker build --target mcp   -t knucklessg1/vector-mcp:mcp   docker/   # slim MCP server
+docker build --target agent -t knucklessg1/vector-mcp:local docker/   # full agent (local build; publish/pin a digest via your release process)
 ```
 
 `docker/mcp.compose.yml` runs the slim `:mcp` server; `docker/agent.compose.yml` runs the
-agent (`:latest`) with a co-located `:mcp` sidecar.
+agent (default build) with a co-located `:mcp` sidecar.
 
 ### Knowledge-graph database (`epistemic-graph`)
 
-The **full agent** (`[agent]` / `:latest`) embeds the **epistemic-graph** engine (pulled in
+The **full agent** (`[agent]`, the default build) embeds the **epistemic-graph** engine (pulled in
 transitively via `agent-utilities[agent]`). For production — or to share one knowledge graph
 across multiple agents — run **epistemic-graph as its own database container** and point the
 agent at it instead of embedding it. Deployment recipes (single-node + Raft HA), connection
@@ -466,25 +494,3 @@ Contributions are welcome! Please ensure code quality by executing local checks 
 - Lint code using `ruff check .`
 - Validate type-safety with `mypy .`
 - Execute test suites using `pytest`
-
-
-<!-- BEGIN agent-os-genesis-deploy (generated; do not edit between markers) -->
-
-## Deploy with `agent-os-genesis`
-
-This package can be provisioned for you — skill-guided — by the **`agent-os-genesis`**
-universal skill (its *single-package deploy mode*): it picks your install method, seeds
-secrets to OpenBao/Vault (or `.env`), trusts your enterprise CA, registers the MCP
-server, and verifies it — the same machinery that stands up the whole Agent OS, narrowed
-to just this package. Ask your agent to **"deploy `vector-mcp` with agent-os-genesis"**.
-
-| Install mode | Command |
-|------|---------|
-| Bare-metal, prod (PyPI) | `uvx vector-mcp` · or `uv tool install vector-mcp` |
-| Bare-metal, dev (editable) | `uv pip install -e ".[all]"` · or `pip install -e ".[all]"` |
-| Container, prod | deploy `knucklessg1/vector-mcp:latest` via docker-compose / swarm / podman / podman-compose / kubernetes |
-| Container, dev (editable) | deploy `docker/compose.dev.yml` (source-mounted at `/src`; edits live on restart) |
-
-Secrets are read-existing + seeded via `vault_sync` — you are only prompted for what's missing.
-
-<!-- END agent-os-genesis-deploy -->

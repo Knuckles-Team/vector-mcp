@@ -10,7 +10,17 @@
         "MCP_TOOL_MODE": "intent",
         "COLLECTION_MANAGEMENTTOOL": "True",
         "DATABASE_TYPE": "epistemic_graph",
+        "DB_PASSWORD_REF": "secret://runtime/db-password",
+        "DB_PORT": "5432",
+        "DB_USERNAME_REF": "secret://runtime/db-username",
         "LLM_SSL_VERIFY": "False",
+        "MONGODB_MAX_POOL_SIZE": "20",
+        "MONGODB_REQUEST_TIMEOUT_MS": "30000",
+        "MONGODB_URI_REF": "secret://runtime/mongodb-uri",
+        "POSTGRES_MAX_POOL_SIZE": "20",
+        "POSTGRES_REQUEST_TIMEOUT": "30",
+        "QDRANT_API_KEY_REF": "secret://runtime/qdrant-api-key",
+        "QDRANT_REQUEST_TIMEOUT": "30",
         "SEARCHTOOL": "True",
         "VECTOR_DB_TYPE": "epistemic_graph"
       }

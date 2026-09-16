@@ -78,6 +78,10 @@ Then either let the client launch it:
 
 ### 3. Local container / uv
 
+Resolve `<digest>` for the build you want with
+`docker manifest inspect knucklessg1/vector-mcp:mcp` (or your release process) before
+deploying; never deploy the moving `mcp`/`latest`/`main` tags directly.
+
 **(a) Launch a container directly from `mcp_config.json`** (stdio over the container —
 no ports to manage). Swap `docker` for `podman` for a daemonless runtime:
 
@@ -90,7 +94,7 @@ no ports to manage). Swap `docker` for `podman` for a daemonless runtime:
         "run", "-i", "--rm",
         "-e", "TRANSPORT=stdio",
         "-e", "DATABASE_TYPE=epistemic_graph",
-        "knucklessg1/vector-mcp:latest"
+        "knucklessg1/vector-mcp@sha256:<digest>"
       ]
     }
   }
@@ -104,7 +108,7 @@ docker run -d --name vector-mcp -p 8000:8000 \
   -e TRANSPORT=streamable-http \
   -e PORT=8000 \
   -e DATABASE_TYPE=epistemic_graph \
-  knucklessg1/vector-mcp:latest
+  knucklessg1/vector-mcp@sha256:<digest>
 # or, from a clone of this repo:
 docker compose -f docker/mcp.compose.yml up -d
 ```
