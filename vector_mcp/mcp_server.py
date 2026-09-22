@@ -23,7 +23,7 @@ import logging
 import re
 import sys
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from agent_utilities.core.config import load_config, setting
 from agent_utilities.mcp.action_dispatch import resolve_action
@@ -176,7 +176,12 @@ async def _list_collections_action(client, db_type: str | None):
 def register_collection_management_tools(mcp: FastMCP):
     @mcp.tool(tags={"collection_management"})
     async def vector_collection_management(
-        action: str = Field(
+        action: Literal[
+            "add_documents",
+            "create_collection",
+            "delete_collection",
+            "list_collections",
+        ] = Field(
             description="Action to perform. Must be one of: 'create_collection', 'add_documents', 'delete_collection', 'list_collections'"
         ),
         db_type: str | None = Field(default=None, description="db type"),

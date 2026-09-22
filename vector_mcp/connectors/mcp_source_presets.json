@@ -8,6 +8,7 @@
     "id_field": "collection_name",
     "title_field": "collection_name",
     "text_field": "collection_name",
-    "doc_type": "vector_collection"
+    "doc_type": "vector_collection",
+    "params_style": "args"
   }
 }
