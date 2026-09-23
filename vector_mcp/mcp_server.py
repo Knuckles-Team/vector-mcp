@@ -174,7 +174,18 @@ async def _list_collections_action(client, db_type: str | None):
 
 
 def register_collection_management_tools(mcp: FastMCP):
-    @mcp.tool(tags={"collection_management"})
+    @mcp.tool(
+        tags={"collection_management"},
+        annotations={
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        },
+        meta={
+            "eg.annotations": {"modalities_in": ["text"], "modalities_out": ["text"]}
+        },
+    )
     async def vector_collection_management(
         action: Literal[
             "add_documents",
