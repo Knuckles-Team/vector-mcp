@@ -25,13 +25,11 @@ import sys
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from agent_utilities.core.config import load_config, setting
-from agent_utilities.mcp.action_dispatch import resolve_action
-from agent_utilities.mcp.concurrency import run_blocking
-from agent_utilities.mcp.server_factory import create_mcp_server
-from agent_utilities.mcp.verbose_tools import register_tool_surface
-from starlette.requests import Request
-from starlette.responses import JSONResponse
+from agent_connector_sdk.config import load_config, setting
+from agent_connector_sdk.mcp.action_dispatch import resolve_action
+from agent_connector_sdk.mcp.concurrency import run_blocking
+from agent_connector_sdk.mcp.server import create_mcp_server
+from agent_connector_sdk.mcp.tool_surface import register_tool_surface
 
 from vector_mcp import __version__
 from vector_mcp.backend_policy import ensure_backend_available
@@ -429,10 +427,7 @@ def get_mcp_instance(command_args: list[str] | None = None) -> tuple[Any, ...]:
         command_args=[] if command_args is None else command_args,
     )
 
-    @mcp.custom_route("/health", methods=["GET"])
-    async def health_check(request: Request) -> JSONResponse:
-        return JSONResponse({"status": "OK"})
-
+    # /health is now registered by agent_connector_sdk.mcp.server.create_mcp_server itself.
     register_tool_surface(
         mcp,
         service="vector-mcp",

@@ -293,7 +293,7 @@ class VectorDBFactory:
         """
         if not db_type:
             try:
-                from agent_utilities.core.config import setting
+                from agent_connector_sdk.config import setting
 
                 db_type = setting("DATABASE_TYPE", None) or setting(
                     "VECTOR_DB_TYPE", VectorDBFactory.DEFAULT_VECTOR_DB

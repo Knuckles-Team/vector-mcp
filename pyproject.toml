@@ -9,7 +9,15 @@ description = "Governed vector retrieval over native epistemic-graph and secure 
 readme = "README.md"
 classifiers = [ "Development Status :: 5 - Production/Stable", "License :: Public Domain", "Environment :: Console", "Operating System :: POSIX :: Linux", "Programming Language :: Python :: 3",]
 requires-python = ">=3.12"
-dependencies = [ "agent-utilities[embeddings-openai,mcp]>=2.0.0,<3.0.0", "markdownify>=1.2.3", "beautifulsoup4>=4.15.0", "ebooklib>=0.20", "html2text>=2025.4.15", "ipython>=9.15.0", "pypdf>=6.14.2", "llama-index-core>=0.14.23", "llama-index-readers-file>=0.6.0",]
+# NOTE (EH-484 policy update, see /var/tmp/l9/finish/au-decon-G4e/SDK-GAPS.md gap
+# #5): agent-utilities is kept for its embedding-model factory
+# (core.embedding_utilities.create_embedding_model, used throughout
+# retriever/*.py and vectordb/*.py -- no agent_connector_sdk equivalent exists
+# at all) and several other modules with no SDK equivalent (security.guardrails,
+# security.cli_secrets, security.entitlements, knowledge_graph.core.session,
+# core.transport_security paired with core.http_client.pinned_egress_transport,
+# core.paths). Drop agent-utilities once those land.
+dependencies = [ "agent-connector-sdk>=0.1.0,<1.0.0", "agent-utilities[embeddings-openai,mcp]>=2.0.0,<3.0.0", "markdownify>=1.2.3", "beautifulsoup4>=4.15.0", "ebooklib>=0.20", "html2text>=2025.4.15", "ipython>=9.15.0", "pypdf>=6.14.2", "llama-index-core>=0.14.23", "llama-index-readers-file>=0.6.0",]
 [[project.authors]]
 name = "Project Maintainers"
 email = "maintainers@example.invalid"
@@ -23,14 +31,12 @@ postgres = [ "psycopg[pool]>=3.3.4",]
 qdrant = [ "qdrant-client>=1.18.0",]
 mongodb = [ "pymongo>=4.17.0",]
 huggingface = [ "agent-utilities[embeddings-huggingface]>=2.0.0,<3.0.0",]
-agent = [ "agent-utilities[agent-runtime,langfuse,logfire]>=2.0.0,<3.0.0",]
-all = [ "vector-mcp[mcp,postgres,qdrant,mongodb,huggingface,agent]>=2.1.2",]
+all = [ "vector-mcp[mcp,postgres,qdrant,mongodb,huggingface]>=2.1.2",]
 test = [
     "pytest-xdist>=3.8.0", "pytest>=9.1.1", "pytest-asyncio>=1.4.0", "pytest-cov>=7.1.0",]
 
 [project.scripts]
 vector-mcp = "vector_mcp.mcp_server:mcp_server"
-vector-agent = "vector_mcp.agent_server:agent_server"
 vector-mcp-doctor = "vector_mcp.doctor:main"
 
 [project.entry-points."agent_utilities.skill_providers"]
@@ -84,6 +90,7 @@ override-dependencies = [
 ]
 
 [tool.uv.sources]
+agent-connector-sdk = { path = ".uv-workspace-siblings/agent-connector-sdk", editable = true }
 agent-utilities = { path = ".uv-workspace-siblings/agent-utilities", editable = true }
 epistemic-graph = { path = ".uv-workspace-siblings/epistemic-graph", editable = true }
 langfuse-agent = { path = ".uv-workspace-siblings/langfuse-agent", editable = true }

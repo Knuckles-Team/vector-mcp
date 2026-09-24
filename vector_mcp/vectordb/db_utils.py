@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import Any, TypeVar, cast
 
-from agent_utilities import get_logger
+from agent_connector_sdk.utilities import get_logger
 
 logger = get_logger(__name__)
 T = TypeVar("T")

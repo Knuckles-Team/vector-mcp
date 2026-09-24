@@ -99,13 +99,6 @@ repos:
     additional_dependencies: ['@zabaca/mermaid-validate@1.0.1']
     types: [markdown]
     pass_filenames: true
-  - id: check-agent-standards
-    name: check agent standards
-    entry: |-
-      bash -c 'for f in $(find . -type f -name "agent_server.py" -not -path "*/\.venv/*" -not -path "*/__pycache__/*"); do grep -q "warnings.filterwarnings" "$f" && grep -q "file=sys.stderr" "$f" || { echo "Missing warnings.filterwarnings or file=sys.stderr in $f"; exit 1; }; done'
-    language: system
-    pass_filenames: false
-    always_run: true
   - id: mcp-readme-table
     name: sync MCP tools table in README
     entry: |-
@@ -136,7 +129,7 @@ repos:
   - id: check-cli-help
     name: check cli help
     entry: |-
-      bash -c 'for f in $(find . -type f \( -name "mcp_server.py" -o -name "agent_server.py" \) -not -path "*/\.venv/*" -not -path "*/__pycache__/*"); do mod=$(echo "$f" | sed -e "s/^\.\///" -e "s/\.py$//" -e "s/\//./g"); uv run python -m "$mod" --help >/dev/null || exit 1; done'
+      bash -c 'for f in $(find . -type f -name "mcp_server.py" -not -path "*/\.venv/*" -not -path "*/__pycache__/*"); do mod=$(echo "$f" | sed -e "s/^\.\///" -e "s/\.py$//" -e "s/\//./g"); uv run python -m "$mod" --help >/dev/null || exit 1; done'
     language: system
     pass_filenames: false
     always_run: true

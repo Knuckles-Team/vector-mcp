@@ -12,6 +12,7 @@ def test_local_uv_sources_are_direct_workspace_siblings() -> None:
         sources = tomllib.load(handle)["tool"]["uv"]["sources"]
 
     expected = {
+        "agent-connector-sdk",
         "agent-utilities",
         "epistemic-graph",
         "langfuse-agent",

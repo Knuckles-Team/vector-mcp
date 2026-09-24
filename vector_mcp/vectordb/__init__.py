@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from agent_utilities import get_logger
+from agent_connector_sdk.utilities import get_logger
 
 from .base import Document, VectorDB
 
