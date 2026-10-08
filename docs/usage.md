@@ -7,7 +7,7 @@ environment, then start the MCP server:
 vector-mcp
 ```
 
-The document root is supplied by the deployment and is required only for filesystem
+The document root is provided by the deployment and is required only for filesystem
 ingestion. MCP callers never pass an
 absolute host path: use `include_configured_directory=true` to ingest that root,
 or provide `document_paths` as relative names beneath it. URLs, traversal,

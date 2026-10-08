@@ -84,7 +84,7 @@ PostgreSQL always uses `verify-full`; MongoDB always enables certificate and hos
 verification; Qdrant is constructed as HTTPS with the resolved shared TLS profile and a
 per-request DNS-pinned transport. Private Qdrant hosts must be listed exactly in
 `QDRANT_HTTP_ALLOWED_PRIVATE_HOSTS`. Qdrant's pinned transport does not accept
-ambient or profile proxies; deploy it with a direct verified route.
+ambient or profile proxies; deploy it with a direct checked route.
 Credential-bearing database URIs are accepted only behind the MongoDB runtime secret
 reference and are never logged or returned.
 
@@ -109,7 +109,7 @@ quarantine records that cannot satisfy that contract; never silently widen a
 tenant scope. Logs and reports should contain counts, status, and opaque
 references only.
 
-Every collection operation also requires the verified ambient `GraphSession`.
+Every collection operation also requires the checked ambient `GraphSession`.
 Search requires `kg:read`, document ingestion requires `kg:write`, and collection
 lifecycle/inventory requires `kg:admin`. Physical collection names are
 prefixed with a one-way tenant partition digest; the tenant identifier itself is
@@ -120,7 +120,7 @@ not persisted in the provider namespace or returned by the tool.
 1. Validate the capability bundle and skill metadata against the installed tool
    schemas.
 2. Confirm required secrets are present without printing their values.
-3. Verify the complete TLS chain with certificate verification enabled.
+3. Check the complete TLS chain with certificate verification enabled.
 4. Exercise health/readiness and one least-privilege read operation.
 5. Confirm traces arrive under the expected opaque tenant/run identifiers and
    contain no captured content.

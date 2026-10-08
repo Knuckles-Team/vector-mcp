@@ -42,7 +42,7 @@ Logfire runtimes. Production images should install only the providers they opera
 
 ## MCP configuration
 
-The package includes a neutral agent-launch configuration containing only the command,
+The package includes a neutral agent-start configuration containing only the command,
 condensed tool mode, and tool toggles. Runtime values are inherited from AgentConfig or
 injected by the operator. Detailed instructions on how to use the underlying API wrappers,
 extended schema bindings, and developer SDK references are maintained in
@@ -52,7 +52,7 @@ extended schema bindings, and developer SDK references are maintained in
 
 ## MCP
 
-This server utilizes dynamic Action-Routed tools to optimize token overhead and maximize IDE compatibility.
+This server use dynamic Action-Routed tools to optimize token overhead and maximize IDE compatibility.
 
 ### Available MCP Tools
 
@@ -74,9 +74,9 @@ Detailed tool schemas, parameter shapes, and validation constraints are preserve
 
 ### Dynamic Tool Selection & Visibility
 
-This MCP server supports dynamic toolset selection and visibility filtering at runtime. This allows you to restrict the set of exposed tools in order to prevent blowing up the LLM's context window.
+This MCP server supports dynamic toolset selection and visibility filtering at runtime. This allows the operator to restrict the set of exposed tools to prevent blowing up the LLM's context window.
 
-You can configure tool filtering via multiple input channels:
+The operator can configure tool filtering via multiple input channels:
 
 - **CLI Arguments:** Pass `--tools` or `--toolsets` (or their disabled counterparts `--disabled-tools` and `--disabled-toolsets`) during startup.
 - **Environment Variables:** Define standard environment variables:
@@ -85,11 +85,11 @@ You can configure tool filtering via multiple input channels:
 - **HTTP SSE Request Headers:** Pass custom headers during transport initialization:
   - `x-mcp-enabled-tools` / `x-mcp-disabled-tools`
   - `x-mcp-enabled-tags` / `x-mcp-disabled-tags`
-- **HTTP SSE Request Query Parameters:** Append query parameters directly to your transport connection URL:
+- **HTTP SSE Request Query Parameters:** Append query parameters directly to the operator's transport connection URL:
   - `?tools=tool1,tool2`
   - `?tags=tag1`
 
-When query strings or parameters are supplied, an LLM-free **Knowledge Graph resolution layer** (using `DynamicToolOrchestrator`) matches query intents against known tool tags, names, or descriptions, with safe fallback and automated 24-hour background cache refreshing.
+When query strings or parameters are provided, an LLM-free **Knowledge Graph resolution layer** (using `DynamicToolOrchestrator`) matches query intents against known tool tags, names, or descriptions, with safe fallback and automated 24-hour background cache refreshing.
 
 ---
 
@@ -370,7 +370,7 @@ ontology must never be copied forward.
 
 ## Development checks
 
-Low-cost checks that do not launch providers:
+Low-cost checks that do not start providers:
 
 ```bash
 python scripts/security_sanitizer.py
@@ -379,7 +379,7 @@ python -m compileall -q vector_mcp
 ```
 
 Provider tests use mocked SDK boundaries and make no network calls. Live qualification is a
-separate deployment gate and must use operator-supplied AgentConfig and secrets.
+separate deployment gate and must use operator-provided AgentConfig and secrets.
 
 ## Documentation
 
@@ -423,12 +423,12 @@ configured secret provider.
 
 ## Installation
 
-Pick the extra that matches what you want to run:
+Pick the extra that matches what the operator want to run:
 
 | Extra | Installs | Use when |
 |-------|----------|----------|
-| `vector-mcp[mcp]` | Slim MCP server only (`agent-utilities[mcp]` — FastMCP/FastAPI) | You only run the **MCP server** (smallest install / image) |
-| `vector-mcp[agent]` | Full agent runtime (`agent-utilities[agent,logfire]` — Pydantic AI + the epistemic-graph engine) | You run the **integrated agent** |
+| `vector-mcp[mcp]` | Slim MCP server only (`agent-utilities[mcp]` — FastMCP/FastAPI) | The operator only run the **MCP server** (smallest install / image) |
+| `vector-mcp[agent]` | Full agent runtime (`agent-utilities[agent,logfire]` — Pydantic AI + the epistemic-graph engine) | The operator run the **integrated agent** |
 | `vector-mcp[all]` | Everything (`mcp` + all vector backends + `agent`) | Development / both surfaces |
 
 ```bash
@@ -482,8 +482,8 @@ The slim `[mcp]` server does **not** require the database.
 
 ## Contribute
 
-Contributions are welcome! Please ensure code quality by executing local checks before submitting pull requests:
+Contributions are welcome! Please ensure code quality by running local checks before submitting pull requests:
 - Format code using `ruff format .`
 - Lint code using `ruff check .`
 - Validate type-safety with `mypy .`
-- Execute test suites using `pytest`
+- Run test suites using `pytest`
