@@ -87,3 +87,6 @@ override-dependencies = [
 agent-utilities = { path = ".uv-workspace-siblings/agent-utilities", editable = true }
 epistemic-graph = { path = ".uv-workspace-siblings/epistemic-graph", editable = true }
 langfuse-agent = { path = ".uv-workspace-siblings/langfuse-agent", editable = true }
+
+[tool.pipelines_hooks.ste]
+exempt = ["specs/*", "specs/**/*"]

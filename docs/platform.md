@@ -16,7 +16,7 @@ topologies, follow each database's upstream documentation.
 ## Single-node deployment (Compose)
 
 The repository's [`docker/compose.test.yml`](https://github.com/Knuckles-Team/vector-mcp/blob/main/docker/compose.test.yml)
-runs every container-backed store on one network. Deploy the one you need:
+runs every container-backed store on one network. Deploy the one the operator need:
 
 === "PostgreSQL / PGVector"
 
