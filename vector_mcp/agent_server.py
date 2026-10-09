@@ -6,7 +6,7 @@ from contextlib import nullcontext
 from importlib.resources import as_file, files
 from pathlib import Path
 
-from agent_utilities.core.config import setting
+from agent_connector_sdk.config import setting
 
 from vector_mcp import __version__
 
