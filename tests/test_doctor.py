@@ -61,7 +61,7 @@ def test_doctor_passes_named_and_referenced_tls_selectors(monkeypatch) -> None:
             client_cert_path=None,
         )
 
-    monkeypatch.setattr(doctor, "resolve_configured_tls_profile", resolve)
+    monkeypatch.setattr(doctor, "resolve_tls_profile", resolve)
 
     valid, summary = doctor._tls_status("POSTGRES")
 

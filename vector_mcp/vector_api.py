@@ -19,12 +19,10 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
+from agent_connector_sdk.config import setting
+from agent_connector_sdk.tls.profile import ResolvedTLSProfile
+from agent_connector_sdk.tls.resolve import resolve_tls_profile
 from agent_utilities import create_embedding_model
-from agent_utilities.core.config import setting
-from agent_utilities.core.transport_security import (
-    ResolvedTLSProfile,
-    resolve_configured_tls_profile,
-)
 from agent_utilities.knowledge_graph.core.session import resolve_session
 from agent_utilities.security.cli_secrets import (
     RuntimeSecretReferenceError,
@@ -88,7 +86,7 @@ def _required_secret(name: str) -> str:
 def _tls(service: str) -> ResolvedTLSProfile:
     prefix = service.upper()
     try:
-        profile = resolve_configured_tls_profile(
+        profile = resolve_tls_profile(
             service,
             profile_name=str(_configured(f"{prefix}_TLS_PROFILE", "") or "") or None,
             profile_ref=str(_configured(f"{prefix}_TLS_PROFILE_REF", "") or "") or None,

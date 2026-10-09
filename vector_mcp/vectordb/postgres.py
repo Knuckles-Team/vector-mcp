@@ -10,8 +10,8 @@ from contextlib import contextmanager
 from functools import cached_property
 from typing import Any
 
+from agent_connector_sdk.tls.profile import ResolvedTLSProfile
 from agent_utilities import create_embedding_model
-from agent_utilities.core.transport_security import ResolvedTLSProfile
 
 from vector_mcp.vectordb.base import (
     Document,

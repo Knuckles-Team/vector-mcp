@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import importlib.util
 import inspect
+import logging
 import sys
 from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager
 from functools import wraps
 from typing import Any, TypeVar, cast
 
-from agent_utilities import get_logger
+
+def get_logger(name: str) -> logging.Logger:
+    """Standard library logger, re-exported so provider modules need one import."""
+    return logging.getLogger(name)
+
 
 logger = get_logger(__name__)
 T = TypeVar("T")

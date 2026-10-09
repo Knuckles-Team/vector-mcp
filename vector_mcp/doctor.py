@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import json
 
-from agent_utilities.core.config import setting
-from agent_utilities.core.transport_security import (
-    TransportSecurityError,
-    resolve_configured_tls_profile,
-)
+from agent_connector_sdk.config import setting
+from agent_connector_sdk.tls.errors import TransportSecurityError
+from agent_connector_sdk.tls.resolve import resolve_tls_profile
 from agent_utilities.security.cli_secrets import (
     RuntimeSecretReferenceError,
     resolve_runtime_secret_reference,
@@ -30,7 +28,7 @@ def _credential_available(reference_name: str) -> bool:
 def _tls_status(service: str) -> tuple[bool, dict[str, bool]]:
     prefix = service.upper()
     try:
-        tls = resolve_configured_tls_profile(
+        tls = resolve_tls_profile(
             service.casefold(),
             profile_name=setting(f"{prefix}_TLS_PROFILE", None),
             profile_ref=setting(f"{prefix}_TLS_PROFILE_REF", None),
