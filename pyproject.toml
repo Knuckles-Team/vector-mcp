@@ -9,7 +9,7 @@ description = "Governed vector retrieval over native epistemic-graph and secure 
 readme = "README.md"
 classifiers = [ "Development Status :: 5 - Production/Stable", "License :: Public Domain", "Environment :: Console", "Operating System :: POSIX :: Linux", "Programming Language :: Python :: 3",]
 requires-python = ">=3.12"
-dependencies = [ "agent-utilities[embeddings-openai,mcp]>=2.0.0,<3.0.0", "markdownify>=1.2.3", "beautifulsoup4>=4.15.0", "ebooklib>=0.20", "html2text>=2025.4.15", "ipython>=9.15.0", "pypdf>=6.14.2", "llama-index-core>=0.14.23", "llama-index-readers-file>=0.6.0",]
+dependencies = [ "agent-connector-sdk>=0.1.0,<1.0.0", "agent-utilities[embeddings-openai,mcp]>=2.0.0,<3.0.0", "markdownify>=1.2.3", "beautifulsoup4>=4.15.0", "ebooklib>=0.20", "html2text>=2025.4.15", "ipython>=9.15.0", "platformdirs>=4.11.0", "pypdf>=6.14.2", "llama-index-core>=0.14.23", "llama-index-readers-file>=0.6.0",]
 [[project.authors]]
 name = "Project Maintainers"
 email = "maintainers@example.invalid"
@@ -84,6 +84,7 @@ override-dependencies = [
 ]
 
 [tool.uv.sources]
+agent-connector-sdk = { path = ".uv-workspace-siblings/agent-connector-sdk", editable = true }
 agent-utilities = { path = ".uv-workspace-siblings/agent-utilities", editable = true }
 epistemic-graph = { path = ".uv-workspace-siblings/epistemic-graph", editable = true }
 langfuse-agent = { path = ".uv-workspace-siblings/langfuse-agent", editable = true }

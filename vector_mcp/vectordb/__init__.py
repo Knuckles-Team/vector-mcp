@@ -1,10 +1,14 @@
 #!/usr/bin/python
 
+import logging
 from typing import TYPE_CHECKING
 
-from agent_utilities import get_logger
-
 from .base import Document, VectorDB
+
+
+def get_logger(name: str) -> logging.Logger:
+    """Standard library logger, re-exported for backward compatibility."""
+    return logging.getLogger(name)
 
 if TYPE_CHECKING:
     from .epistemic_graph import EpistemicGraphVectorDB
