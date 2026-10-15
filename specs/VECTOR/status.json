@@ -1,0 +1,74 @@
+{
+  "schema_version": 2,
+  "spec_id": "VECTOR",
+  "owner_repo": "vector-mcp",
+  "delivery_state": "SPECIFIED",
+  "requirement_ids": [
+    "VECTOR-R001",
+    "VECTOR-R001.1",
+    "VECTOR-R001.2",
+    "VECTOR-R001.3",
+    "VECTOR-R001.4",
+    "VECTOR-R001.5",
+    "VECTOR-R001.6"
+  ],
+  "requirements": [
+    {
+      "id": "VECTOR-R001",
+      "title": "Vector indexing and semantic search",
+      "delivery_state": "SPECIFIED",
+      "landed_in": [],
+      "verified_by": [],
+      "rollup_of": [
+        "VECTOR-R001.1",
+        "VECTOR-R001.2",
+        "VECTOR-R001.3",
+        "VECTOR-R001.4",
+        "VECTOR-R001.5",
+        "VECTOR-R001.6"
+      ]
+    },
+    {
+      "id": "VECTOR-R001.1",
+      "title": "Model",
+      "delivery_state": "SPECIFIED",
+      "landed_in": [],
+      "verified_by": []
+    },
+    {
+      "id": "VECTOR-R001.2",
+      "title": "Behavior",
+      "delivery_state": "SPECIFIED",
+      "landed_in": [],
+      "verified_by": []
+    },
+    {
+      "id": "VECTOR-R001.3",
+      "title": "Wiring",
+      "delivery_state": "SPECIFIED",
+      "landed_in": [],
+      "verified_by": []
+    },
+    {
+      "id": "VECTOR-R001.4",
+      "title": "Refusal",
+      "delivery_state": "SPECIFIED",
+      "landed_in": [],
+      "verified_by": []
+    },
+    {
+      "id": "VECTOR-R001.5",
+      "title": "Evidence",
+      "delivery_state": "SPECIFIED",
+      "landed_in": [],
+      "verified_by": []
+    },
+    {
+      "id": "VECTOR-R001.6",
+      "title": "Hot-path proof",
+      "delivery_state": "SPECIFIED",
+      "landed_in": [],
+      "verified_by": []
+    }
+  ]
+}
