@@ -14,7 +14,7 @@ or provide `document_paths` as relative names beneath it. URLs, traversal,
 symbolic links, oversized inputs, and paths outside the configured root are
 rejected before a backend sees them.
 
-Discover the current tool schema before ingestion or search. GraphOS callers
+Discover the current tool schema before ingestion or search. Arbora callers
 should use `vector-mcp-operations`, preserve tenant/ACL metadata, and verify
 counts and opaque references without returning raw source content in validation
 evidence.
