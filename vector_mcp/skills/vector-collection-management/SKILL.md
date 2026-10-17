@@ -50,7 +50,7 @@ action takes the connection parameters inline (or falls back to server defaults)
 | `collection_name` | Target collection (defaults to `memory` in the retriever) |
 
 Embedding is handled server-side by the configured embedding model
-(`agent-utilities[embeddings-openai]` or HuggingFace/sentence-transformers extras).
+(`agent-connector-sdk` embedding client (OpenAI-compatible or Ollama)).
 
 ## Tools & actions
 | Condensed tool | Actions |

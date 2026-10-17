@@ -7,7 +7,7 @@ adapters, an agent entry point, packaged skills/prompts, a vector ontology, and 
 collection-inventory connector preset.
 
 - Language/Version: Python 3.11+
-- Core Libraries: `agent-utilities`, `fastmcp`, `pydantic-ai`
+- Core Libraries: `agent-connector-sdk`, `fastmcp`, `epistemic-graph` (client)
 - Key principles: Functional patterns, Pydantic for data validation, asynchronous tool execution.
 
 ## Current architecture
@@ -89,7 +89,7 @@ Maintained container definitions live under `docker/`.
 
 ## Development rules
 
-- Use `agent-utilities` primitives for MCP construction, AgentConfig, secrets, transport
+- Use `agent_connector_sdk` primitives for MCP construction, secrets, identity, transport
   security, and observability.
 - Keep public tool schemas bounded and explicit.
 - Use Pydantic fields/models where they define a public validation boundary.

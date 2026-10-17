@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from agent_utilities import create_embedding_model
+from agent_connector_sdk.embeddings import create_embedding_model
 
 from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.vectordb.base import Document, VectorDB, VectorDBFactory
@@ -33,7 +33,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-@require_optional_import(["epistemic_graph", "agent_utilities"], "epistemic-graph")
+@require_optional_import(["epistemic_graph"], "epistemic-graph")
 class EpistemicGraphRetriever(RAGRetriever):
     """A RAG retriever backed by the native epistemic-graph engine."""
 

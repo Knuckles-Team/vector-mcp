@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from agent_utilities import create_embedding_model
+from agent_connector_sdk.embeddings import create_embedding_model
 
 from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.vectordb.db_utils import (

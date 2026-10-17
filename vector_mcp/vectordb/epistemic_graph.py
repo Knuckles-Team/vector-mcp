@@ -10,9 +10,9 @@ vector search over a durable, cross-process index — not an in-Python cosine sc
 A "collection" maps to an engine **graph** (``graph_name``); each collection is a
 separately-connected :class:`SyncEpistemicGraphClient`, cached per verified
 authority so a session change never reuses another caller's connection. Engine
-location, authentication, autostart, and deployment mode are owned entirely by
-AgentConfig/the current engine client — this module never accepts or persists
-transport or credential material. Embeddings are produced client-side with the
+location and authentication come from agent_connector_sdk engine settings
+(secret by reference) — this module never accepts or persists transport or
+credential material. Embeddings are produced client-side with the
 shared ``create_embedding_model`` (remote vLLM/OpenAI-style), matching every
 other backend here.
 """
@@ -24,9 +24,9 @@ import json
 import re
 from typing import Any
 
-from agent_utilities import create_embedding_model
-from agent_utilities.knowledge_graph.core.session import resolve_session
+from agent_connector_sdk.embeddings import create_embedding_model
 
+from vector_mcp.session import engine_connection, resolve_session
 from vector_mcp.vectordb.base import (
     Document,
     ItemID,
@@ -59,7 +59,7 @@ def _query_keywords(query: str) -> list[str]:
     return list(dict.fromkeys(word.casefold() for word in _WORD.findall(query)))
 
 
-@require_optional_import(["epistemic_graph", "agent_utilities"], "epistemic-graph")
+@require_optional_import(["epistemic_graph"], "epistemic-graph")
 class EpistemicGraphVectorDB(VectorDB):
     """A vector database backed by the native epistemic-graph engine.
 
@@ -98,10 +98,11 @@ class EpistemicGraphVectorDB(VectorDB):
         cache_key = (name, authority_digest)
         client = self._clients.get(cache_key)
         if client is None:
-            # Engine location, authentication, autostart, and deployment mode are
-            # owned entirely by AgentConfig/the current engine client.
+            # Engine location and secret come from agent_connector_sdk settings.
             client = SyncEpistemicGraphClient.connect(
-                graph_name=name, verified_context=verified_context
+                graph_name=name,
+                verified_context=verified_context,
+                **engine_connection(),
             )
             self._clients[cache_key] = client
         return client
@@ -330,7 +331,10 @@ class EpistemicGraphVectorDB(VectorDB):
             if not identifier:
                 continue
             values.append(
-                (self._document(identifier, properties), float(hit.get("score", 0.0) or 0.0))
+                (
+                    self._document(identifier, properties),
+                    float(hit.get("score", 0.0) or 0.0),
+                )
             )
         return values
 

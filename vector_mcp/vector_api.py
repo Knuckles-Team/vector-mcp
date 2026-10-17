@@ -20,18 +20,18 @@ from threading import RLock
 from typing import Any
 
 from agent_connector_sdk.config import setting
-from agent_connector_sdk.tls.profile import ResolvedTLSProfile
-from agent_connector_sdk.tls.resolve import resolve_tls_profile
-from agent_utilities import create_embedding_model
-from agent_utilities.knowledge_graph.core.session import resolve_session
-from agent_utilities.security.cli_secrets import (
+from agent_connector_sdk.credentials.runtime_references import (
     RuntimeSecretReferenceError,
     resolve_runtime_secret_reference,
 )
-from agent_utilities.security.guardrails import PiiSanitizer
+from agent_connector_sdk.embeddings import create_embedding_model
+from agent_connector_sdk.privacy_pii import PiiSanitizer
+from agent_connector_sdk.tls.profile import ResolvedTLSProfile
+from agent_connector_sdk.tls.resolve import resolve_tls_profile
 from llama_index.core import SimpleDirectoryReader
 
 from vector_mcp.backend_policy import ensure_backend_available
+from vector_mcp.session import resolve_session
 from vector_mcp.vectordb.base import Document, QueryResults, VectorDB, VectorDBFactory
 
 _COLLECTION = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,39}$")

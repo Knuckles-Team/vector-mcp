@@ -7,9 +7,9 @@ import uuid
 from functools import cached_property
 from typing import Any
 
+from agent_connector_sdk.embeddings import create_embedding_model
+from agent_connector_sdk.http.egress import pinned_egress_transport
 from agent_connector_sdk.tls.profile import ResolvedTLSProfile
-from agent_utilities import create_embedding_model
-from agent_utilities.core.http_client import pinned_egress_transport
 
 from vector_mcp.vectordb.base import (
     Document,
@@ -184,7 +184,9 @@ class QdrantVectorDB(VectorDB):
         docs: list[Document], identifiers: list[str], vectors: list[list[float]]
     ) -> list:
         points = []
-        for document, identifier, vector in zip(docs, identifiers, vectors, strict=True):
+        for document, identifier, vector in zip(
+            docs, identifiers, vectors, strict=True
+        ):
             content = str(document["content"])
             points.append(
                 models.PointStruct(

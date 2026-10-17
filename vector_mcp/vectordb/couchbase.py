@@ -5,7 +5,7 @@ import math
 from typing import Any
 
 import requests
-from agent_utilities import create_embedding_model
+from agent_connector_sdk.embeddings import create_embedding_model
 from llama_index.core import (
     VectorStoreIndex,
 )

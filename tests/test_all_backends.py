@@ -420,7 +420,7 @@ def test_delete_documents(db_name, request):
             collection_name=collection_name,
             n_results=10,
         )
-        initial_count = len(initial_results[0]) if initial_results else 0
+        len(initial_results[0]) if initial_results else 0
 
         # Delete documents (using LlamaIndex node IDs would be ideal, but we use original IDs)
         # Note: This may not work as expected due to ID mismatch
@@ -433,7 +433,7 @@ def test_delete_documents(db_name, request):
                 collection_name=collection_name,
                 n_results=10,
             )
-            final_count = len(final_results[0]) if final_results else 0
+            len(final_results[0]) if final_results else 0
 
             # We expect the count to decrease, but due to ID mismatch it might not
             # For now, we just verify the operation doesn't crash
@@ -536,7 +536,7 @@ def test_distance_threshold(db_name, request):
 
         # All results should have distance < threshold (converted from similarity)
         if results and results[0]:
-            for doc, score in results[0]:
+            for _doc, score in results[0]:
                 # Score is similarity (1 - distance), so we check similarity > 0.5
                 assert score >= 0.5
 
