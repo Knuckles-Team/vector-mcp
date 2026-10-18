@@ -1,4 +1,4 @@
-"""Tests for the consumer's canonical local uv source declarations."""
+"""Dependencies resolve from PyPI only: no local or git uv source overrides."""
 
 from __future__ import annotations
 
@@ -6,17 +6,14 @@ import tomllib
 from pathlib import Path
 
 
-def test_local_uv_sources_are_direct_workspace_siblings() -> None:
+def test_dependencies_have_no_local_or_git_uv_sources() -> None:
     manifest = Path(__file__).parents[1] / "pyproject.toml"
     with manifest.open("rb") as handle:
-        sources = tomllib.load(handle)["tool"]["uv"]["sources"]
+        sources = tomllib.load(handle).get("tool", {}).get("uv", {}).get("sources", {})
 
-    expected = {
-        "agent-connector-sdk",
-        "epistemic-graph",
-        "langfuse-agent",
+    overridden = {
+        name: spec
+        for name, spec in sources.items()
+        if isinstance(spec, dict) and ({"path", "git"} & set(spec))
     }
-    assert set(sources) == expected
-    for name in expected:
-        assert sources[name]["path"] == f".uv-workspace-siblings/{name}"
-        assert sources[name]["editable"] is True
+    assert overridden == {}
