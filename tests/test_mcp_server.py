@@ -216,45 +216,47 @@ def test_mcp_server_cli_execution():
         mcp_server()
         mock_run.assert_called_once_with(transport="stdio")
 
-    # Test sse transport
-    with (
-        patch(
-            "sys.argv",
-            [
-                "mcp_server",
-                "--transport",
-                "sse",
-                "--host",
-                "127.0.0.1",
-                "--port",
-                "8000",
-            ],
-        ),
-        patch("fastmcp.FastMCP.run") as mock_run,
-    ):
-        mcp_server()
-        mock_run.assert_called_once_with(transport="sse", host="127.0.0.1", port=8000)
+    # Network transports refuse to serve without client authentication
+    # (agent-connector-sdk served-security profile) ...
+    for transport in ("sse", "streamable-http"):
+        with (
+            patch(
+                "sys.argv",
+                ["mcp_server", "--transport", transport, "--host", "127.0.0.1", "--port", "8000"],
+            ),
+            patch("fastmcp.FastMCP.run") as mock_run,
+            pytest.raises(SystemExit),
+        ):
+            mcp_server()
+        mock_run.assert_not_called()
 
-    # Test streamable-http transport
-    with (
-        patch(
-            "sys.argv",
-            [
-                "mcp_server",
-                "--transport",
-                "streamable-http",
-                "--host",
-                "127.0.0.1",
-                "--port",
-                "8000",
-            ],
-        ),
-        patch("fastmcp.FastMCP.run") as mock_run,
-    ):
-        mcp_server()
-        mock_run.assert_called_once_with(
-            transport="streamable-http", host="127.0.0.1", port=8000
-        )
+    # ... and serve once a JWT verifier and audience are configured.
+    jwt_env = {
+        "FASTMCP_SERVER_AUTH_JWT_JWKS_URI": "https://issuer.example.test/jwks",
+        "FASTMCP_SERVER_AUTH_JWT_ISSUER": "https://issuer.example.test",
+        "FASTMCP_SERVER_AUTH_JWT_AUDIENCE": "vector-mcp",
+    }
+    for transport in ("sse", "streamable-http"):
+        with (
+            patch.dict("os.environ", jwt_env),
+            patch(
+                "sys.argv",
+                [
+                    "mcp_server",
+                    "--transport",
+                    transport,
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    "8000",
+                    "--auth-type",
+                    "jwt",
+                ],
+            ),
+            patch("fastmcp.FastMCP.run") as mock_run,
+        ):
+            mcp_server()
+            mock_run.assert_called_once_with(transport=transport, host="127.0.0.1", port=8000)
 
     # Test invalid transport (which results in SystemExit 2 via argparse parsing)
     with (
