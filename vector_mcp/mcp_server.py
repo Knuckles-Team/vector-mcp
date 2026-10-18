@@ -29,11 +29,11 @@ from agent_connector_sdk.config import load_config, setting
 from agent_connector_sdk.mcp.action_dispatch import resolve_action
 from agent_connector_sdk.mcp.concurrency import run_blocking
 from agent_connector_sdk.mcp.server import create_mcp_server
-from agent_connector_sdk.mcp.tool_surface import register_tool_surface
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from vector_mcp import __version__
+from vector_mcp.action_split import register_split_action_tools
 from vector_mcp.backend_policy import ensure_backend_available
 from vector_mcp.document_inputs import resolve_document_inputs
 from vector_mcp.vector_api import get_client
@@ -415,10 +415,17 @@ def get_mcp_instance(command_args: list[str] | None = None) -> tuple[Any, ...]:
     async def health_check(request: Request) -> JSONResponse:
         return JSONResponse({"status": "OK"})
 
-    register_tool_surface(
+    register_split_action_tools(
         mcp,
-        service="vector-mcp",
-        tools_module=sys.modules[__name__],
+        [
+            (
+                "collection_management",
+                "COLLECTION_MANAGEMENTTOOL",
+                register_collection_management_tools,
+            ),
+            ("search", "SEARCHTOOL", register_search_tools),
+        ],
+        prefixes={"vector_collection_management": "vector", "vector_search": "vector"},
     )
 
     for mw in middlewares:
