@@ -2,7 +2,7 @@
 
 Verifies that the action-routed MCP tools expose list_actions discovery and
 raise a rich did-you-mean error on unknown actions, via the shared
-agent_utilities.mcp.action_dispatch.resolve_action helper.
+agent_connector_sdk.mcp.action_dispatch.resolve_action helper.
 """
 
 import importlib

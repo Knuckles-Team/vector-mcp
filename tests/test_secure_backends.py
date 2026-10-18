@@ -272,6 +272,9 @@ def test_native_backend_delegates_without_transport_arguments(monkeypatch) -> No
     )
     monkeypatch.setattr(epistemic_graph, "resolve_session", lambda: session)
     monkeypatch.setattr(
+        epistemic_graph, "engine_connection", lambda: {"tcp_addr": "127.0.0.1:1"}
+    )
+    monkeypatch.setattr(
         epistemic_graph, "SyncEpistemicGraphClient", SimpleNamespace(connect=connect)
     )
     database = epistemic_graph.EpistemicGraphVectorDB(embed_model=_embedder())
@@ -279,7 +282,7 @@ def test_native_backend_delegates_without_transport_arguments(monkeypatch) -> No
     database.create_collection("knowledge")
 
     assert all(
-        set(call.kwargs) == {"graph_name", "verified_context"}
+        set(call.kwargs) == {"graph_name", "verified_context", "tcp_addr"}
         for call in connect.call_args_list
     )
     control.tenants.create.assert_called_once_with("knowledge", "Agent")

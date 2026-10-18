@@ -1,11 +1,9 @@
-import os
 import sys
-import pytest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # Save original modules
-_orig_agent_utilities = sys.modules.get("agent_utilities")
 _orig_llama_index = sys.modules.get("llama_index")
 _orig_llama_index_core = sys.modules.get("llama_index.core")
 _orig_llama_index_core_schema = sys.modules.get("llama_index.core.schema")
@@ -13,10 +11,6 @@ _orig_llama_index_core_vector_stores = sys.modules.get("llama_index.core.vector_
 _orig_llama_index_core_vector_stores_types = sys.modules.get(
     "llama_index.core.vector_stores.types"
 )
-
-# Ensure agent_utilities is mocked or imported safely
-mock_agent_utilities = MagicMock()
-sys.modules["agent_utilities"] = mock_agent_utilities
 
 # Mock LlamaIndex dependencies before importing
 mock_llama_index = MagicMock()
@@ -44,7 +38,6 @@ from vector_mcp.retriever.llamaindex_retriever import LlamaIndexRetriever
 
 # Immediately restore/clean sys.modules
 for name, orig in [
-    ("agent_utilities", _orig_agent_utilities),
     ("llama_index", _orig_llama_index),
     ("llama_index.core", _orig_llama_index_core),
     ("llama_index.core.schema", _orig_llama_index_core_schema),
@@ -66,7 +59,6 @@ def mock_dependencies_fixture():
     _curr_orig = {
         name: sys.modules.get(name)
         for name in [
-            "agent_utilities",
             "llama_index",
             "llama_index.core",
             "llama_index.core.schema",
@@ -74,7 +66,6 @@ def mock_dependencies_fixture():
             "llama_index.core.vector_stores.types",
         ]
     }
-    sys.modules["agent_utilities"] = mock_agent_utilities
     sys.modules["llama_index"] = mock_llama_index
     sys.modules["llama_index.core"] = mock_llama_index.core
     sys.modules["llama_index.core.schema"] = mock_llama_index.core.schema

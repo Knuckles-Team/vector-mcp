@@ -2,7 +2,7 @@
 name: vector-mcp-operations
 skill_type: skill
 description: >-
-  Operate vector-mcp through its governed MCP and GraphOS capabilities. Use for
+  Operate vector-mcp through its governed MCP and Arbora capabilities. Use for
   collection lifecycle, root-confined document ingestion, semantic or lexical
   retrieval, hybrid search, backend readiness, troubleshooting, and sanitized
   verification evidence.
@@ -10,7 +10,7 @@ description: >-
 
 # Vector MCP Operations
 
-Use the provider's governed MCP tools through GraphOS delegation.
+Use the provider's governed MCP tools through Arbora delegation.
 
 ## Workflow
 

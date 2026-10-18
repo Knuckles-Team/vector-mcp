@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import platformdirs
-from agent_utilities import create_embedding_model
+from agent_connector_sdk.embeddings import create_embedding_model
 from llama_index.core import (
     Document as LIDocument,
 )
@@ -36,7 +36,9 @@ def _migrate_legacy_chromadb_directory(legacy_dir: Path, new_dir: Path) -> None:
         new_dir.parent.mkdir(parents=True, exist_ok=True)
         if not new_dir.exists():
             shutil.copytree(legacy_dir, new_dir, symlinks=True, dirs_exist_ok=True)
-            logger.info(f"Successfully migrated ChromaDB from {legacy_dir} to {new_dir}")
+            logger.info(
+                f"Successfully migrated ChromaDB from {legacy_dir} to {new_dir}"
+            )
     except Exception as e:
         logger.warning(f"Failed to migrate legacy ChromaDB directory: {e}")
 
@@ -45,8 +47,7 @@ def _data_dir() -> Path:
     """The XDG data directory agent-utilities has always published this under.
 
     Default: ``~/.local/share/agent-utilities/``. Override via
-    ``AGENT_UTILITIES_DATA_DIR`` — inlined from ``agent_utilities.core.paths.data_dir``
-    (no agent-connector-sdk equivalent) so existing installs keep their data in place.
+    ``AGENT_UTILITIES_DATA_DIR``, so existing installs keep their data in place.
     """
     override = os.environ.get("AGENT_UTILITIES_DATA_DIR")
     if override:

@@ -16,7 +16,6 @@ BASE_URL = "http://localhost"
 def test_server(server_config):
     name = server_config["name"]
     port = server_config["port"]
-    url = f"{BASE_URL}:{port}/mcp"
 
     print(f"Testing {name} on port {port}...")
 
@@ -28,8 +27,6 @@ def test_server(server_config):
     }
 
     try:
-        endpoint = f"http://localhost:{port}/mcp"
-
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
         response = requests.post(
             f"http://localhost:{port}/mcp", json=payload, headers=headers, timeout=10

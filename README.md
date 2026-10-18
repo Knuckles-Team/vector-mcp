@@ -4,7 +4,7 @@ Action-routed MCP and agent interfaces for governed vector collection management
 The native default is epistemic-graph. Secure opt-in providers cover PostgreSQL/pgvector,
 Qdrant, and MongoDB Atlas.
 
-*Version: 3.1.0*
+*Version: 3.2.0*
 
 <!-- GOVERNED-CAPABILITY:START -->
 ## Governed capability
@@ -25,7 +25,7 @@ Use the smallest extra set required by the deployment:
 uvx --from 'vector-mcp[mcp]' vector-mcp
 ```
 
-The runtime requires `agent-utilities>=2.0.0` and its self-contained full
+The runtime requires `agent-connector-sdk>=0.2.0` and its self-contained full
 epistemic-graph engine contract. A bare numeric-only or partial engine profile is not a
 supported deployment.
 
@@ -98,9 +98,7 @@ When query strings or parameters are provided, an LLM-free **Knowledge Graph res
 <!-- MCP-CONFIG-EXAMPLES:START -->
 
 > **Install the connector-focused `[mcp]` extra.** Examples use `vector-mcp[mcp]` to add
-> FastMCP / FastAPI through `agent-utilities[mcp]`; the required Agent Utilities core
-> still carries `epistemic-graph[full]`. The `[agent-runtime]` extra additionally
-> enables model orchestration.
+> FastMCP / FastAPI through `agent-connector-sdk[mcp]`.
 
 #### stdio Transport (local IDEs — Cursor, Claude Desktop, VS Code)
 
@@ -136,7 +134,7 @@ When query strings or parameters are provided, an LLM-free **Knowledge Graph res
 }
 ```
 
-Runtime references require an alias-aware launcher such as GraphOS. Other
+Runtime references require an alias-aware launcher such as Arbora. Other
 launchers must omit those entries and inject the resolved values through their
 own runtime secret boundary.
 
@@ -348,13 +346,6 @@ The full list is in the [Available MCP Tools](#available-mcp-tools) table above.
 | `EUNOMIA_POLICY_FILE` | Embedded policy file | `mcp_policies.json` |
 | `EUNOMIA_REMOTE_URL` | Remote Eunomia server URL | — |
 
-### Agent CLI (full `[agent]` runtime only)
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MCP_URL` | URL of the MCP server the agent connects to | `http://localhost:8000/mcp` |
-| `PROVIDER` | LLM provider (e.g. `openai`) | `openai` |
-| `MODEL_ID` | Model id (e.g. `gpt-4o`) | `gpt-4o` |
-| `ENABLE_WEB_UI` | Serve the AG-UI web interface | `True` |
 
 See [`.env.example`](.env.example) for a copy-paste starting point.
 
@@ -410,7 +401,7 @@ to **"deploy `vector-mcp` with agent-utilities-deployment"**.
 | Install mode | Command |
 |------|---------|
 | Installed package | `uv tool install "vector-mcp[mcp]"`, then run `vector-mcp` |
-| Editable source | `uv pip install -e ".[agent]"`, then run `vector-mcp` |
+| Editable source | `uv pip install -e ".[mcp]"`, then run `vector-mcp` |
 | Immutable container | deploy `registry.example.invalid/vector-mcp@sha256:<digest>` through the operator-selected orchestrator |
 
 The repository embeds no deployment profile, credential value, certificate path, or
@@ -427,49 +418,36 @@ Pick the extra that matches what the operator want to run:
 
 | Extra | Installs | Use when |
 |-------|----------|----------|
-| `vector-mcp[mcp]` | Slim MCP server only (`agent-utilities[mcp]` — FastMCP/FastAPI) | The operator only run the **MCP server** (smallest install / image) |
-| `vector-mcp[agent]` | Full agent runtime (`agent-utilities[agent,logfire]` — Pydantic AI + the epistemic-graph engine) | The operator run the **integrated agent** |
-| `vector-mcp[all]` | Everything (`mcp` + all vector backends + `agent`) | Development / both surfaces |
+| `vector-mcp[mcp]` | Slim MCP server only (`agent-connector-sdk[mcp]` — FastMCP/FastAPI) | The operator only run the **MCP server** (smallest install / image) |
+| `vector-mcp[all]` | Everything (`mcp` + all vector backends) | Development / both surfaces |
 
 ```bash
 # MCP server only (recommended for tool hosting — slim deps)
 uv pip install "vector-mcp[mcp]"
 
 # Full agent runtime (Pydantic AI + epistemic-graph engine)
-uv pip install "vector-mcp[agent]"
+uv pip install "vector-mcp[mcp]"
 
 # Everything (development)
 uv pip install "vector-mcp[all]"      # or: python -m pip install "vector-mcp[all]"
 ```
 
-### Container images (`:mcp` vs `:agent`)
+### Container image
 
-One multi-stage `docker/Dockerfile` builds two right-sized images, selected by `--target`:
-
-| Image tag | Build target | Contents | Entrypoint |
-|-----------|--------------|----------|------------|
-| `knucklessg1/vector-mcp:mcp` | `--target mcp` | `vector-mcp[mcp]` — **slim**, no engine/`pydantic-ai`/`dspy`/`llama-index`/`tree-sitter` | `vector-mcp` |
-| `knucklessg1/vector-mcp@sha256:<digest>` (agent build) | `--target agent` (default) | `vector-mcp[agent]` — **full** agent runtime + epistemic-graph engine | `vector-agent` |
+`docker/Dockerfile` builds one slim image (`vector-mcp[mcp]`, entrypoint `vector-mcp`):
 
 ```bash
-docker build --target mcp   -t knucklessg1/vector-mcp:mcp   docker/   # slim MCP server
-docker build --target agent -t knucklessg1/vector-mcp:local docker/   # full agent (local build; publish/pin a digest via your release process)
+docker build -t knucklessg1/vector-mcp:mcp docker/
 ```
 
-`docker/mcp.compose.yml` runs the slim `:mcp` server; `docker/agent.compose.yml` runs the
-agent (default build) with a co-located `:mcp` sidecar.
+`docker/mcp.compose.yml` runs it.
 
 ### Knowledge-graph database (`epistemic-graph`)
 
-The **full agent** (`[agent]`, the default build) embeds the **epistemic-graph** engine (pulled in
-transitively via `agent-utilities[agent]`). For production — or to share one knowledge graph
-across multiple agents — run **epistemic-graph as its own database container** and point the
-agent at it instead of embedding it. Deployment recipes (single-node + Raft HA), connection
-config, and the full database architecture (with diagrams) are documented in the
+Graph storage, vector search and queries are served by **epistemic-graph**, run as its own
+database container. Deployment recipes (single-node + Raft HA), connection config, and the
+database architecture are in the
 [epistemic-graph deployment guide](https://knuckles-team.github.io/epistemic-graph/deployment/).
-The slim `[mcp]` server does **not** require the database.
-
----
 
 ## Repository Owners
 

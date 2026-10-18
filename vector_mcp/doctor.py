@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 
 from agent_connector_sdk.config import setting
-from agent_connector_sdk.tls.errors import TransportSecurityError
-from agent_connector_sdk.tls.resolve import resolve_tls_profile
-from agent_utilities.security.cli_secrets import (
+from agent_connector_sdk.credentials.runtime_references import (
     RuntimeSecretReferenceError,
     resolve_runtime_secret_reference,
 )
+from agent_connector_sdk.tls.errors import TransportSecurityError
+from agent_connector_sdk.tls.resolve import resolve_tls_profile
 
 from vector_mcp.backend_policy import backend_status
 
@@ -49,9 +49,15 @@ def _tls_status(service: str) -> tuple[bool, dict[str, bool]]:
 
 
 def _finalize_backend_status(
-    status: dict, *, endpoint_configured: bool, credentials_configured: bool, tls_valid: bool
+    status: dict,
+    *,
+    endpoint_configured: bool,
+    credentials_configured: bool,
+    tls_valid: bool,
 ) -> None:
-    status["configured"] = bool(endpoint_configured and credentials_configured and tls_valid)
+    status["configured"] = bool(
+        endpoint_configured and credentials_configured and tls_valid
+    )
     status["available"] = bool(status["available"] and status["configured"])
     status["reason"] = (
         "available" if status["available"] else "backend configuration incomplete"

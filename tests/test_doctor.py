@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from agent_utilities.security.cli_secrets import RuntimeSecretReferenceError
+from agent_connector_sdk.credentials.runtime_references import (
+    RuntimeSecretReferenceError,
+)
 
 from vector_mcp import doctor
 
