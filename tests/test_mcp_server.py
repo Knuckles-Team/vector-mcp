@@ -60,9 +60,8 @@ async def test_vector_collection_management_tools(mock_client_methods):
     # 1. Test create_collection
     mock_client_methods.create_collection.return_value = {"status": "created"}
     res = await mcp.call_tool(
-        "vector_collection_management",
+        "vector_create_collection",
         {
-            "action": "create_collection",
             "db_type": "epistemic_graph",
             "collection_name": "test_collection",
             "overwrite": True,
@@ -79,9 +78,8 @@ async def test_vector_collection_management_tools(mock_client_methods):
     mock_client_methods.add_documents.return_value = {"status": "added"}
     mock_client_methods.reset_mock()
     res = await mcp.call_tool(
-        "vector_collection_management",
+        "vector_add_documents",
         {
-            "action": "add_documents",
             "db_type": "epistemic_graph",
             "collection_name": "test_collection",
             "document_contents": ["Hello world"],
@@ -99,9 +97,8 @@ async def test_vector_collection_management_tools(mock_client_methods):
     mock_client_methods.delete_collection.return_value = {"status": "deleted"}
     mock_client_methods.reset_mock()
     res = await mcp.call_tool(
-        "vector_collection_management",
+        "vector_delete_collection",
         {
-            "action": "delete_collection",
             "db_type": "epistemic_graph",
             "collection_name": "test_collection",
             "confirm": True,
@@ -119,9 +116,8 @@ async def test_vector_collection_management_tools(mock_client_methods):
     }
     mock_client_methods.reset_mock()
     res = await mcp.call_tool(
-        "vector_collection_management",
+        "vector_list_collections",
         {
-            "action": "list_collections",
             "db_type": "epistemic_graph",
         },
     )
@@ -130,11 +126,9 @@ async def test_vector_collection_management_tools(mock_client_methods):
         db_type="epistemic_graph"
     )
 
-    # 5. Test unknown action
-    with pytest.raises(Exception, match="Unknown action 'invalid_action'"):
-        await mcp.call_tool(
-            "vector_collection_management", {"action": "invalid_action"}
-        )
+    # 5. The action-routed tool is gone
+    with pytest.raises(Exception, match="Unknown tool"):
+        await mcp.call_tool("vector_collection_management", {})
 
 
 @pytest.mark.asyncio
@@ -145,9 +139,8 @@ async def test_vector_search_tools(mock_client_methods):
     # 1. Test semantic_search
     mock_client_methods.semantic_search.return_value = {"results": []}
     res = await mcp.call_tool(
-        "vector_search",
+        "vector_semantic_search",
         {
-            "action": "semantic_search",
             "db_type": "epistemic_graph",
             "collection_name": "test_collection",
             "question": "What is AI?",
@@ -166,9 +159,8 @@ async def test_vector_search_tools(mock_client_methods):
     mock_client_methods.lexical_search.return_value = {"results": []}
     mock_client_methods.reset_mock()
     res = await mcp.call_tool(
-        "vector_search",
+        "vector_lexical_search",
         {
-            "action": "lexical_search",
             "db_type": "epistemic_graph",
             "collection_name": "test_collection",
             "question": "What is AI?",
@@ -189,7 +181,6 @@ async def test_vector_search_tools(mock_client_methods):
     res = await mcp.call_tool(
         "vector_search",
         {
-            "action": "search",
             "db_type": "epistemic_graph",
             "collection_name": "test_collection",
             "question": "What is AI?",
@@ -210,8 +201,8 @@ async def test_vector_search_tools(mock_client_methods):
         rrf_k=60,
     )
 
-    # 4. Test unknown action
-    with pytest.raises(Exception, match="Unknown action 'invalid_action'"):
+    # 4. Arguments the tool does not declare are rejected
+    with pytest.raises(Exception, match="action"):
         await mcp.call_tool("vector_search", {"action": "invalid_action"})
 
 

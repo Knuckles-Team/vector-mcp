@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vector-mcp"
-version = "3.2.1"
+version = "3.3.0"
 description = "Governed vector retrieval over native epistemic-graph and secure opt-in providers."
 readme = "README.md"
 classifiers = [ "Development Status :: 5 - Production/Stable", "License :: Public Domain", "Environment :: Console", "Operating System :: POSIX :: Linux", "Programming Language :: Python :: 3",]
 requires-python = ">=3.12"
-dependencies = [ "agent-connector-sdk[mcp]>=0.2.1,<1.0.0", "markdownify>=1.2.3", "beautifulsoup4>=4.15.0", "ebooklib>=0.20", "html2text>=2025.4.15", "ipython>=9.15.0", "platformdirs>=4.11.0", "pypdf>=6.14.2", "llama-index-core>=0.14.23", "llama-index-readers-file>=0.6.0",]
+dependencies = [ "agent-connector-sdk[mcp]>=0.3.0,<1.0.0", "markdownify>=1.2.3", "beautifulsoup4>=4.15.0", "ebooklib>=0.20", "html2text>=2025.4.15", "ipython>=9.15.0", "platformdirs>=4.11.0", "pypdf>=6.14.2", "llama-index-core>=0.14.23", "llama-index-readers-file>=0.6.0",]
 [[project.authors]]
 name = "Project Maintainers"
 email = "maintainers@users.noreply.github.com"
@@ -18,7 +18,7 @@ email = "maintainers@users.noreply.github.com"
 text = "MIT"
 
 [project.optional-dependencies]
-mcp = [ "agent-connector-sdk[mcp]>=0.2.1,<1.0.0",]
+mcp = [ "agent-connector-sdk[mcp]>=0.3.0,<1.0.0",]
 postgres = [ "psycopg[pool]>=3.3.4",]
 qdrant = [ "qdrant-client>=1.18.0",]
 mongodb = [ "pymongo>=4.17.0",]
