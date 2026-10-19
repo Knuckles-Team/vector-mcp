@@ -26,5 +26,13 @@ jobs:
       - name: Install MkDocs
         run: pip install mkdocs-material
 
+      # persist-credentials: false removes the checkout token from the runner's
+      # git config, so ghp-import (used by `mkdocs gh-deploy`) cannot fetch or
+      # push without explicit credentials. The URL rewrite below authenticates
+      # its fetch + push with the job's contents:write token.
       - name: Build and Deploy
-        run: mkdocs gh-deploy --force
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+          mkdocs gh-deploy --force
