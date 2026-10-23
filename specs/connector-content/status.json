@@ -1,0 +1,22 @@
+{
+  "schema_version": 2,
+  "spec_id": "CONN-VECTOR-MCP-CONNECTOR-CONTENT",
+  "owner_repo": "vector-mcp",
+  "delivery_state": "VERIFIED",
+  "requirement_ids": [
+    "CONN-VECTOR-MCP-CONNECTOR-CONTENT-R001"
+  ],
+  "requirements": [
+    {
+      "id": "CONN-VECTOR-MCP-CONNECTOR-CONTENT-R001",
+      "title": "Default content",
+      "delivery_state": "VERIFIED",
+      "landed_in": [
+        "780f6ebe36b3"
+      ],
+      "verified_by": [
+        "tests/test_default_content_surfaces.py:15"
+      ]
+    }
+  ]
+}
