@@ -11,6 +11,7 @@ Governing spec: [spec.md](spec.md).
 | T-005 | VECTOR-R001.4 | Contract | db_type="unsupported_backend" requested | Raises vector_database_type_unsupported typed refusal | test_error_handling.py::test_unsupported_profile |
 | T-006 | VECTOR-R001.5 | Integration | Full vector_search path per profile (epistemic-graph, postgresql, qdrant, mongodb) | All profiles pass schema, dimension, and call-path validation | test_protocol_compliance.py::test_full_real_call_path |
 | T-007 | VECTOR-R001.6 | Live | MCP client invokes vector_search tool end-to-end with real backend | Results returned or typed refusal raised; no external transmission on mismatch | test_mcp_server.py::test_vector_search_integration |
+| T-008 | VECTOR-R001.7 | Unit | Read `[project.optional-dependencies]` from pyproject.toml | Each store extra names only an SDK extra at `>=0.3.13`; no store client is pinned directly | test_store_extras.py::test_store_extras_come_from_the_sdk |
 
 ## Negative and boundary cases
 
