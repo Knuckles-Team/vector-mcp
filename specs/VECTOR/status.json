@@ -10,7 +10,8 @@
     "VECTOR-R001.3",
     "VECTOR-R001.4",
     "VECTOR-R001.5",
-    "VECTOR-R001.6"
+    "VECTOR-R001.6",
+    "VECTOR-R001.7"
   ],
   "requirements": [
     {
@@ -25,7 +26,8 @@
         "VECTOR-R001.3",
         "VECTOR-R001.4",
         "VECTOR-R001.5",
-        "VECTOR-R001.6"
+        "VECTOR-R001.6",
+        "VECTOR-R001.7"
       ]
     },
     {
@@ -69,6 +71,17 @@
       "delivery_state": "SPECIFIED",
       "landed_in": [],
       "verified_by": []
+    },
+    {
+      "id": "VECTOR-R001.7",
+      "title": "Store clients",
+      "delivery_state": "VERIFIED",
+      "landed_in": [
+        "9d794f4a08f8"
+      ],
+      "verified_by": [
+        "tests/test_store_extras.py:20"
+      ]
     }
   ]
 }
