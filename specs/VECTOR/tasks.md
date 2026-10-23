@@ -8,3 +8,4 @@ Governing spec: [spec.md](spec.md). Design: [plan.md](plan.md). Rows: [requireme
 - [ ] VECTOR-R001.4: Verify dimension mismatch raises vector_dimension_mismatch; unsupported profile raises vector_database_type_unsupported in backend_policy.py.
 - [ ] VECTOR-R001.5: Verify all four supported profiles pass protocol compliance and dimension validation in tests/test_protocol_compliance.py.
 - [ ] VECTOR-R001.6: Verify vector_search tool integration end-to-end with real MCP invocation in tests/test_mcp_server.py.
+- [x] VECTOR-R001.7: Install the store clients through the SDK `vector` and `vector-chroma` extras in pyproject.toml.

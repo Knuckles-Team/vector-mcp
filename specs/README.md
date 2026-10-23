@@ -12,4 +12,4 @@ Read the existing specs first. Extend the spec that owns the behavior. Create a 
 
 ## Local specifications
 
-- `VECTOR`: Vector indexing and semantic search
+- [`VECTOR`](VECTOR/spec.md): Vector indexing and semantic search
