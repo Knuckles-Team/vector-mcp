@@ -23,9 +23,8 @@
     rdfs:label "Vector Backend" ;
     rdfs:comment "A vector-store engine that hosts collections — epistemic_graph (native default), postgres (pgvector), qdrant, or mongodb — selected by the db_type parameter." .
 
-:Chunk a owl:Class ;
-    rdfs:label "Chunk" ;
-    rdfs:comment "A retrievable text segment split from a :Document, stored in a collection with its embedding and metadata (the Document TypedDict record: id/content/metadata/embedding)." .
+:Chunk a owl:Class .
+
 
 :Embedding a owl:Class ;
     rdfs:label "Embedding" ;
@@ -162,5 +161,7 @@
     rdfs:comment """Vector-database / RAG retrieval model — collections, backends, chunks,
     embeddings and semantic / lexical / hybrid search — backing the vector-mcp MCP tool
     surface (vector_collection_management + vector_search) and federated into the
-    agent-utilities knowledge-graph hub. Reuses the shared :Document and :Person classes.""" ;
-    owl:imports <http://knuckles.team/kg> .
+    agent-utilities knowledge-graph hub. Reuses the shared :Document and :Person classes.""" .
+
+# ontology-codemod R3
+<http://knuckles.team/kg#VectorCollection> rdfs:subClassOf <http://knuckles.team/kg#Collection> .

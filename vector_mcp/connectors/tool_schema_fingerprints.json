@@ -1,8 +1,0 @@
-{
-  "algorithm": "agent-connector-sdk:mcp-tool-contract-compat:v2",
-  "connector": "vector-mcp",
-  "schema_version": "1",
-  "tools": {
-    "vector_list_collections": "6923d20269d51e55a4b2721f7895d0cd1d39af69e75e6b30dedeaf4444520f0b"
-  }
-}
