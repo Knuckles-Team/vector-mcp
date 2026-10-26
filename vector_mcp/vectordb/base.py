@@ -48,7 +48,9 @@ def _partition_embeddings(
     return resolved, missing, texts
 
 
-def _generate_missing_embeddings(embed_model: Any, texts: list[str]) -> list[list[float]]:
+def _generate_missing_embeddings(
+    embed_model: Any, texts: list[str]
+) -> list[list[float]]:
     batch = getattr(embed_model, "get_text_embedding_batch", None)
     if callable(batch):
         return batch(texts)

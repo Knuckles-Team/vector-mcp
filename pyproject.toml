@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vector-mcp"
-version = "3.3.3"
+version = "3.3.4"
 description = "Governed vector retrieval over native epistemic-graph and secure opt-in providers."
 readme = "README.md"
 classifiers = [ "Development Status :: 5 - Production/Stable", "License :: Public Domain", "Environment :: Console", "Operating System :: POSIX :: Linux", "Programming Language :: Python :: 3",]
@@ -51,6 +51,7 @@ members = ["."]
 include-package-data = true
 
 [tool.ruff]
+extend-exclude = ["tests", "scripts"]
 line-length = 88
 target-version = "py311"
 
@@ -85,3 +86,8 @@ override-dependencies = [
 
 [tool.pipelines_hooks.ste]
 exempt = ["specs/*", "specs/**/*"]
+
+[tool.pipelines.container]
+host = "0.0.0.0"
+debug_apt = ["default-jre", "ripgrep", "tree", "fd-find", "curl", "nano", "build-essential", "cmake", "libssl-dev", "libcurl4-openssl-dev", "pkg-config", "rustc", "cargo"]
+compose_env = ["AUTH_TYPE=${MCP_AUTH_TYPE:?set MCP_AUTH_TYPE for network transport}"]

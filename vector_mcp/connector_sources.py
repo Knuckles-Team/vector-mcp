@@ -173,7 +173,9 @@ def declaration() -> IngestSourceDeclaration:
     for item in SOURCES:
         for entry in item["connector_sources"]:
             body = {k: v for k, v in entry.items() if k not in ("tool", "mapping")}
-            specs.append(IngestSourceSpec.model_validate({**body, "tools": (entry["tool"],)}))
+            specs.append(
+                IngestSourceSpec.model_validate({**body, "tools": (entry["tool"],)})
+            )
     return IngestSourceDeclaration.model_validate(
         {
             "connector": CONNECTOR,
