@@ -109,7 +109,8 @@ docker run -d --name vector-mcp -p 8000:8000 \
   -e PORT=8000 \
   -e DATABASE_TYPE=epistemic_graph \
   knucklessg1/vector-mcp@sha256:<digest>
-# or, from a clone of this repo:
+# or, from a clone of this repo, render the release-owned files first:
+pipelines-connector render --root .
 docker compose -f docker/mcp.compose.yml up -d
 ```
 

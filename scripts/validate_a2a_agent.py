@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import asyncio
 import json
+import os
 import uuid
 
 import httpx
 
-A2A_URL = "http://audio-transcriber-agent.arpa/a2a/"
+A2A_URL = os.environ.get("A2A_URL", "http://example.invalid/a2a/")
 
 
 def _last_non_user_message(history):

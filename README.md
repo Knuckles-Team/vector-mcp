@@ -376,9 +376,9 @@ separate deployment gate and must use operator-provided AgentConfig and secrets.
 - [Usage](docs/usage.md)
 - [Architecture overview](docs/overview.md)
 
-The slim `:mcp` streamable-http container (`docker/mcp.compose.yml`) publishes localhost
-`:8000` with a `/health` check; see [Deployment](docs/deployment.md) for the full compose
-service definition.
+The slim `:mcp` streamable-http container (`docker/mcp.compose.yml`) publishes
+`0.0.0.0:8000` with a `/health` check; see [Deployment](docs/deployment.md) for the full
+compose service definition.
 
 ## License
 
@@ -435,10 +435,12 @@ The shared connector pipeline renders a slim `:mcp` image (`vector-mcp[mcp]`, en
 `vector-mcp`) from `pyproject.toml` at release time:
 
 ```bash
+pipelines-connector render --root .
 docker build -t knucklessg1/vector-mcp:mcp docker/
 ```
 
-The rendered `docker/mcp.compose.yml` runs it.
+The render command creates the release-owned `docker/mcp.compose.yml`; it runs the image with
+the configured host publication.
 
 ### Knowledge-graph database (`epistemic-graph`)
 
