@@ -4,8 +4,6 @@ Action-routed MCP and agent interfaces for governed vector collection management
 The native default is epistemic-graph. Secure opt-in providers cover PostgreSQL/pgvector,
 Qdrant, and MongoDB Atlas.
 
-*Version: 3.3.3*
-
 <!-- GOVERNED-CAPABILITY:START -->
 ## Governed capability
 
@@ -364,8 +362,6 @@ ontology must never be copied forward.
 Low-cost checks that do not start providers:
 
 ```bash
-python scripts/security_sanitizer.py
-python scripts/security_contract.py --contract .security/security-contract.json validate
 python -m compileall -q vector_mcp
 ```
 
@@ -380,8 +376,9 @@ separate deployment gate and must use operator-provided AgentConfig and secrets.
 - [Usage](docs/usage.md)
 - [Architecture overview](docs/overview.md)
 
-The slim `:mcp` streamable-http container (`docker/mcp.compose.yml`) publishes `:8000` with a
-`/health` check; see [Deployment](docs/deployment.md) for the full compose service definition.
+The slim `:mcp` streamable-http container (`docker/mcp.compose.yml`) publishes
+`0.0.0.0:8000` with a `/health` check; see [Deployment](docs/deployment.md) for the full
+compose service definition.
 
 ## License
 
@@ -434,13 +431,16 @@ uv pip install "vector-mcp[all]"      # or: python -m pip install "vector-mcp[al
 
 ### Container image
 
-`docker/Dockerfile` builds one slim image (`vector-mcp[mcp]`, entrypoint `vector-mcp`):
+The shared connector pipeline renders a slim `:mcp` image (`vector-mcp[mcp]`, entrypoint
+`vector-mcp`) from `pyproject.toml` at release time:
 
 ```bash
+pipelines-connector render --root .
 docker build -t knucklessg1/vector-mcp:mcp docker/
 ```
 
-`docker/mcp.compose.yml` runs it.
+The render command creates the release-owned `docker/mcp.compose.yml`; it runs the image with
+the configured host publication.
 
 ### Knowledge-graph database (`epistemic-graph`)
 

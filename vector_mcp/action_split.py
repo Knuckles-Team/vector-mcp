@@ -92,7 +92,11 @@ def register_split_action_tools(
         registrar(scratch)
         tags.append(tag)
     for name, tool in registered_tools(scratch).items():
-        actions = _actions(tool) if "action" in (tool.parameters or {}).get("properties", {}) else []
+        actions = (
+            _actions(tool)
+            if "action" in (tool.parameters or {}).get("properties", {})
+            else []
+        )
         if not actions:
             mcp.add_tool(tool)
             continue

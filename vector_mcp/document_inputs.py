@@ -155,9 +155,7 @@ def _collect_configured_directory(root: Path) -> None:
             if total_bytes > MAX_DOCUMENT_TOTAL_BYTES:
                 raise ValueError("Configured document root exceeded its size limit")
     except OSError:
-        raise ValueError(
-            "Configured document root could not be inspected"
-        ) from None
+        raise ValueError("Configured document root could not be inspected") from None
 
 
 def resolve_document_inputs(
