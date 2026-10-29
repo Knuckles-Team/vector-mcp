@@ -36,7 +36,7 @@ vector-mcp = "vector_mcp.prompts"
 
 # The one declared connector identity: the fleet name (SCION-CONNECTOR-CONTROL-R071).
 [project.entry-points."agent_connector_sdk.connector"]
-vector-mcp = "vector_mcp"
+vector-mcp = "vector_mcp:connector"
 
 [tool.uv.workspace]
 members = ["."]
