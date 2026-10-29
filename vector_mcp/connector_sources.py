@@ -164,4 +164,3 @@ RESOURCES = (
         "name": "VectorCollection",
     },
 )
-
