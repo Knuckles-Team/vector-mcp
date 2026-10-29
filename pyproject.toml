@@ -9,7 +9,7 @@ description = "Governed vector retrieval over native epistemic-graph and secure 
 readme = "README.md"
 classifiers = [ "Development Status :: 5 - Production/Stable", "License :: Public Domain", "Environment :: Console", "Operating System :: POSIX :: Linux", "Programming Language :: Python :: 3",]
 requires-python = ">=3.12"
-dependencies = [ "agent-connector-sdk[mcp]>=0.4.1,<1.0.0", "markdownify>=1.2.3", "beautifulsoup4>=4.15.0", "ebooklib>=0.20", "html2text>=2025.4.15", "ipython>=9.15.0", "platformdirs>=4.11.0", "pypdf>=6.14.2", "llama-index-core>=0.14.23", "llama-index-readers-file>=0.6.0",]
+dependencies = [ "scion-sdk[mcp]>=0.5.9,<0.6.0", "markdownify>=1.2.3", "beautifulsoup4>=4.15.0", "ebooklib>=0.20", "html2text>=2025.4.15", "ipython>=9.15.0", "platformdirs>=4.11.0", "pypdf>=6.14.2", "llama-index-core>=0.14.23", "llama-index-readers-file>=0.6.0",]
 [[project.authors]]
 name = "Repository Maintainers"
 email = "maintainers@knuckles.team"
@@ -18,11 +18,11 @@ email = "maintainers@knuckles.team"
 text = "MIT"
 
 [project.optional-dependencies]
-mcp = [ "agent-connector-sdk[mcp]>=0.4.1,<1.0.0",]
-postgres = [ "agent-connector-sdk[vector]>=0.4.1,<1.0.0",]
-qdrant = [ "agent-connector-sdk[vector]>=0.4.1,<1.0.0",]
-mongodb = [ "agent-connector-sdk[vector]>=0.4.1,<1.0.0",]
-chromadb = [ "agent-connector-sdk[vector-chroma]>=0.4.1,<1.0.0",]
+mcp = [ "scion-sdk[mcp]>=0.5.9,<0.6.0",]
+postgres = [ "scion-sdk[vector]>=0.5.9,<0.6.0",]
+qdrant = [ "scion-sdk[vector]>=0.5.9,<0.6.0",]
+mongodb = [ "scion-sdk[vector]>=0.5.9,<0.6.0",]
+chromadb = [ "scion-sdk[vector-chroma]>=0.5.9,<0.6.0",]
 all = [ "vector-mcp[mcp,postgres,qdrant,mongodb,chromadb]>=2.1.2",]
 test = [
     "pytest-xdist>=3.8.0", "pytest>=9.1.1", "pytest-asyncio>=1.4.0", "pytest-cov>=7.1.0",]
@@ -40,7 +40,7 @@ vector-mcp = "vector_mcp.ontology"
 [project.entry-points."agent_connector_sdk.prompt_providers"]
 vector-mcp = "vector_mcp.prompts"
 
-# The one declared connector identity: the fleet name (SDK-CONNECTOR-CONTROL-R071).
+# The one declared connector identity: the fleet name (SCION-CONNECTOR-CONTROL-R071).
 [project.entry-points."agent_connector_sdk.connector"]
 vector-mcp = "vector_mcp"
 

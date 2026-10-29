@@ -1,6 +1,6 @@
 # CONN-VECTOR-MCP-CONNECTOR-CONTENT — The connector serves its packaged content
 
-Owner: vector-mcp. Cross-repo IDs: `SDK-CONNECTOR-CONTROL-R071`, `SDK-CONNECTOR-CONTROL-R073`.
+Owner: vector-mcp. Cross-repo IDs: `SCION-CONNECTOR-CONTROL-R071`, `SCION-CONNECTOR-CONTROL-R073`.
 
 ## Purpose and user stories
 
