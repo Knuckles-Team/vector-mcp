@@ -44,15 +44,14 @@ def _migrate_legacy_chromadb_directory(legacy_dir: Path, new_dir: Path) -> None:
 
 
 def _data_dir() -> Path:
-    """The XDG data directory agent-utilities has always published this under.
+    """The XDG data directory owned by this connector.
 
-    Default: ``~/.local/share/agent-utilities/``. Override via
-    ``AGENT_UTILITIES_DATA_DIR``, so existing installs keep their data in place.
+    Default: ``~/.local/share/vector-mcp/``. Override via ``VECTOR_MCP_DATA_DIR``.
     """
-    override = os.environ.get("AGENT_UTILITIES_DATA_DIR")
+    override = os.environ.get("VECTOR_MCP_DATA_DIR")
     if override:
         return Path(override).expanduser()
-    return Path(platformdirs.user_data_path("agent-utilities", "knuckles-team"))
+    return Path(platformdirs.user_data_path("vector-mcp", "knuckles-team"))
 
 
 def _default_chromadb_dir() -> Path:
