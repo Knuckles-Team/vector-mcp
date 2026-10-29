@@ -31,12 +31,6 @@ test = [
 vector-mcp = "vector_mcp.mcp_server:mcp_server"
 vector-mcp-doctor = "vector_mcp.doctor:main"
 
-[project.entry-points."agent_connector_sdk.skill_providers"]
-vector-mcp = "vector_mcp.skills"
-
-[project.entry-points."agent_connector_sdk.ontology_providers"]
-vector-mcp = "vector_mcp.ontology"
-
 [project.entry-points."agent_connector_sdk.prompt_providers"]
 vector-mcp = "vector_mcp.prompts"
 
