@@ -16,13 +16,9 @@ pytestmark = pytest.mark.spec("CONN-VECTOR-MCP-CONNECTOR-CONTENT-R001")
 
 
 def _server():
-    namespace = {"__name__": PACKAGE + ".mcp_server"}
-    exec(
-        "from agent_connector_sdk.mcp.server import create_mcp_server\n"
-        "result = create_mcp_server('vector-mcp', version='0', command_args=[])",
-        namespace,
-    )
-    return namespace["result"][1]
+    from agent_connector_sdk.connector import build_server
+
+    return build_server(PACKAGE, command_args=[])[1]
 
 
 async def _listings():

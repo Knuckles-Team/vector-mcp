@@ -22,4 +22,27 @@ try:
 except PackageNotFoundError:
     __version__ = _source_version()
 
-__all__ = ["__version__"]
+from agent_connector_sdk.connector import Connector  # noqa: E402
+
+from vector_mcp.mcp_server import (  # noqa: E402
+    register_collection_management_tools,
+    register_search_tools,
+)
+
+connector = Connector(
+    instructions="vector-mcp MCP Server — governed vector retrieval, one tool per operation.",
+    action_tools=(
+        (
+            "collection_management",
+            "COLLECTION_MANAGEMENTTOOL",
+            register_collection_management_tools,
+        ),
+        ("search", "SEARCHTOOL", register_search_tools),
+    ),
+    action_prefixes={
+        "vector_collection_management": "vector",
+        "vector_search": "vector",
+    },
+)
+
+__all__ = ["__version__", "connector"]

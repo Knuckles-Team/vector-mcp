@@ -73,7 +73,13 @@ def mock_dependencies_fixture():
     sys.modules["llama_index.core.vector_stores.types"] = (
         mock_llama_index.core.vector_stores.types
     )
-    yield
+    # The embedding client is the network boundary: it resolves and pins the
+    # configured endpoint, so a unit test must not build a real one.
+    with patch(
+        "vector_mcp.retriever.llamaindex_retriever.create_embedding_model",
+        return_value=MagicMock(),
+    ):
+        yield
     # Restore
     for name, orig in _curr_orig.items():
         if orig is not None:
