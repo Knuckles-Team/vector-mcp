@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 import platformdirs
-from agent_connector_sdk.embeddings import create_embedding_model
 from llama_index.core import (
     Document as LIDocument,
 )
@@ -14,6 +13,7 @@ from llama_index.core import (
     StorageContext,
     VectorStoreIndex,
 )
+from scion_sdk.embeddings import create_embedding_model
 
 from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
 from vector_mcp.vectordb.db_utils import (

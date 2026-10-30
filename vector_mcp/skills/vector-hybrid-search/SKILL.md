@@ -12,7 +12,7 @@ description: >-
 license: MIT
 tags: [vector, rag, search, semantic, bm25, hybrid, mcp]
 metadata:
-  author: Genius
+  author: Knuckles-Team
   version: '0.1.0'
 ---
 # Vector Hybrid Search

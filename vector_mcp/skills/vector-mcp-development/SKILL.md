@@ -8,7 +8,7 @@ description: >-
 license: MIT
 tags: [vector, retrieval, development, mcp, spec-delivery]
 metadata:
-  author: Genius
+  author: Knuckles-Team
   version: '0.1.0'
 ---
 

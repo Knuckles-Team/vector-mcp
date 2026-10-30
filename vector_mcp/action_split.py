@@ -14,9 +14,9 @@ import re
 from collections.abc import Callable, Iterable
 from typing import Any
 
-from agent_connector_sdk.config import setting
-from agent_connector_sdk.mcp.tool_surface import registered_tools
 from fastmcp import FastMCP
+from scion_sdk.config import setting
+from scion_sdk.mcp.tool_surface import registered_tools
 
 _READ_ONLY = re.compile(
     r"^(list|get|read|check|test|status|show|find|search|describe|discover|inspect|"

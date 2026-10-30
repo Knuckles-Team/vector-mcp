@@ -1,7 +1,7 @@
 """Caller authority and engine connection for the epistemic-graph backends.
 
-The caller's verified identity comes from ``agent_connector_sdk.identity``; the
-engine endpoint and its secret come from ``agent_connector_sdk`` engine settings
+The caller's verified identity comes from ``scion_sdk.identity``; the
+engine endpoint and its secret come from ``scion_sdk`` engine settings
 (credentials by reference only). Nothing here synthesizes authority: without a
 bound, authenticated actor that has a tenant, every operation is refused.
 """
@@ -11,10 +11,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from agent_connector_sdk.config import setting
-from agent_connector_sdk.credentials.resolution import resolve_secret_reference
-from agent_connector_sdk.identity import IdentityRequiredError, current_actor
-from agent_connector_sdk.ingest.engine import EngineSettings
+from scion_sdk.config import setting
+from scion_sdk.credentials.resolution import resolve_secret_reference
+from scion_sdk.identity import IdentityRequiredError, current_actor
+from scion_sdk.ingest.engine import EngineSettings
 
 __all__ = [
     "EngineNotConfiguredError",

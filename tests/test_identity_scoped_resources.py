@@ -1,12 +1,12 @@
 """Identity-scoped collection auto-load (CONCEPT:AU-OS.identity.identity-scoped-resource-autoload).
 
 ``vector_collection_management(action="list_collections")`` routes the
-returned collection names through the shared agent-connector-sdk entitlement
+returned collection names through the shared scion-sdk entitlement
 resolver so a caller's Okta/Keycloak groups scope which collections they
-see. The resolver itself is tested in agent-connector-sdk; here we mock the
+see. The resolver itself is tested in scion-sdk; here we mock the
 entitlement source (per the container-manager-mcp reference pattern) and
 test the local filtering logic plus its fail-open degrade when
-agent-connector-sdk predates the resolver.
+scion-sdk predates the resolver.
 """
 
 import os
@@ -30,18 +30,18 @@ from vector_mcp.mcp_server import _entitled
 
 
 def _install_fake_entitlements(entitled_names):
-    """Install a fake ``agent_connector_sdk.entitlements`` module."""
-    module = types.ModuleType("agent_connector_sdk.entitlements")
+    """Install a fake ``scion_sdk.entitlements`` module."""
+    module = types.ModuleType("scion_sdk.entitlements")
     module.identity_scoped_resources = lambda namespace, names: [
         n for n in names if n in entitled_names
     ]
-    sys.modules["agent_connector_sdk.entitlements"] = module
+    sys.modules["scion_sdk.entitlements"] = module
 
 
 @pytest.fixture(autouse=True)
 def _cleanup_fake_module():
     yield
-    sys.modules.pop("agent_connector_sdk.entitlements", None)
+    sys.modules.pop("scion_sdk.entitlements", None)
 
 
 class TestEntitledHelper:
@@ -54,7 +54,7 @@ class TestEntitledHelper:
         assert _entitled("collection", ["docs", "logs"]) == []
 
     def test_degrades_to_full_set_without_resolver(self):
-        # agent-connector-sdk predates the resolver (ImportError) -> fail open to
+        # scion-sdk predates the resolver (ImportError) -> fail open to
         # today's behaviour, not fail closed.
-        sys.modules.pop("agent_connector_sdk.entitlements", None)
+        sys.modules.pop("scion_sdk.entitlements", None)
         assert _entitled("collection", ["docs", "logs"]) == ["docs", "logs"]

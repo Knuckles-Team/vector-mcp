@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from agent_connector_sdk.credentials.runtime_references import (
+from scion_sdk.credentials.runtime_references import (
     RuntimeSecretReferenceError,
 )
 

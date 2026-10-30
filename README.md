@@ -23,7 +23,7 @@ Use the smallest extra set required by the deployment:
 uvx --from 'vector-mcp[mcp]' vector-mcp
 ```
 
-The runtime requires `agent-connector-sdk>=0.2.0` and its self-contained full
+The runtime requires `scion-sdk>=0.2.0` and its self-contained full
 epistemic-graph engine contract. A bare numeric-only or partial engine profile is not a
 supported deployment.
 
@@ -96,7 +96,7 @@ When query strings or parameters are provided, an LLM-free **Knowledge Graph res
 <!-- MCP-CONFIG-EXAMPLES:START -->
 
 > **Install the connector-focused `[mcp]` extra.** Examples use `vector-mcp[mcp]` to add
-> FastMCP / FastAPI through `agent-connector-sdk[mcp]`.
+> FastMCP / FastAPI through `scion-sdk[mcp]`.
 
 #### stdio Transport (local IDEs — Cursor, Claude Desktop, VS Code)
 
@@ -415,7 +415,7 @@ Pick the extra that matches what the operator want to run:
 
 | Extra | Installs | Use when |
 |-------|----------|----------|
-| `vector-mcp[mcp]` | Slim MCP server only (`agent-connector-sdk[mcp]` — FastMCP/FastAPI) | The operator only run the **MCP server** (smallest install / image) |
+| `vector-mcp[mcp]` | Slim MCP server only (`scion-sdk[mcp]` — FastMCP/FastAPI) | The operator only run the **MCP server** (smallest install / image) |
 | `vector-mcp[all]` | Everything (`mcp` + all vector backends) | Development / both surfaces |
 
 ```bash

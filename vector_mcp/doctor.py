@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import json
 
-from agent_connector_sdk.config import setting
-from agent_connector_sdk.credentials.runtime_references import (
+from scion_sdk.config import setting
+from scion_sdk.credentials.runtime_references import (
     RuntimeSecretReferenceError,
     resolve_runtime_secret_reference,
 )
-from agent_connector_sdk.tls.errors import TransportSecurityError
-from agent_connector_sdk.tls.resolve import resolve_tls_profile
+from scion_sdk.tls.errors import TransportSecurityError
+from scion_sdk.tls.resolve import resolve_tls_profile
 
 from vector_mcp.backend_policy import backend_status
 

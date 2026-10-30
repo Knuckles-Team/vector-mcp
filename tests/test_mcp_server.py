@@ -217,7 +217,7 @@ def test_mcp_server_cli_execution():
         mock_run.assert_called_once_with(transport="stdio")
 
     # Network transports refuse to serve without client authentication
-    # (agent-connector-sdk served-security profile) ...
+    # (scion-sdk served-security profile) ...
     for transport in ("sse", "streamable-http"):
         with (
             patch(

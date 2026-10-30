@@ -22,7 +22,7 @@ try:
 except PackageNotFoundError:
     __version__ = _source_version()
 
-from agent_connector_sdk.connector import Connector  # noqa: E402
+from scion_sdk.connector import Connector  # noqa: E402
 
 from vector_mcp.mcp_server import (  # noqa: E402
     register_collection_management_tools,
