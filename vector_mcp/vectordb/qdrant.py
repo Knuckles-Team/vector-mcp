@@ -7,9 +7,9 @@ import uuid
 from functools import cached_property
 from typing import Any
 
-from agent_connector_sdk.embeddings import create_embedding_model
-from agent_connector_sdk.http.egress import pinned_egress_transport
-from agent_connector_sdk.tls.profile import ResolvedTLSProfile
+from scion_sdk.embeddings import create_embedding_model
+from scion_sdk.http.egress import pinned_egress_transport
+from scion_sdk.tls.profile import ResolvedTLSProfile
 
 from vector_mcp.vectordb.base import (
     Document,

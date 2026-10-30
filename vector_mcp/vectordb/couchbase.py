@@ -5,10 +5,10 @@ import math
 from typing import Any
 
 import requests
-from agent_connector_sdk.embeddings import create_embedding_model
 from llama_index.core import (
     VectorStoreIndex,
 )
+from scion_sdk.embeddings import create_embedding_model
 
 from vector_mcp.vectordb.base import Document, ItemID, QueryResults, VectorDB
 from vector_mcp.vectordb.db_utils import (

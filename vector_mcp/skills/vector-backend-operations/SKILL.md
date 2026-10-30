@@ -12,7 +12,7 @@ description: >-
 license: MIT
 tags: [vector, rag, backend, chromadb, qdrant, postgres, mongodb, couchbase, mcp]
 metadata:
-  author: Genius
+  author: Knuckles-Team
   version: '0.1.0'
 ---
 # Vector Backend Operations

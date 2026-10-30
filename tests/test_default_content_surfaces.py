@@ -16,7 +16,7 @@ pytestmark = pytest.mark.spec("CONN-VECTOR-MCP-CONNECTOR-CONTENT-R001")
 
 
 def _server():
-    from agent_connector_sdk.connector import build_server
+    from scion_sdk.connector import build_server
 
     return build_server(PACKAGE, command_args=[])[1]
 

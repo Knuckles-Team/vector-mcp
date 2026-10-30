@@ -10,7 +10,7 @@ vector search over a durable, cross-process index — not an in-Python cosine sc
 A "collection" maps to an engine **graph** (``graph_name``); each collection is a
 separately-connected :class:`SyncEpistemicGraphClient`, cached per verified
 authority so a session change never reuses another caller's connection. Engine
-location and authentication come from agent_connector_sdk engine settings
+location and authentication come from scion_sdk engine settings
 (secret by reference) — this module never accepts or persists transport or
 credential material. Embeddings are produced client-side with the
 shared ``create_embedding_model`` (remote vLLM/OpenAI-style), matching every
@@ -24,7 +24,7 @@ import json
 import re
 from typing import Any
 
-from agent_connector_sdk.embeddings import create_embedding_model
+from scion_sdk.embeddings import create_embedding_model
 
 from vector_mcp.session import engine_connection, resolve_session
 from vector_mcp.vectordb.base import (
@@ -98,7 +98,7 @@ class EpistemicGraphVectorDB(VectorDB):
         cache_key = (name, authority_digest)
         client = self._clients.get(cache_key)
         if client is None:
-            # Engine location and secret come from agent_connector_sdk settings.
+            # Engine location and secret come from scion_sdk settings.
             client = SyncEpistemicGraphClient.connect(
                 graph_name=name,
                 verified_context=verified_context,

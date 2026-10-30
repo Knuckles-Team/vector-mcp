@@ -13,7 +13,7 @@ description: >-
 license: MIT
 tags: [vector, rag, collections, embeddings, mcp]
 metadata:
-  author: Genius
+  author: Knuckles-Team
   version: '0.1.0'
 ---
 # Vector Collection Management
@@ -50,7 +50,7 @@ action takes the connection parameters inline (or falls back to server defaults)
 | `collection_name` | Target collection (defaults to `memory` in the retriever) |
 
 Embedding is handled server-side by the configured embedding model
-(`agent-connector-sdk` embedding client (OpenAI-compatible or Ollama)).
+(`scion-sdk` embedding client (OpenAI-compatible or Ollama)).
 
 ## Tools & actions
 | Condensed tool | Actions |

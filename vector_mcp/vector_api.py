@@ -19,16 +19,16 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
-from agent_connector_sdk.config import setting
-from agent_connector_sdk.credentials.runtime_references import (
+from llama_index.core import SimpleDirectoryReader
+from scion_sdk.config import setting
+from scion_sdk.credentials.runtime_references import (
     RuntimeSecretReferenceError,
     resolve_runtime_secret_reference,
 )
-from agent_connector_sdk.embeddings import create_embedding_model
-from agent_connector_sdk.privacy_pii import PiiSanitizer
-from agent_connector_sdk.tls.profile import ResolvedTLSProfile
-from agent_connector_sdk.tls.resolve import resolve_tls_profile
-from llama_index.core import SimpleDirectoryReader
+from scion_sdk.embeddings import create_embedding_model
+from scion_sdk.privacy_pii import PiiSanitizer
+from scion_sdk.tls.profile import ResolvedTLSProfile
+from scion_sdk.tls.resolve import resolve_tls_profile
 
 from vector_mcp.backend_policy import ensure_backend_available
 from vector_mcp.session import resolve_session

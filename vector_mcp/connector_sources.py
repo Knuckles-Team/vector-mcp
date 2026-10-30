@@ -6,7 +6,7 @@ Served live as ``connector://resources``. Regenerate by editing the declarations
 # ruff: noqa: E501
 from __future__ import annotations
 
-from agent_connector_sdk.ingest.live_declaration import source_meta
+from scion_sdk.ingest.live_declaration import source_meta
 
 CONNECTOR = "vector-mcp"
 

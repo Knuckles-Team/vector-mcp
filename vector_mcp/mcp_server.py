@@ -25,10 +25,10 @@ import sys
 from dataclasses import dataclass
 from typing import Any
 
-from agent_connector_sdk.config import load_config, setting
-from agent_connector_sdk.mcp.action_dispatch import resolve_action
-from agent_connector_sdk.mcp.concurrency import run_blocking
-from agent_connector_sdk.mcp.server import create_mcp_server
+from scion_sdk.config import load_config, setting
+from scion_sdk.mcp.action_dispatch import resolve_action
+from scion_sdk.mcp.concurrency import run_blocking
+from scion_sdk.mcp.server import create_mcp_server
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -62,17 +62,17 @@ def _collection(value: str | None) -> str | None:
 def _entitled(namespace: str, names: list[str]) -> list[str]:
     """Filter ``names`` to what the calling identity may reach.
 
-    Routes the set through agent-connector-sdk' shared identity-scoped resolver
+    Routes the set through scion-sdk' shared identity-scoped resolver
     (CONCEPT:AU-OS.identity.identity-scoped-resource-autoload): a caller's
     Okta/Keycloak groups decide which resources they see by default. The
     ambient ``SYSTEM_ACTOR`` (unauthenticated/local) holds ``admin`` → sees
     all, so behaviour is unchanged until a real identity scopes it down.
-    Degrades to the full set if agent-connector-sdk predates the resolver, or if
+    Degrades to the full set if scion-sdk predates the resolver, or if
     no verified actor context is bound yet (e.g. no identity middleware
     configured) — an entitlement-resolution failure must never break listing.
     """
     try:
-        from agent_connector_sdk.entitlements import identity_scoped_resources
+        from scion_sdk.entitlements import identity_scoped_resources
 
         return list(identity_scoped_resources(namespace, names))
     except Exception:

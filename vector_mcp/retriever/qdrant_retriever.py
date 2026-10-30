@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING, Any, cast
 if TYPE_CHECKING:
     pass
 
-from agent_connector_sdk.embeddings import create_embedding_model
 from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
 from llama_index.core.schema import Document as LlamaDocument
 from pydantic import Field
+from scion_sdk.embeddings import create_embedding_model
 
 from vector_mcp.retriever.retriever import RAGRetriever
 from vector_mcp.vectordb.base import VectorDB, VectorDBFactory
