@@ -22,10 +22,10 @@ def test_store_extras_come_from_the_sdk() -> None:
     project = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["project"]
     extras = project["optional-dependencies"]
     expected = {
-        "postgres": "scion-sdk[vector]>=0.6.0,<0.7.0",
-        "qdrant": "scion-sdk[vector]>=0.6.0,<0.7.0",
-        "mongodb": "scion-sdk[vector]>=0.6.0,<0.7.0",
-        "chromadb": "scion-sdk[vector-chroma]>=0.6.0,<0.7.0",
+        "postgres": "scion-sdk[vector]>=0.6.2,<0.7.0",
+        "qdrant": "scion-sdk[vector]>=0.6.2,<0.7.0",
+        "mongodb": "scion-sdk[vector]>=0.6.2,<0.7.0",
+        "chromadb": "scion-sdk[vector-chroma]>=0.6.2,<0.7.0",
     }
     for extra, requirement in expected.items():
         assert extras[extra] == [requirement]
