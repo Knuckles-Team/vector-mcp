@@ -14,3 +14,4 @@ Read the existing specs first. Extend the spec that owns the behavior. Create a 
 
 - [`VECTOR`](VECTOR/spec.md): Vector indexing and semantic search
 - [`CONNECTOR CONTENT`](connector-content/spec.md): Packaged skills, prompts, and ontology surfaces
+- [`CONN-VECTOR-MCP-DATA-PLATFORM-OPERATIONS`](data-platform-operations/spec.md) — Operations the data-platform vocabulary needs.
