@@ -1,6 +1,6 @@
 # CONN-VECTOR-MCP-DATA-PLATFORM-OPERATIONS — Operations the data-platform vocabulary needs
 
-Owner: vector-mcp. Cross-repo IDs: `EG-DATAPLAT-VOCAB-R009`.
+Owner: vector-mcp. Cross-repo IDs: `MEDULLA-DATAPLAT-VOCAB-R009`.
 
 ## Purpose and user stories
 
