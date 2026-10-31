@@ -4,7 +4,7 @@ Governing spec: [spec.md](spec.md).
 
 ## Existing system and reuse
 
-VectorAPI abstracts provider selection and backend routing; vector_search MCP tool is the served boundary. VectorDBFactory and backend_policy already codify supported providers (epistemic-graph, postgresql, qdrant, mongodb). Embedding model shared via create_embedding_model. No new authority introduced.
+VectorAPI abstracts provider selection and backend routing; vector_search MCP tool is the served boundary. VectorDBFactory and backend_policy already codify supported providers (medulla, postgresql, qdrant, mongodb). Embedding model shared via create_embedding_model. No new authority introduced.
 
 ## Architecture
 
@@ -12,11 +12,11 @@ MCP client → vector_search tool → VectorAPI.semantic_search → selected bac
 
 ## Interfaces and data model
 
-vector_search tool accepts action=semantic_search, query text, and db_type parameter (defaults to epistemic-graph). Returns ranked results or refusal. Query embedding and index embedding dimensions must match; mismatch raises vector_dimension_mismatch.
+vector_search tool accepts action=semantic_search, query text, and db_type parameter (defaults to medulla). Returns ranked results or refusal. Query embedding and index embedding dimensions must match; mismatch raises vector_dimension_mismatch.
 
 ## Live integration path
 
-Client → mcp_server.py vector_search tool → VectorAPI.semantic_search → VectorDBFactory selected backend (epistemic-graph, postgresql, qdrant, mongodb) → provider semantic_search or engine ANN index → caller results.
+Client → mcp_server.py vector_search tool → VectorAPI.semantic_search → VectorDBFactory selected backend (medulla, postgresql, qdrant, mongodb) → provider semantic_search or engine ANN index → caller results.
 
 ## Quality and release gates
 

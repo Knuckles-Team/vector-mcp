@@ -17,7 +17,7 @@ No prior spec owns semantic-search backend specification, dimension contracts, o
 
 ## Scope and interfaces
 
-Owned: vector_search MCP tool, VectorAPI backend routing, supported provider profiles (epistemic-graph, postgresql/pgvector, qdrant, mongodb), index/query dimension validation, unsupported-profile refusal.
+Owned: vector_search MCP tool, VectorAPI backend routing, supported provider profiles (medulla, postgresql/pgvector, qdrant, mongodb), index/query dimension validation, unsupported-profile refusal.
 Dependencies: Agent-utilities SDK transport layer, configured vector-database factory, embedding model (shared create_embedding_model).
 Non-goals: Collection lifecycle (create_collection), document metadata ingestion, full-text search.
 
