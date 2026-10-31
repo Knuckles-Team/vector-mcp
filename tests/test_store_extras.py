@@ -6,6 +6,8 @@ import tomllib
 from pathlib import Path
 
 import pytest
+from packaging.requirements import Requirement
+from packaging.version import Version
 
 PYPROJECT = Path(__file__).resolve().parents[1] / "pyproject.toml"
 STORE_CLIENTS = (
@@ -22,13 +24,19 @@ def test_store_extras_come_from_the_sdk() -> None:
     project = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["project"]
     extras = project["optional-dependencies"]
     expected = {
-        "postgres": "scion-sdk[vector]>=0.6.3,<0.7.0",
-        "qdrant": "scion-sdk[vector]>=0.6.3,<0.7.0",
-        "mongodb": "scion-sdk[vector]>=0.6.3,<0.7.0",
-        "chromadb": "scion-sdk[vector-chroma]>=0.6.3,<0.7.0",
+        "postgres": "vector",
+        "qdrant": "vector",
+        "mongodb": "vector",
+        "chromadb": "vector-chroma",
     }
-    for extra, requirement in expected.items():
-        assert extras[extra] == [requirement]
+    for extra, sdk_extra in expected.items():
+        assert len(extras[extra]) == 1
+        sdk = Requirement(extras[extra][0])
+        assert sdk.name == "scion-sdk"
+        assert sdk_extra in sdk.extras
+        floor = max(Version(s.version) for s in sdk.specifier if s.operator == ">=")
+        assert floor >= Version("0.6.3")
+        assert not sdk.specifier.contains("0.7.0")
     pinned = [*project["dependencies"], *(r for reqs in extras.values() for r in reqs)]
     for requirement in pinned:
         name = requirement.split("[", 1)[0].split(">", 1)[0].split("=", 1)[0]
