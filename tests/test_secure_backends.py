@@ -275,7 +275,7 @@ def test_native_backend_delegates_without_transport_arguments(monkeypatch) -> No
         epistemic_graph, "engine_connection", lambda: {"tcp_addr": "127.0.0.1:1"}
     )
     monkeypatch.setattr(
-        epistemic_graph, "SyncEpistemicGraphClient", SimpleNamespace(connect=connect)
+        epistemic_graph, "SyncMedullaClient", SimpleNamespace(connect=connect)
     )
     database = epistemic_graph.EpistemicGraphVectorDB(embed_model=_embedder())
 

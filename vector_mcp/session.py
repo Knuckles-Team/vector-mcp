@@ -97,7 +97,7 @@ def resolve_session(
 
 
 def engine_connection() -> dict[str, Any]:
-    """``SyncEpistemicGraphClient.connect`` keywords naming the engine and its secret.
+    """``SyncMedullaClient.connect`` keywords naming the engine and its secret.
 
     Raises:
         EngineNotConfiguredError: ``EPISTEMIC_GRAPH_ENDPOINT`` is not set.

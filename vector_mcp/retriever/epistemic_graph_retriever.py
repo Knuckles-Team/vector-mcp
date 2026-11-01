@@ -33,7 +33,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-@require_optional_import(["epistemic_graph"], "epistemic-graph")
+@require_optional_import(["medulla"], "epistemic-graph")
 class EpistemicGraphRetriever(RAGRetriever):
     """A RAG retriever backed by the native epistemic-graph engine."""
 

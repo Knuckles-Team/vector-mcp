@@ -8,7 +8,7 @@ properties and the embedding lives in the engine's native ANN index
 vector search over a durable, cross-process index — not an in-Python cosine scan.
 
 A "collection" maps to an engine **graph** (``graph_name``); each collection is a
-separately-connected :class:`SyncEpistemicGraphClient`, cached per verified
+separately-connected :class:`SyncMedullaClient`, cached per verified
 authority so a session change never reuses another caller's connection. Engine
 location and authentication come from scion_sdk engine settings
 (secret by reference) — this module never accepts or persists transport or
@@ -41,7 +41,7 @@ from vector_mcp.vectordb.db_utils import (
 )
 
 with optional_import_block():
-    from epistemic_graph.client import SyncEpistemicGraphClient
+    from medulla.client import SyncMedullaClient
 
 logger = get_logger(__name__)
 
@@ -59,7 +59,7 @@ def _query_keywords(query: str) -> list[str]:
     return list(dict.fromkeys(word.casefold() for word in _WORD.findall(query)))
 
 
-@require_optional_import(["epistemic_graph"], "epistemic-graph")
+@require_optional_import(["medulla"], "epistemic-graph")
 class EpistemicGraphVectorDB(VectorDB):
     """A vector database backed by the native epistemic-graph engine.
 
@@ -99,7 +99,7 @@ class EpistemicGraphVectorDB(VectorDB):
         client = self._clients.get(cache_key)
         if client is None:
             # Engine location and secret come from scion_sdk settings.
-            client = SyncEpistemicGraphClient.connect(
+            client = SyncMedullaClient.connect(
                 graph_name=name,
                 verified_context=verified_context,
                 **engine_connection(),
