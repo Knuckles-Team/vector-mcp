@@ -8,10 +8,10 @@ This repository owns the specs with the ID prefix `CONN-VECTOR-MCP`. The connect
 
 ## Add a spec
 
-Read the existing specs first. Extend the spec that owns the behavior. Create a spec only for a capability that no spec owns. Copy [`_template/`](_template/) to `specs/<area>/`, set the ID to `CONN-VECTOR-MCP` or `CONN-VECTOR-MCP-<AREA>`, and add one index line below.
+Read the existing specs first. Extend the spec that owns the behavior. Create a spec only for a capability that no spec owns. Copy the files of `.specify/templates/` to `specs/<area>/`, set the ID to `CONN-VECTOR-MCP` or `CONN-VECTOR-MCP-<AREA>`, and add one index line below.
 
 ## Local specifications
 
-- [`VECTOR`](VECTOR/spec.md): Vector indexing and semantic search
+- [`VECTOR`](vector/spec.md): Vector indexing and semantic search
 - [`CONNECTOR CONTENT`](connector-content/spec.md): Packaged skills, prompts, and ontology surfaces
 - [`CONN-VECTOR-MCP-DATA-PLATFORM-OPERATIONS`](data-platform-operations/spec.md) — Operations the data-platform vocabulary needs.
