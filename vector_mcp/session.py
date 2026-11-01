@@ -100,12 +100,12 @@ def engine_connection() -> dict[str, Any]:
     """``SyncMedullaClient.connect`` keywords naming the engine and its secret.
 
     Raises:
-        EngineNotConfiguredError: ``EPISTEMIC_GRAPH_ENDPOINT`` is not set.
+        EngineNotConfiguredError: ``MEDULLA_ENDPOINT`` is not set.
     """
     engine = EngineSettings.from_settings()
     if engine is None:
         raise EngineNotConfiguredError(
-            "EPISTEMIC_GRAPH_ENDPOINT is not configured; vector storage is "
+            "MEDULLA_ENDPOINT is not configured; vector storage is "
             "served by epistemic-graph"
         )
     return {
