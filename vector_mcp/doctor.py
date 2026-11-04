@@ -133,9 +133,7 @@ _BACKEND_CONNECTION_CHECKS = {
 
 
 def main() -> int:
-    status = dict(
-        backend_status(setting("DATABASE_TYPE", "epistemic_graph") or "epistemic_graph")
-    )
+    status = dict(backend_status(setting("DATABASE_TYPE", "medulla") or "medulla"))
     status["configured"] = bool(status["available"])
     check = _BACKEND_CONNECTION_CHECKS.get(status["backend"])
     if check and status["available"]:

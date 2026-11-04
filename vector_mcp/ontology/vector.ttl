@@ -21,7 +21,7 @@
 
 :VectorBackend a owl:Class ;
     rdfs:label "Vector Backend" ;
-    rdfs:comment "A vector-store engine that hosts collections — epistemic_graph (native default), postgres (pgvector), qdrant, or mongodb — selected by the db_type parameter." .
+    rdfs:comment "A vector-store engine that hosts collections — medulla (native default), postgres (pgvector), qdrant, or mongodb — selected by the db_type parameter." .
 
 :Chunk a owl:Class .
 
@@ -92,7 +92,7 @@
 
 :dbType a owl:DatatypeProperty ;
     rdfs:label "db type" ;
-    rdfs:comment "Backend engine identifier (epistemic_graph, postgres, qdrant, mongodb) — the db_type parameter." ;
+    rdfs:comment "Backend engine identifier (medulla, postgres, qdrant, mongodb) — the db_type parameter." ;
     rdfs:domain :VectorBackend ;
     rdfs:range xsd:string .
 

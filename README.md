@@ -1,7 +1,7 @@
 # vector-mcp
 
 Action-routed MCP and agent interfaces for governed vector collection management and retrieval.
-The native default is epistemic-graph. Secure opt-in providers cover PostgreSQL/pgvector,
+The native default is medulla. Secure opt-in providers cover PostgreSQL/pgvector,
 Qdrant, and MongoDB Atlas.
 
 <!-- GOVERNED-CAPABILITY:START -->
@@ -24,7 +24,7 @@ uvx --from 'vector-mcp[mcp]' vector-mcp
 ```
 
 The runtime requires `scion-sdk>=0.2.0` and its self-contained full
-epistemic-graph engine contract. A bare numeric-only or partial engine profile is not a
+medulla engine contract. A bare numeric-only or partial engine profile is not a
 supported deployment.
 
 For a selected storage provider:
@@ -113,7 +113,7 @@ When query strings or parameters are provided, an LLM-free **Knowledge Graph res
       "env": {
         "MCP_TOOL_MODE": "intent",
         "COLLECTION_MANAGEMENTTOOL": "True",
-        "DATABASE_TYPE": "epistemic_graph",
+        "DATABASE_TYPE": "medulla",
         "DB_PASSWORD_REF": "secret://runtime/db-password",
         "DB_PORT": "5432",
         "DB_USERNAME_REF": "secret://runtime/db-username",
@@ -125,7 +125,7 @@ When query strings or parameters are provided, an LLM-free **Knowledge Graph res
         "QDRANT_API_KEY_REF": "secret://runtime/qdrant-api-key",
         "QDRANT_REQUEST_TIMEOUT": "30",
         "SEARCHTOOL": "True",
-        "VECTOR_DB_TYPE": "epistemic_graph"
+        "VECTOR_DB_TYPE": "medulla"
       }
     }
   }
@@ -158,7 +158,7 @@ own runtime secret boundary.
         "PORT": "8000",
         "MCP_TOOL_MODE": "intent",
         "COLLECTION_MANAGEMENTTOOL": "True",
-        "DATABASE_TYPE": "epistemic_graph",
+        "DATABASE_TYPE": "medulla",
         "DB_PASSWORD_REF": "secret://runtime/db-password",
         "DB_PORT": "5432",
         "DB_USERNAME_REF": "secret://runtime/db-username",
@@ -170,7 +170,7 @@ own runtime secret boundary.
         "QDRANT_API_KEY_REF": "secret://runtime/qdrant-api-key",
         "QDRANT_REQUEST_TIMEOUT": "30",
         "SEARCHTOOL": "True",
-        "VECTOR_DB_TYPE": "epistemic_graph"
+        "VECTOR_DB_TYPE": "medulla"
       }
     }
   }
@@ -202,7 +202,7 @@ docker run -i --rm \
   -e TRANSPORT=stdio \
   -e MCP_TOOL_MODE=intent \
   -e COLLECTION_MANAGEMENTTOOL=True \
-  -e DATABASE_TYPE=epistemic_graph \
+  -e DATABASE_TYPE=medulla \
   -e DB_PASSWORD_REF \
   -e DB_PORT=5432 \
   -e DB_USERNAME_REF \
@@ -214,7 +214,7 @@ docker run -i --rm \
   -e QDRANT_API_KEY_REF \
   -e QDRANT_REQUEST_TIMEOUT=30 \
   -e SEARCHTOOL=True \
-  -e VECTOR_DB_TYPE=epistemic_graph \
+  -e VECTOR_DB_TYPE=medulla \
   registry.example.invalid/vector-mcp@sha256:<digest> vector-mcp
 ```
 
@@ -257,8 +257,8 @@ consumed from a **remote deployment**. The
 | `ENABLE_OTEL` | — |  |
 | `EMBEDDING_TLS_PROFILE_REF` | `secret://runtime/embedding-tls-profile` | Configure AgentConfig EMBEDDING_MODELS and its referenced runtime credentials. |
 | `DOCUMENT_DIRECTORY` | — | Required only for filesystem ingestion. Supply the operator-owned root at runtime. |
-| `DATABASE_TYPE` | `epistemic_graph` | Backend used when db_type is unspecified. Default is the native epistemic-graph engine (local, zero-infra, durable). Options: epistemic_graph, postgres, mongodb, qdrant. DATABASE_TYPE is the canonical variable; VECTOR_DB_TYPE is accepted as an alias for backward compatibility. |
-| `VECTOR_DB_TYPE` | `epistemic_graph` |  |
+| `DATABASE_TYPE` | `medulla` | Backend used when db_type is unspecified. Default is the native medulla engine (local, zero-infra, durable). Options: medulla, postgres, mongodb, qdrant. DATABASE_TYPE is the canonical variable; VECTOR_DB_TYPE is accepted as an alias for backward compatibility. |
+| `VECTOR_DB_TYPE` | `medulla` |  |
 | `DB_HOST` | — | postgres/qdrant host |
 | `DBNAME` | — | postgres/mongodb database name |
 | `DB_PORT` | `5432` |  |
@@ -308,7 +308,7 @@ _25 package + 20 inherited variable(s). Auto-generated from `.env.example` + the
 
 Every variable the server reads, grouped by purpose. See [`.env.example`](.env.example) for the
 canonical, copy-paste list — including the `DATABASE_TYPE` / `GRAPH_SERVICE_SOCKET` /
-`GRAPH_SERVICE_AUTH_SECRET` connection settings for the native epistemic-graph backend. Backend
+`GRAPH_SERVICE_AUTH_SECRET` connection settings for the native medulla backend. Backend
 endpoints, database locations, and credentials for opt-in providers (Postgres/Qdrant/Mongo/
 Chroma/Couchbase) are never README-documented literal values or MCP tool arguments — they resolve
 through AgentConfig and `secret://`/`env://`/`vault://` references at runtime.
@@ -422,7 +422,7 @@ Pick the extra that matches what the operator want to run:
 # MCP server only (recommended for tool hosting — slim deps)
 uv pip install "vector-mcp[mcp]"
 
-# Full agent runtime (Pydantic AI + epistemic-graph engine)
+# Full agent runtime (Pydantic AI + medulla engine)
 uv pip install "vector-mcp[mcp]"
 
 # Everything (development)
@@ -442,12 +442,12 @@ docker build -t knucklessg1/vector-mcp:mcp docker/
 The render command creates the release-owned `docker/mcp.compose.yml`; it runs the image with
 the configured host publication.
 
-### Knowledge-graph database (`epistemic-graph`)
+### Knowledge-graph database (`medulla`)
 
-Graph storage, vector search and queries are served by **epistemic-graph**, run as its own
+Graph storage, vector search and queries are served by **medulla**, run as its own
 database container. Deployment recipes (single-node + Raft HA), connection config, and the
 database architecture are in the
-[epistemic-graph deployment guide](https://knuckles-team.github.io/epistemic-graph/deployment/).
+[medulla deployment guide](https://knuckles-team.github.io/medulla/deployment/).
 
 ## Repository Owners
 

@@ -18,15 +18,13 @@ def _tls():
     )
 
 
-@pytest.mark.parametrize("name", ["epistemic_graph", "postgres", "mongodb", "qdrant"])
+@pytest.mark.parametrize("name", ["medulla", "postgres", "mongodb", "qdrant"])
 def test_only_current_backend_names_are_available(name: str) -> None:
     assert ensure_backend_available(name) == name
     assert backend_status(name)["available"] is True
 
 
-@pytest.mark.parametrize(
-    "removed", ["epistemic-graph", "eg", "chroma", "chromadb", "couchbase"]
-)
+@pytest.mark.parametrize("removed", ["eg", "chroma", "chromadb", "couchbase"])
 def test_removed_or_legacy_backend_names_are_rejected(removed: str) -> None:
     with pytest.raises(ValueError, match="vector_backend_unsupported"):
         ensure_backend_available(removed)

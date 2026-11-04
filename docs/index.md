@@ -3,7 +3,7 @@
 `vector-mcp` exposes governed collection management and semantic, lexical, and hybrid
 retrieval through a compact action-routed MCP surface.
 
-The native backend is epistemic-graph. Optional package providers support PostgreSQL/pgvector,
+The native backend is medulla. Optional package providers support PostgreSQL/pgvector,
 Qdrant, and MongoDB Atlas integrations. Connection details and trust material are
 runtime configuration; documentation and packaged skills contain no deployment-specific values.
 

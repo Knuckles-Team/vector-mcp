@@ -14,7 +14,7 @@ This repository inherits the [organization constitution](https://github.com/Knuc
 
 ### R-I. Connector scope
 
-This repository owns the calls, mappings and MCP tools of one external system: Governed vector retrieval over native epistemic-graph and secure opt-in providers. It depends on scion-sdk only and adds no store, no policy table and no second client of another connector.
+This repository owns the calls, mappings and MCP tools of one external system: Governed vector retrieval over native medulla and secure opt-in providers. It depends on scion-sdk only and adds no store, no policy table and no second client of another connector.
 
 **Enforced by:** `connector-standard` and the spec standard.
 

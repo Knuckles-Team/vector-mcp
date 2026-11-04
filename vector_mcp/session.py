@@ -1,4 +1,4 @@
-"""Caller authority and engine connection for the epistemic-graph backends.
+"""Caller authority and engine connection for the medulla backends.
 
 The caller's verified identity comes from ``scion_sdk.identity``; the
 engine endpoint and its secret come from ``scion_sdk`` engine settings
@@ -24,11 +24,11 @@ __all__ = [
 ]
 
 _DEFAULT_SCOPES = ("graph:read", "graph:write")
-_DEFAULT_AUDIENCE = "epistemic-graph"
+_DEFAULT_AUDIENCE = "medulla"
 
 
 class EngineNotConfiguredError(RuntimeError):
-    """epistemic-graph is not configured; no local store stands in for it."""
+    """medulla is not configured; no local store stands in for it."""
 
 
 @dataclass(frozen=True)
@@ -97,16 +97,15 @@ def resolve_session(
 
 
 def engine_connection() -> dict[str, Any]:
-    """``SyncEpistemicGraphClient.connect`` keywords naming the engine and its secret.
+    """``SyncMedullaClient.connect`` keywords naming the engine and its secret.
 
     Raises:
-        EngineNotConfiguredError: ``EPISTEMIC_GRAPH_ENDPOINT`` is not set.
+        EngineNotConfiguredError: ``MEDULLA_ENDPOINT`` is not set.
     """
     engine = EngineSettings.from_settings()
     if engine is None:
         raise EngineNotConfiguredError(
-            "EPISTEMIC_GRAPH_ENDPOINT is not configured; vector storage is "
-            "served by epistemic-graph"
+            "MEDULLA_ENDPOINT is not configured; vector storage is served by medulla"
         )
     return {
         "auth_secret": resolve_secret_reference(engine.auth_secret_ref, None),

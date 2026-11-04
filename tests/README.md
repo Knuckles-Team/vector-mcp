@@ -2,7 +2,7 @@
 
 The default suite is offline and resource-bounded. It validates:
 
-- native epistemic-graph delegation without transport arguments;
+- native medulla delegation without transport arguments;
 - PostgreSQL structured credentials and `verify-full` TLS;
 - MongoDB Atlas secret-held URI and mandatory shared TLS;
 - Qdrant HTTPS construction, DNS-pinned egress, and indexed full-text filtering;

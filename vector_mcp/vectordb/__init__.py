@@ -12,7 +12,7 @@ def get_logger(name: str) -> logging.Logger:
 
 
 if TYPE_CHECKING:
-    from .epistemic_graph import EpistemicGraphVectorDB
+    from .medulla import MedullaVectorDB
     from .mongodb import MongoDBAtlasVectorDB
     from .postgres import PostgreSQL
     from .qdrant import QdrantVectorDB
@@ -21,7 +21,7 @@ __all__ = [
     "get_logger",
     "Document",
     "VectorDB",
-    "EpistemicGraphVectorDB",
+    "MedullaVectorDB",
     "PostgreSQL",
     "QdrantVectorDB",
     "MongoDBAtlasVectorDB",
@@ -29,10 +29,10 @@ __all__ = [
 
 
 def __getattr__(name: str):
-    if name == "EpistemicGraphVectorDB":
-        from .epistemic_graph import EpistemicGraphVectorDB
+    if name == "MedullaVectorDB":
+        from .medulla import MedullaVectorDB
 
-        return EpistemicGraphVectorDB
+        return MedullaVectorDB
     elif name == "PostgreSQL":
         from .postgres import PostgreSQL
 

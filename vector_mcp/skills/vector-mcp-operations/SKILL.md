@@ -17,7 +17,7 @@ Use the provider's governed MCP tools through Arbora delegation.
 1. Establish the verified GraphSession, tenant, and ACL scope.
 2. Discover the installed action-routed tool schema. Do not infer stale actions or
    parameters.
-3. Use `epistemic_graph` unless the operator has selected and configured another
+3. Use `medulla` unless the operator has selected and configured another
    currently available backend. Connection details and credentials are never tool
    arguments.
 4. Inspect before changing. Fence approved mutations as idempotent WorkItems and require

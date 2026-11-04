@@ -146,7 +146,7 @@ def _host_allowlist(name: str) -> list[str]:
 def _create_database(db_type: str, collection_name: str, embed_model: Any) -> VectorDB:
     """Build one backend from canonical AgentConfig fields only."""
 
-    if db_type == "epistemic_graph":
+    if db_type == "medulla":
         return VectorDBFactory.create_vector_database(
             db_type, embed_model=embed_model, collection_name=collection_name
         )
@@ -242,8 +242,7 @@ class Api:
 
     def _database(self, db_type: str | None, collection_name: str) -> VectorDB:
         selected = ensure_backend_available(
-            db_type
-            or str(_configured("DATABASE_TYPE", "epistemic_graph") or "epistemic_graph")
+            db_type or str(_configured("DATABASE_TYPE", "medulla") or "medulla")
         )
         with self._lock:
             database = self._databases.get(selected)

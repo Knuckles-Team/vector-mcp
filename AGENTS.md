@@ -19,7 +19,7 @@ adapters, an agent entry point, packaged skills/prompts, a vector ontology, and 
 collection-inventory connector preset.
 
 - Language/Version: Python 3.11+
-- Core Libraries: `scion-sdk`, `fastmcp`, `epistemic-graph` (client)
+- Core Libraries: `scion-sdk`, `fastmcp`, `medulla` (client)
 - Key principles: Functional patterns, Pydantic for data validation, asynchronous tool execution.
 
 ## Current architecture
@@ -73,7 +73,7 @@ only when selected.
   secret-reference-only — the current, certified contract (`VectorDBFactory.PREDEFINED_VECTOR_DB`
   and `backend_policy.ensure_backend_available` agree on exactly these four names, and both the
   factory and the MCP tool boundary reject any other `db_type`, including legacy spellings like
-  `eg`/`epistemic-graph`).
+  `eg`/`medulla`).
 - **ChromaDB / Couchbase — removed from the supported contract.** `vector_mcp/vectordb/chromadb.py`
   and `couchbase.py` remain in the tree (real, previously-shipped adapters) but are no longer wired
   into `VectorDBFactory`, `vectordb.__init__`'s exports, or the packaged extras —
@@ -87,7 +87,7 @@ only when selected.
 
 - **Epistemic-Graph**: stores each chunk as an engine node (text in the indexed
   `description` property, plus metadata) with its embedding in the engine's native ANN
-  index via `SyncEpistemicGraphClient` (transactional `.txn.add_node` + `.txn.add_embedding`,
+  index via `SyncMedullaClient` (transactional `.txn.add_node` + `.txn.add_embedding`,
   session-authority-cached connections). Semantic search is `.graph.semantic_search` (native
   ANN); lexical/keyword search is the engine's one-round-trip `.graph.discover` (keyword overlap
   + semantic, scalable — a client-side term scan is only a fallback for an engine too old for
