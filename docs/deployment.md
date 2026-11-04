@@ -28,7 +28,7 @@ The client launches the server over stdio via `uvx` — best for local IDEs
       "command": "uvx",
       "args": ["--from", "vector-mcp[mcp]", "vector-mcp"],
       "env": {
-        "DATABASE_TYPE": "epistemic_graph"
+        "DATABASE_TYPE": "medulla"
       }
     }
   }
@@ -59,7 +59,7 @@ Then either let the client launch it:
         "TRANSPORT": "streamable-http",
         "HOST": "0.0.0.0",
         "PORT": "8000",
-        "DATABASE_TYPE": "epistemic_graph"
+        "DATABASE_TYPE": "medulla"
       }
     }
   }
@@ -93,7 +93,7 @@ no ports to manage). Swap `docker` for `podman` for a daemonless runtime:
       "args": [
         "run", "-i", "--rm",
         "-e", "TRANSPORT=stdio",
-        "-e", "DATABASE_TYPE=epistemic_graph",
+        "-e", "DATABASE_TYPE=medulla",
         "knucklessg1/vector-mcp@sha256:<digest>"
       ]
     }
@@ -107,7 +107,7 @@ no ports to manage). Swap `docker` for `podman` for a daemonless runtime:
 docker run -d --name vector-mcp -p 8000:8000 \
   -e TRANSPORT=streamable-http \
   -e PORT=8000 \
-  -e DATABASE_TYPE=epistemic_graph \
+  -e DATABASE_TYPE=medulla \
   knucklessg1/vector-mcp@sha256:<digest>
 # or, from a clone of this repo, render the release-owned files first:
 pipelines-connector render --root .

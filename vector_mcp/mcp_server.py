@@ -45,9 +45,7 @@ _COLLECTION_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,39}$")
 
 
 def _backend(value: str | None) -> str:
-    configured = value or str(
-        setting("DATABASE_TYPE", "epistemic_graph") or "epistemic_graph"
-    )
+    configured = value or str(setting("DATABASE_TYPE", "medulla") or "medulla")
     return ensure_backend_available(configured)
 
 

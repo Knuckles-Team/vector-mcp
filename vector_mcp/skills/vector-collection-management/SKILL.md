@@ -34,7 +34,7 @@ across every backend.
 - Querying / retrieving from a collection → `vector-hybrid-search`.
 - Picking a backend, wiring host/port/credentials, or comparing engines →
   `vector-backend-operations`.
-- Persisting derived knowledge into the epistemic-graph KG → this is a vector
+- Persisting derived knowledge into the medulla KG → this is a vector
   backend, not a KG source; use the arbora tools for KG writes.
 
 ## Prerequisites & environment

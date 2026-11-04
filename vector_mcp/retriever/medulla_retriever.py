@@ -1,8 +1,8 @@
 #!/usr/bin/python
-"""RAG retriever over the native epistemic-graph vector backend.
+"""RAG retriever over the native medulla vector backend.
 
 Unlike the ChromaDB/Postgres retrievers (which drive a LlamaIndex
-``VectorStoreIndex``), this retriever talks to :class:`EpistemicGraphVectorDB`
+``VectorStoreIndex``), this retriever talks to :class:`MedullaVectorDB`
 **directly** — the engine owns the ANN index, so documents are embedded + inserted
 and queried through the backend's ``insert_documents`` / ``semantic_search`` /
 ``lexical_search`` rather than a client-side index.
@@ -24,7 +24,7 @@ with optional_import_block():
     from llama_index.core import SimpleDirectoryReader
     from llama_index.core.schema import Document as LlamaDocument
 
-__all__ = ["EpistemicGraphRetriever"]
+__all__ = ["MedullaRetriever"]
 
 DEFAULT_COLLECTION_NAME = "memory"
 
@@ -33,9 +33,9 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-@require_optional_import(["medulla"], "epistemic-graph")
-class EpistemicGraphRetriever(RAGRetriever):
-    """A RAG retriever backed by the native epistemic-graph engine."""
+@require_optional_import(["medulla"], "medulla")
+class MedullaRetriever(RAGRetriever):
+    """A RAG retriever backed by the native medulla engine."""
 
     def __init__(
         self,
@@ -46,7 +46,7 @@ class EpistemicGraphRetriever(RAGRetriever):
         metadata: dict[str, Any] | None = None,
         collection_name: str | None = None,
     ) -> None:
-        """Initialize the EpistemicGraphRetriever."""
+        """Initialize the MedullaRetriever."""
         self.socket_path = socket_path
         self.auth_secret = auth_secret
         self.tcp_addr = tcp_addr
@@ -59,9 +59,9 @@ class EpistemicGraphRetriever(RAGRetriever):
         self.active_collection = self.collection_name
 
     def _set_up(self, overwrite: bool) -> None:
-        """Create the epistemic-graph backend and (re)initialize the collection."""
+        """Create the medulla backend and (re)initialize the collection."""
         self.vector_db = VectorDBFactory.create_vector_database(
-            db_type="epistemic_graph",
+            db_type="medulla",
             embed_model=self.embed_model,
             collection_name=self.collection_name,
             socket_path=self.socket_path,
@@ -229,5 +229,5 @@ class EpistemicGraphRetriever(RAGRetriever):
 if TYPE_CHECKING:
     from .retriever import RAGRetriever as RAGQueryEngine
 
-    def _check_implement_protocol(o: EpistemicGraphRetriever) -> RAGQueryEngine:
+    def _check_implement_protocol(o: MedullaRetriever) -> RAGQueryEngine:
         return o

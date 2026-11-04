@@ -17,7 +17,7 @@ metadata:
 Use this skill when changing the `vector-mcp` connector, its documentation, or
 its spec-delivery integration. Work from the repository root and read `AGENTS.md`,
 the affected module, and the relevant `specs/` status before editing. Keep the
-native epistemic-graph backend as the default and route optional vector providers
+native medulla backend as the default and route optional vector providers
 through the existing provider policy and SDK contracts.
 
 ## Rapid delivery: the 5-minute contract
@@ -38,7 +38,7 @@ For a small, reviewable change:
 
 ### Change boundaries
 
-- Preserve the native epistemic-graph default, action-routed tools, provider policy,
+- Preserve the native medulla default, action-routed tools, provider policy,
   refusal behavior, and packaged vector ontology and source mappings.
 - Keep optional provider imports lazy and resolve credentials through the existing
   runtime configuration and secret-reference paths.

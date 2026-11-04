@@ -5,12 +5,12 @@ from vector_mcp.vectordb.base import VectorDBFactory
 
 def test_factory_advertises_only_current_contract_backends() -> None:
     assert VectorDBFactory.PREDEFINED_VECTOR_DB == [
-        "epistemic_graph",
+        "medulla",
         "postgres",
         "mongodb",
         "qdrant",
     ]
-    assert VectorDBFactory.DEFAULT_VECTOR_DB == "epistemic_graph"
+    assert VectorDBFactory.DEFAULT_VECTOR_DB == "medulla"
 
 
 def test_factory_rejects_removed_backend() -> None:

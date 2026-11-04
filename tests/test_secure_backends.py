@@ -253,7 +253,7 @@ def test_postgres_existing_collection_rejects_embedding_dimension_drift() -> Non
 
 
 def test_native_backend_delegates_without_transport_arguments(monkeypatch) -> None:
-    from vector_mcp.vectordb import epistemic_graph
+    from vector_mcp.vectordb import medulla
 
     control = MagicMock()
     control.tenants.list.return_value = []
@@ -270,14 +270,12 @@ def test_native_backend_delegates_without_transport_arguments(monkeypatch) -> No
             "policy_version": "current",
         }
     )
-    monkeypatch.setattr(epistemic_graph, "resolve_session", lambda: session)
+    monkeypatch.setattr(medulla, "resolve_session", lambda: session)
     monkeypatch.setattr(
-        epistemic_graph, "engine_connection", lambda: {"tcp_addr": "127.0.0.1:1"}
+        medulla, "engine_connection", lambda: {"tcp_addr": "127.0.0.1:1"}
     )
-    monkeypatch.setattr(
-        epistemic_graph, "SyncMedullaClient", SimpleNamespace(connect=connect)
-    )
-    database = epistemic_graph.EpistemicGraphVectorDB(embed_model=_embedder())
+    monkeypatch.setattr(medulla, "SyncMedullaClient", SimpleNamespace(connect=connect))
+    database = medulla.MedullaVectorDB(embed_model=_embedder())
 
     database.create_collection("knowledge")
 
@@ -289,14 +287,14 @@ def test_native_backend_delegates_without_transport_arguments(monkeypatch) -> No
 
 
 def test_native_ingestion_batches_existence_and_embeddings() -> None:
-    from vector_mcp.vectordb import epistemic_graph
+    from vector_mcp.vectordb import medulla
 
     client = MagicMock()
     client.nodes.has_batch.return_value = {"one": False, "two": False}
     client.txn.begin.return_value = "transaction"
     client.txn.commit.return_value = True
     embedder = _batch_embedder()
-    database = epistemic_graph.EpistemicGraphVectorDB(embed_model=embedder)
+    database = medulla.MedullaVectorDB(embed_model=embedder)
     database._client_for = MagicMock(return_value=client)
 
     database.insert_documents(

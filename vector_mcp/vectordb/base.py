@@ -272,9 +272,9 @@ class VectorDB(Protocol):
 class VectorDBFactory:
     """Factory class for creating vector databases."""
 
-    DEFAULT_VECTOR_DB = "epistemic_graph"
+    DEFAULT_VECTOR_DB = "medulla"
     PREDEFINED_VECTOR_DB = [
-        "epistemic_graph",
+        "medulla",
         "postgres",
         "mongodb",
         "qdrant",
@@ -287,7 +287,7 @@ class VectorDBFactory:
         Args:
             db_type: str | The type of the vector database. When ``None``/empty it
                 resolves to ``DATABASE_TYPE`` (config; alias ``VECTOR_DB_TYPE``) or
-                ``DEFAULT_VECTOR_DB`` (``epistemic_graph``).
+                ``DEFAULT_VECTOR_DB`` (``medulla``).
             kwargs: Dict | The keyword arguments for initializing the vector database.
 
         Returns:
@@ -303,10 +303,10 @@ class VectorDBFactory:
             except Exception:
                 db_type = VectorDBFactory.DEFAULT_VECTOR_DB
         db_type = str(db_type or VectorDBFactory.DEFAULT_VECTOR_DB).strip().casefold()
-        if db_type == "epistemic_graph":
-            from .epistemic_graph import EpistemicGraphVectorDB
+        if db_type == "medulla":
+            from .medulla import MedullaVectorDB
 
-            return EpistemicGraphVectorDB(**kwargs)
+            return MedullaVectorDB(**kwargs)
         if db_type == "postgres":
             from .postgres import PostgreSQL
 

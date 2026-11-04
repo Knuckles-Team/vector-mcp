@@ -30,7 +30,7 @@ copy retrieved content into traces or validation evidence.
 
 ## Backend readiness
 
-The native backend is `epistemic_graph`. The only external providers are `postgres`,
+The native backend is `medulla`. The only external providers are `postgres`,
 `mongodb`, and `qdrant`; each is opt-in and may be selected only when the installed
 backend policy reports it available and the operator has configured its endpoint,
 secret references, and TLS profile through AgentConfig.

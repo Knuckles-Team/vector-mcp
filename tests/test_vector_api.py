@@ -41,7 +41,7 @@ def test_create_sanitizes_pii_and_does_not_store_origin_metadata(monkeypatch) ->
     api, database = _api_with_database(monkeypatch)
 
     response = api.create_collection(
-        db_type="epistemic_graph",
+        db_type="medulla",
         collection_name="knowledge",
         document_contents=["Contact analyst@example.invalid for access."],
     )
@@ -107,7 +107,7 @@ def test_delete_requires_explicit_confirmation(monkeypatch) -> None:
     api, database = _api_with_database(monkeypatch)
     with pytest.raises(ValueError, match="delete_confirmation_required"):
         api.delete_collection(
-            db_type="epistemic_graph", collection_name="knowledge", confirm=False
+            db_type="medulla", collection_name="knowledge", confirm=False
         )
     database.delete_collection.assert_not_called()
 
@@ -121,7 +121,7 @@ def test_provider_errors_are_replaced_with_path_and_secret_safe_codes(
     )
 
     with pytest.raises(RuntimeError, match="^vector_backend_operation_failed$") as exc:
-        api.list_collections(db_type="epistemic_graph")
+        api.list_collections(db_type="medulla")
 
     assert "credential" not in str(exc.value)
 
@@ -136,7 +136,7 @@ def test_collection_inventory_returns_only_current_tenant_logical_names(
         "t_partition_beta",
     ]
 
-    assert api.list_collections(db_type="epistemic_graph") == {
+    assert api.list_collections(db_type="medulla") == {
         "collections": [
             {"collection_name": "alpha"},
             {"collection_name": "beta"},
@@ -154,7 +154,7 @@ def test_hybrid_search_uses_bounded_rrf_without_duplicate_documents(
     database.lexical_search.return_value = [[(second, 2.0), (first, 1.0)]]
 
     response = api.search(
-        db_type="epistemic_graph",
+        db_type="medulla",
         collection_name="knowledge",
         question="topic",
         number_results=2,

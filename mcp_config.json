@@ -8,9 +8,9 @@
       ],
       "env": {
         "COLLECTION_MANAGEMENTTOOL": "True",
-        "DATABASE_TYPE": "epistemic_graph",
+        "DATABASE_TYPE": "medulla",
         "SEARCHTOOL": "True",
-        "VECTOR_DB_TYPE": "epistemic_graph"
+        "VECTOR_DB_TYPE": "medulla"
       }
     }
   }

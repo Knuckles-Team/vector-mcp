@@ -1,7 +1,7 @@
 #!/usr/bin/python
 """Epistemic-graph vector backend — the native, default RAG store.
 
-Documents are stored as nodes in the local **epistemic-graph** engine (the
+Documents are stored as nodes in the local **medulla** engine (the
 AI-native, redb-authoritative database): the chunk text + metadata live in node
 properties and the embedding lives in the engine's native ANN index
 (IVF-PQ / HNSW). ``semantic_search`` therefore runs as the engine's O(log N)
@@ -59,9 +59,9 @@ def _query_keywords(query: str) -> list[str]:
     return list(dict.fromkeys(word.casefold() for word in _WORD.findall(query)))
 
 
-@require_optional_import(["medulla"], "epistemic-graph")
-class EpistemicGraphVectorDB(VectorDB):
-    """A vector database backed by the native epistemic-graph engine.
+@require_optional_import(["medulla"], "medulla")
+class MedullaVectorDB(VectorDB):
+    """A vector database backed by the native medulla engine.
 
     Client connections are O(1)-cached per ``(collection, authority)`` and every
     graph/node/txn operation rides the caller's verified :class:`GraphSession` —
@@ -79,7 +79,7 @@ class EpistemicGraphVectorDB(VectorDB):
         self.embed_model = embed_model or create_embedding_model()
         self.collection_name = collection_name
         self.metadata = metadata or {}
-        self.type = "epistemic_graph"
+        self.type = "medulla"
         self.active_collection = collection_name
         self._clients: dict[tuple[str, str], Any] = {}
 

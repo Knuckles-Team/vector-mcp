@@ -9,7 +9,7 @@
       "env": {
         "MCP_TOOL_MODE": "intent",
         "COLLECTION_MANAGEMENTTOOL": "True",
-        "DATABASE_TYPE": "epistemic_graph",
+        "DATABASE_TYPE": "medulla",
         "DB_PASSWORD_REF": "secret://runtime/db-password",
         "DB_PORT": "5432",
         "DB_USERNAME_REF": "secret://runtime/db-username",
@@ -21,7 +21,7 @@
         "QDRANT_API_KEY_REF": "secret://runtime/qdrant-api-key",
         "QDRANT_REQUEST_TIMEOUT": "30",
         "SEARCHTOOL": "True",
-        "VECTOR_DB_TYPE": "epistemic_graph"
+        "VECTOR_DB_TYPE": "medulla"
       }
     }
   }

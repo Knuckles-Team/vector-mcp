@@ -70,7 +70,7 @@ optional mTLS material. A checked-in boolean SSL-verification bypass is not supp
 
 ### Backend fields
 
-The native `epistemic_graph` provider needs no vector-specific endpoint or credential;
+The native `medulla` provider needs no vector-specific endpoint or credential;
 the engine resolver owns autostart and deployment mode. External providers use these
 AgentConfig fields:
 

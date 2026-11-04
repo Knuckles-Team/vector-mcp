@@ -62,7 +62,7 @@ async def test_vector_collection_management_tools(mock_client_methods):
     res = await mcp.call_tool(
         "vector_create_collection",
         {
-            "db_type": "epistemic_graph",
+            "db_type": "medulla",
             "collection_name": "test_collection",
             "overwrite": True,
         },
@@ -71,7 +71,7 @@ async def test_vector_collection_management_tools(mock_client_methods):
     assert "status" in res.content[0].text
     assert "created" in res.content[0].text
     mock_client_methods.create_collection.assert_called_once_with(
-        db_type="epistemic_graph", collection_name="test_collection", overwrite=True
+        db_type="medulla", collection_name="test_collection", overwrite=True
     )
 
     # 2. Test add_documents
@@ -80,7 +80,7 @@ async def test_vector_collection_management_tools(mock_client_methods):
     res = await mcp.call_tool(
         "vector_add_documents",
         {
-            "db_type": "epistemic_graph",
+            "db_type": "medulla",
             "collection_name": "test_collection",
             "document_contents": ["Hello world"],
         },
@@ -88,7 +88,7 @@ async def test_vector_collection_management_tools(mock_client_methods):
     assert "status" in res.content[0].text
     assert "added" in res.content[0].text
     mock_client_methods.add_documents.assert_called_once_with(
-        db_type="epistemic_graph",
+        db_type="medulla",
         collection_name="test_collection",
         document_contents=["Hello world"],
     )
@@ -99,7 +99,7 @@ async def test_vector_collection_management_tools(mock_client_methods):
     res = await mcp.call_tool(
         "vector_delete_collection",
         {
-            "db_type": "epistemic_graph",
+            "db_type": "medulla",
             "collection_name": "test_collection",
             "confirm": True,
         },
@@ -107,7 +107,7 @@ async def test_vector_collection_management_tools(mock_client_methods):
     assert "status" in res.content[0].text
     assert "deleted" in res.content[0].text
     mock_client_methods.delete_collection.assert_called_once_with(
-        db_type="epistemic_graph", collection_name="test_collection", confirm=True
+        db_type="medulla", collection_name="test_collection", confirm=True
     )
 
     # 4. Test list_collections
@@ -118,13 +118,11 @@ async def test_vector_collection_management_tools(mock_client_methods):
     res = await mcp.call_tool(
         "vector_list_collections",
         {
-            "db_type": "epistemic_graph",
+            "db_type": "medulla",
         },
     )
     assert "col1" in res.content[0].text
-    mock_client_methods.list_collections.assert_called_once_with(
-        db_type="epistemic_graph"
-    )
+    mock_client_methods.list_collections.assert_called_once_with(db_type="medulla")
 
     # 5. The action-routed tool is gone
     with pytest.raises(Exception, match="Unknown tool"):
@@ -141,7 +139,7 @@ async def test_vector_search_tools(mock_client_methods):
     res = await mcp.call_tool(
         "vector_semantic_search",
         {
-            "db_type": "epistemic_graph",
+            "db_type": "medulla",
             "collection_name": "test_collection",
             "question": "What is AI?",
             "number_results": 5,
@@ -149,7 +147,7 @@ async def test_vector_search_tools(mock_client_methods):
     )
     assert "results" in res.content[0].text
     mock_client_methods.semantic_search.assert_called_once_with(
-        db_type="epistemic_graph",
+        db_type="medulla",
         collection_name="test_collection",
         question="What is AI?",
         number_results=5,
@@ -161,7 +159,7 @@ async def test_vector_search_tools(mock_client_methods):
     res = await mcp.call_tool(
         "vector_lexical_search",
         {
-            "db_type": "epistemic_graph",
+            "db_type": "medulla",
             "collection_name": "test_collection",
             "question": "What is AI?",
             "number_results": 3,
@@ -169,7 +167,7 @@ async def test_vector_search_tools(mock_client_methods):
     )
     assert "results" in res.content[0].text
     mock_client_methods.lexical_search.assert_called_once_with(
-        db_type="epistemic_graph",
+        db_type="medulla",
         collection_name="test_collection",
         question="What is AI?",
         number_results=3,
@@ -181,7 +179,7 @@ async def test_vector_search_tools(mock_client_methods):
     res = await mcp.call_tool(
         "vector_search",
         {
-            "db_type": "epistemic_graph",
+            "db_type": "medulla",
             "collection_name": "test_collection",
             "question": "What is AI?",
             "number_results": 2,
@@ -192,7 +190,7 @@ async def test_vector_search_tools(mock_client_methods):
     )
     assert "results" in res.content[0].text
     mock_client_methods.search.assert_called_once_with(
-        db_type="epistemic_graph",
+        db_type="medulla",
         collection_name="test_collection",
         question="What is AI?",
         number_results=2,
@@ -222,7 +220,15 @@ def test_mcp_server_cli_execution():
         with (
             patch(
                 "sys.argv",
-                ["mcp_server", "--transport", transport, "--host", "127.0.0.1", "--port", "8000"],
+                [
+                    "mcp_server",
+                    "--transport",
+                    transport,
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    "8000",
+                ],
             ),
             patch("fastmcp.FastMCP.run") as mock_run,
             pytest.raises(SystemExit),
@@ -256,7 +262,9 @@ def test_mcp_server_cli_execution():
             patch("fastmcp.FastMCP.run") as mock_run,
         ):
             mcp_server()
-            mock_run.assert_called_once_with(transport=transport, host="127.0.0.1", port=8000)
+            mock_run.assert_called_once_with(
+                transport=transport, host="127.0.0.1", port=8000
+            )
 
     # Test invalid transport (which results in SystemExit 2 via argparse parsing)
     with (

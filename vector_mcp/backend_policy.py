@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from typing import Final, TypedDict
 
-AVAILABLE_BACKENDS: Final = frozenset(
-    {"epistemic_graph", "mongodb", "postgres", "qdrant"}
-)
+AVAILABLE_BACKENDS: Final = frozenset({"medulla", "mongodb", "postgres", "qdrant"})
 
 
 class BackendStatus(TypedDict):

@@ -105,9 +105,7 @@ def test_mongodb_operations(monkeypatch):
 
     # 2. delete_documents
     db.delete_documents(["1"])
-    mock_collection.delete_many.assert_called_once_with(
-        {"document_id": {"$in": ["1"]}}
-    )
+    mock_collection.delete_many.assert_called_once_with({"document_id": {"$in": ["1"]}})
 
     # 3. get_documents_by_ids
     mock_collection.find.return_value = [

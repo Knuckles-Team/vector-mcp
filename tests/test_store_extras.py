@@ -35,8 +35,8 @@ def test_store_extras_come_from_the_sdk() -> None:
         assert sdk.name == "scion-sdk"
         assert sdk_extra in sdk.extras
         floor = max(Version(s.version) for s in sdk.specifier if s.operator == ">=")
-        assert floor >= Version("0.6.3")
-        assert not sdk.specifier.contains("0.7.0")
+        assert floor >= Version("0.7.0")
+        assert not sdk.specifier.contains("0.8.0")
     pinned = [*project["dependencies"], *(r for reqs in extras.values() for r in reqs)]
     for requirement in pinned:
         name = requirement.split("[", 1)[0].split(">", 1)[0].split("=", 1)[0]
