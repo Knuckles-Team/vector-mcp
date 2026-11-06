@@ -24,7 +24,6 @@ __all__ = [
 ]
 
 _DEFAULT_SCOPES = ("graph:read", "graph:write")
-_DEFAULT_AUDIENCE = "epistemic-graph"
 
 
 class EngineNotConfiguredError(RuntimeError):
@@ -41,13 +40,14 @@ class EngineSession:
     scopes: tuple[str, ...]
     graph: str = "__commons__"
     policy_version: str = "policy:current"
+    audience: str = "epistemic-graph"
 
     def engine_verified_context(self) -> dict[str, Any]:
         """The request-context claims the engine verifies."""
         return {
             "principal": self.actor_id,
             "tenant": self.tenant,
-            "audience": _DEFAULT_AUDIENCE,
+            "audience": self.audience,
             "agent_id": self.actor_id,
             "roles": sorted(self.roles),
             "scopes": sorted(self.scopes),
@@ -93,6 +93,7 @@ def resolve_session(
         scopes=tuple(sorted(scopes)),
         graph=engine.graph if engine else "__commons__",
         policy_version=engine.policy_version if engine else "policy:current",
+        audience=engine.audience if engine else "epistemic-graph",
     )
 
 
