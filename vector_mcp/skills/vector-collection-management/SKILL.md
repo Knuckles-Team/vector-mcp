@@ -3,7 +3,7 @@ name: vector-collection-management
 skill_type: skill
 description: >-
   Create, populate, list, and delete vector-store collections through the
-  vector-mcp MCP server's vector_collection_management tool. Use when the agent
+  vector-mcp MCP server's collection tools (vector_create_collection, vector_add_documents, vector_delete_collection, vector_list_collections). Use when the agent
   must stand up a new RAG collection, ingest documents (from a directory, file
   paths/URLs, or raw text) into an existing collection, enumerate collections, or
   drop one — across any supported backend (chromadb, postgres/pgvector, qdrant,
@@ -19,8 +19,7 @@ metadata:
 # Vector Collection Management
 
 Lifecycle operations on vector-store **collections** — the named indexes that hold
-embedded document chunks — via the `vector-mcp` MCP server. One condensed,
-action-routed tool covers create / add / list / delete so the same call shape works
+embedded document chunks — via the `vector-mcp` MCP server. Four typed tools cover create / add / list / delete so the same call shape works
 across every backend.
 
 ## When to use
@@ -39,7 +38,7 @@ across every backend.
 
 ## Prerequisites & environment
 Connect via the `mcp-client` skill against the **`vector-mcp`** MCP server. Every
-action takes the connection parameters inline (or falls back to server defaults):
+tool takes the `db_type` (or falls back to the server default); connection details are server configuration:
 
 | Parameter | Notes |
 |-----------|-------|
@@ -52,40 +51,33 @@ action takes the connection parameters inline (or falls back to server defaults)
 Embedding is handled server-side by the configured embedding model
 (`scion-sdk` embedding client (OpenAI-compatible or Ollama)).
 
-## Tools & actions
-| Condensed tool | Actions |
-|----------------|---------|
-| `vector_collection_management` | `create_collection`, `add_documents`, `delete_collection`, `list_collections` |
+## Tools
+| Tool | Purpose |
+|------|---------|
+| `vector_create_collection` | get-or-create a collection, optionally seeded from documents |
+| `vector_add_documents` | add documents to an existing collection |
+| `vector_list_collections` | list the collections the caller may see |
+| `vector_delete_collection` | delete a collection (needs `confirm`) |
 
 ### Key parameters
 - `overwrite` — on `create_collection`, replace an existing collection instead of
   get-or-create.
-- `document_directory` / `document_paths` / `document_contents` — the three
-  mutually-usable ingestion inputs for `create_collection` and `add_documents`.
+- `include_configured_directory` / `document_paths` / `document_contents` — the ingestion inputs for `vector_create_collection` and `vector_add_documents`; paths are relative to the configured document root.
 - `confirm` — required guard on `delete_collection`.
 
 ## Recipes
-Create a collection and seed it from a directory:
-```json
-{"action":"create_collection","db_type":"chromadb","db_path":"./chroma","collection_name":"handbook","document_directory":"./docs"}
-```
-Add inline text to an existing collection:
-```json
-{"action":"add_documents","db_type":"chromadb","db_path":"./chroma","collection_name":"handbook","document_contents":["VPN setup: connect to gw-hq before syncing."]}
-```
-List collections on a backend:
-```json
-{"action":"list_collections","db_type":"qdrant","host":"qdrant","port":"6333"}
-```
-Delete a collection (guarded):
-```json
-{"action":"delete_collection","db_type":"chromadb","db_path":"./chroma","collection_name":"handbook","confirm":true}
-```
+Create a collection and seed it from the configured document root: `vector_create_collection` with `db_type="chromadb"`, `collection_name="handbook"`, `include_configured_directory=true`.
+
+Add inline text to an existing collection: `vector_add_documents` with `collection_name="handbook"`, `document_contents=["VPN setup: connect to gw-hq before syncing."]`.
+
+List collections on a backend: `vector_list_collections` with `db_type="qdrant"`.
+
+Delete a collection (guarded): `vector_delete_collection` with `collection_name="handbook"`, `confirm=true`.
 
 ## Gotchas
-- `create_collection` is get-or-create by default; pass `overwrite:true` to rebuild
+- `vector_create_collection` is get-or-create by default; pass `overwrite:true` to rebuild
   from scratch — this drops existing vectors.
-- `delete_collection` needs `confirm:true`; without it the call is a no-op guard.
+- `vector_delete_collection` needs `confirm:true`; without it the call is a no-op guard.
 - Ingest inputs are supported one-at-a-time per call; loaders derive from
   `llama-index-readers-file` so PDFs/EPUBs/HTML are parsed, but very large
   directories should be chunked into batches to avoid long-running calls.

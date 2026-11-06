@@ -39,10 +39,6 @@ connector = Connector(
         ),
         ("search", "SEARCHTOOL", register_search_tools),
     ),
-    action_prefixes={
-        "vector_collection_management": "vector",
-        "vector_search": "vector",
-    },
 )
 
 __all__ = ["__version__", "connector"]

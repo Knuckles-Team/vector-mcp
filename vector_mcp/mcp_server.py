@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import warnings
 
-from fastmcp import Context, FastMCP
+from fastmcp import FastMCP
 from fastmcp.dependencies import Depends
 from fastmcp.utilities.logging import get_logger
 from pydantic import Field
@@ -26,14 +26,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from scion_sdk.config import load_config, setting
-from scion_sdk.mcp.action_dispatch import resolve_action
 from scion_sdk.mcp.concurrency import run_blocking
 from scion_sdk.mcp.server import create_mcp_server
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from vector_mcp import __version__
-from vector_mcp.action_split import register_split_action_tools
 from vector_mcp.backend_policy import ensure_backend_available
 from vector_mcp.document_inputs import resolve_document_inputs
 from vector_mcp.vector_api import get_client
@@ -169,80 +167,99 @@ async def _list_collections_action(client, db_type: str | None):
     return _filter_entitled_collections(result)
 
 
+_DB_TYPE = Field(default=None, description="db type")
+_COLLECTION_NAME_FIELD = Field(default=None, description="collection name")
+_DOC_ROOT = Field(
+    default=False, description="ingest the administrator-configured document root"
+)
+_DOC_PATHS = Field(
+    default=None, description="relative paths beneath the configured document root"
+)
+_DOC_CONTENTS = Field(default=None, description="document contents")
+
+
 def register_collection_management_tools(mcp: FastMCP):
-    @mcp.tool(tags={"collection_management"})
-    async def vector_collection_management(
-        action: str = Field(
-            description="Action to perform. Must be one of: 'create_collection', 'add_documents', 'delete_collection', 'list_collections'"
-        ),
-        db_type: str | None = Field(default=None, description="db type"),
-        collection_name: str | None = Field(
-            default=None, description="collection name"
-        ),
+    """Register the collection tools, one typed tool per operation."""
+
+    @mcp.tool(tags={"collection_management", "operation", "granular"})
+    async def vector_create_collection(
+        db_type: str | None = _DB_TYPE,
+        collection_name: str | None = _COLLECTION_NAME_FIELD,
         overwrite: bool | None = Field(default=None, description="overwrite"),
-        include_configured_directory: bool = Field(
-            default=False,
-            description="ingest the administrator-configured document root",
-        ),
-        document_paths: list[str] | None = Field(
-            default=None,
-            description="relative paths beneath the configured document root",
-        ),
-        document_contents: list[str] | None = Field(
-            default=None, description="document contents"
-        ),
-        confirm: bool | None = Field(default=None, description="confirm"),
+        include_configured_directory: bool = _DOC_ROOT,
+        document_paths: list[str] | None = _DOC_PATHS,
+        document_contents: list[str] | None = _DOC_CONTENTS,
         client=Depends(get_client),
     ) -> dict:
-        """Manage collection management operations.
-
-        Actions:
-          - 'create_collection': Creates a new collection or retrieves an existing one in the vector database.
-          - 'add_documents': Adds documents to an existing collection in the vector database.
-          - 'delete_collection': Deletes a collection from the vector database.
-          - 'list_collections': Lists all collections in the vector database.
-        """
-        resolved = resolve_action(
-            action,
-            (
-                "create_collection",
-                "add_documents",
-                "delete_collection",
-                "list_collections",
-            ),
-            service="vector-mcp",
+        """Creates a new collection or retrieves an existing one in the vector database."""
+        return await _create_collection_action(
+            client,
+            _backend(db_type),
+            _collection(collection_name),
+            overwrite,
+            include_configured_directory,
+            document_paths,
+            document_contents,
         )
-        if isinstance(resolved, dict):
-            return resolved
-        action = resolved
-        selected_backend = _backend(db_type)
-        selected_collection = _collection(collection_name)
-        if action == "create_collection":
-            return await _create_collection_action(
-                client,
-                selected_backend,
-                selected_collection,
-                overwrite,
-                include_configured_directory,
-                document_paths,
-                document_contents,
-            )
-        if action == "add_documents":
-            return await _add_documents_action(
-                client,
-                selected_backend,
-                selected_collection,
-                include_configured_directory,
-                document_paths,
-                document_contents,
-            )
-        if action == "delete_collection":
-            return await _delete_collection_action(
-                client, selected_backend, selected_collection, confirm
-            )
-        if action == "list_collections":
-            return await _list_collections_action(client, selected_backend)
-        raise ValueError("collection_action_invalid")
+
+    @mcp.tool(tags={"collection_management", "operation", "granular"})
+    async def vector_add_documents(
+        db_type: str | None = _DB_TYPE,
+        collection_name: str | None = _COLLECTION_NAME_FIELD,
+        include_configured_directory: bool = _DOC_ROOT,
+        document_paths: list[str] | None = _DOC_PATHS,
+        document_contents: list[str] | None = _DOC_CONTENTS,
+        client=Depends(get_client),
+    ) -> dict:
+        """Adds documents to an existing collection in the vector database."""
+        return await _add_documents_action(
+            client,
+            _backend(db_type),
+            _collection(collection_name),
+            include_configured_directory,
+            document_paths,
+            document_contents,
+        )
+
+    @mcp.tool(
+        tags={"collection_management", "operation", "granular"},
+        annotations={
+            "title": "Delete Collection",
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
+    )
+    async def vector_delete_collection(
+        db_type: str | None = _DB_TYPE,
+        collection_name: str | None = _COLLECTION_NAME_FIELD,
+        confirm: bool | None = Field(
+            default=None, description="must be true to delete the collection"
+        ),
+        client=Depends(get_client),
+    ) -> dict:
+        """Deletes a collection from the vector database."""
+        return await _delete_collection_action(
+            client, _backend(db_type), _collection(collection_name), confirm
+        )
+
+    @mcp.tool(
+        tags={"collection_management", "operation", "granular"},
+        annotations={
+            "title": "List Collections",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
+    )
+    async def vector_list_collections(
+        db_type: str | None = _DB_TYPE,
+        client=Depends(get_client),
+    ) -> dict:
+        """Lists the collections of the caller's identity in the vector database."""
+        return await _list_collections_action(client, _backend(db_type))
 
 
 def _validate_search_question(question: str | None, number_results: int | None) -> None:
@@ -325,18 +342,70 @@ async def _fused_search_action(
     return await run_blocking(client.search, **kwargs)
 
 
+_QUESTION = Field(default=None, description="question")
+_NUMBER_RESULTS = Field(default=None, description="number results")
+_READ_ONLY_ANNOTATIONS = {
+    "readOnlyHint": True,
+    "destructiveHint": False,
+    "idempotentHint": True,
+    "openWorldHint": False,
+}
+
+
 def register_search_tools(mcp: FastMCP):
-    @mcp.tool(tags={"search"})
+    """Register the search tools, one typed tool per retrieval mode."""
+
+    @mcp.tool(
+        tags={"search", "operation", "granular"},
+        annotations={"title": "Semantic Search", **_READ_ONLY_ANNOTATIONS},
+    )
+    async def vector_semantic_search(
+        db_type: str | None = _DB_TYPE,
+        collection_name: str | None = _COLLECTION_NAME_FIELD,
+        question: str | None = _QUESTION,
+        number_results: int | None = _NUMBER_RESULTS,
+        client=Depends(get_client),
+    ) -> dict:
+        """Retrieves and gathers related knowledge from the vector database instance using the question variable."""
+        _validate_search_request(question, number_results, None, None, None)
+        return await _semantic_search_action(
+            client,
+            _backend(db_type),
+            _collection(collection_name),
+            question,
+            number_results,
+        )
+
+    @mcp.tool(
+        tags={"search", "operation", "granular"},
+        annotations={"title": "Lexical Search", **_READ_ONLY_ANNOTATIONS},
+    )
+    async def vector_lexical_search(
+        db_type: str | None = _DB_TYPE,
+        collection_name: str | None = _COLLECTION_NAME_FIELD,
+        question: str | None = _QUESTION,
+        number_results: int | None = _NUMBER_RESULTS,
+        client=Depends(get_client),
+    ) -> dict:
+        """Performs indexed lexical or term-based retrieval."""
+        _validate_search_request(question, number_results, None, None, None)
+        return await _lexical_search_action(
+            client,
+            _backend(db_type),
+            _collection(collection_name),
+            question,
+            number_results,
+        )
+
+    @mcp.tool(
+        tags={"search", "operation", "granular"},
+        annotations={"title": "Fused Search", **_READ_ONLY_ANNOTATIONS},
+    )
     async def vector_search(
-        action: str = Field(
-            description="Action to perform. Must be one of: 'semantic_search', 'lexical_search', 'search'"
-        ),
-        db_type: str | None = Field(default=None, description="db type"),
-        collection_name: str | None = Field(
-            default=None, description="collection name"
-        ),
-        question: str | None = Field(default=None, description="question"),
-        number_results: int | None = Field(default=None, description="number results"),
+        db_type: str | None = _DB_TYPE,
+        collection_name: str | None = _COLLECTION_NAME_FIELD,
+        question: str | None = _QUESTION,
+        number_results: int | None = _NUMBER_RESULTS,
         semantic_weight: float | None = Field(
             default=None, description="semantic weight"
         ),
@@ -345,54 +414,19 @@ def register_search_tools(mcp: FastMCP):
         ),
         rrf_k: int | None = Field(default=None, description="rrf k"),
         client=Depends(get_client),
-        ctx: Context | None = Field(
-            description="MCP context for progress reporting", default=None
-        ),
     ) -> dict:
-        """Manage search operations.
-
-        Actions:
-          - 'semantic_search': Retrieves and gathers related knowledge from the vector database instance using the question variable.
-          - 'lexical_search': Performs indexed lexical or term-based retrieval.
-          - 'search': Performs bounded RRF fusion over semantic and lexical retrieval.
-        """
-        if ctx:
-            try:
-                await ctx.info("Executing tool...")
-            except Exception:
-                pass
-        resolved = resolve_action(
-            action,
-            ("semantic_search", "lexical_search", "search"),
-            service="vector-mcp",
-        )
-        if isinstance(resolved, dict):
-            return resolved
-        action = resolved
-        selected_backend = _backend(db_type)
-        selected_collection = _collection(collection_name)
+        """Performs bounded RRF fusion over semantic and lexical retrieval."""
         _validate_search_request(
             question, number_results, semantic_weight, lexical_weight, rrf_k
         )
-        if action == "semantic_search":
-            return await _semantic_search_action(
-                client, selected_backend, selected_collection, question, number_results
-            )
-        if action == "lexical_search":
-            return await _lexical_search_action(
-                client, selected_backend, selected_collection, question, number_results
-            )
-        if action == "search":
-            weights = FusionWeights(semantic_weight, lexical_weight, rrf_k)
-            return await _fused_search_action(
-                client,
-                selected_backend,
-                selected_collection,
-                question,
-                number_results,
-                weights,
-            )
-        raise ValueError("search_action_invalid")
+        return await _fused_search_action(
+            client,
+            _backend(db_type),
+            _collection(collection_name),
+            question,
+            number_results,
+            FusionWeights(semantic_weight, lexical_weight, rrf_k),
+        )
 
 
 def get_mcp_instance(command_args: list[str] | None = None) -> tuple[Any, ...]:
@@ -405,7 +439,7 @@ def get_mcp_instance(command_args: list[str] | None = None) -> tuple[Any, ...]:
     args, mcp, middlewares = create_mcp_server(
         name="vector-mcp MCP",
         version=__version__,
-        instructions="vector-mcp MCP Server — Condensed Action-Routed Tools.",
+        instructions="vector-mcp MCP Server — one typed tool per operation.",
         command_args=[] if command_args is None else command_args,
     )
 
@@ -413,18 +447,12 @@ def get_mcp_instance(command_args: list[str] | None = None) -> tuple[Any, ...]:
     async def health_check(request: Request) -> JSONResponse:
         return JSONResponse({"status": "OK"})
 
-    register_split_action_tools(
-        mcp,
-        [
-            (
-                "collection_management",
-                "COLLECTION_MANAGEMENTTOOL",
-                register_collection_management_tools,
-            ),
-            ("search", "SEARCHTOOL", register_search_tools),
-        ],
-        prefixes={"vector_collection_management": "vector", "vector_search": "vector"},
-    )
+    for toggle, registrar in (
+        ("COLLECTION_MANAGEMENTTOOL", register_collection_management_tools),
+        ("SEARCHTOOL", register_search_tools),
+    ):
+        if setting(toggle, True):
+            registrar(mcp)
 
     for mw in middlewares:
         mcp.add_middleware(mw)

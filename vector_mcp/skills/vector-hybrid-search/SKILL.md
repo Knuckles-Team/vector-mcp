@@ -3,7 +3,7 @@ name: vector-hybrid-search
 skill_type: skill
 description: >-
   Retrieve knowledge from a vector-store collection via the vector-mcp MCP
-  server's vector_search tool — semantic (ANN) search, lexical BM25 search, or a
+  server's vector_semantic_search, vector_lexical_search and vector_search tools — semantic (ANN) search, lexical BM25 search, or a
   hybrid of the two fused with Reciprocal Rank Fusion. Use when the agent must
   answer a question from an indexed corpus, pull top-k relevant chunks for RAG
   context, or tune the semantic-vs-lexical balance of retrieval. Do NOT use for
@@ -18,7 +18,7 @@ metadata:
 # Vector Hybrid Search
 
 Retrieval over vector-store **collections** through the `vector-mcp` MCP server.
-One condensed tool exposes three retrieval strategies: dense semantic search,
+Three tools expose three retrieval strategies: dense semantic search,
 sparse lexical BM25 search, and a hybrid that fuses both rankings.
 
 ## When to use
@@ -37,42 +37,34 @@ sparse lexical BM25 search, and a hybrid that fuses both rankings.
 ## Prerequisites & environment
 Connect via the `mcp-client` skill against the **`vector-mcp`** MCP server. The
 collection must already exist and be populated (see
-`vector-collection-management`). Connection params (`db_type`, `db_path`,
-`host`/`port`, `db_name`, `username`, `password`, `collection_name`) are passed
-inline, matching the collection you want to query.
+`vector-collection-management`). The tools take `db_type` and `collection_name`; connection details are server configuration.
 
-## Tools & actions
-| Condensed tool | Actions |
-|----------------|---------|
-| `vector_search` | `semantic_search`, `lexical_search`, `search` (hybrid) |
+## Tools
+| Tool | Strategy |
+|------|----------|
+| `vector_semantic_search` | dense ANN retrieval |
+| `vector_lexical_search` | BM25 term retrieval |
+| `vector_search` | hybrid reciprocal-rank fusion of both |
 
 ### Key parameters
-- `question` — the query text (required for every action).
+- `question` — the query text (required for every tool).
 - `number_results` — top-k to return.
-- `semantic_weight` / `bm25_weight` — leg weights for the hybrid `search` action.
+- `semantic_weight` / `lexical_weight` — leg weights for the hybrid `vector_search` tool.
 - `rrf_k` — the Reciprocal Rank Fusion constant that merges the two rankings.
 
 ## Recipes
-Semantic (vector) search:
-```json
-{"action":"semantic_search","db_type":"chromadb","db_path":"./chroma","collection_name":"handbook","question":"how do I connect to the VPN?","number_results":5}
-```
-Lexical BM25 search (term-exact):
-```json
-{"action":"lexical_search","db_type":"chromadb","db_path":"./chroma","collection_name":"handbook","question":"gw-hq","number_results":5}
-```
-Hybrid search, semantic-leaning fusion:
-```json
-{"action":"search","db_type":"chromadb","db_path":"./chroma","collection_name":"handbook","question":"vpn gateway hostname","number_results":8,"semantic_weight":0.7,"bm25_weight":0.3,"rrf_k":60}
-```
+Semantic: `vector_semantic_search` with `collection_name="handbook"`, `question="how do I connect to the VPN?"`, `number_results=5`.
+
+Lexical for exact tokens: `vector_lexical_search` with `collection_name="handbook"`, `question="gw-hq"`, `number_results=5`.
+
+Hybrid: `vector_search` with `collection_name="handbook"`, `question="vpn gateway hostname"`, `number_results=8`, `semantic_weight=0.7`, `lexical_weight=0.3`, `rrf_k=60`.
 
 ## Gotchas
 - `question` is required; an empty/missing question returns nothing useful.
-- Results carry a score whose meaning depends on the action — semantic returns a
+- Results carry a score whose meaning depends on the tool — semantic returns a
   distance (lower = closer), BM25 a relevance score (higher = better), hybrid a
-  fused RRF score; don't compare scores across actions.
-- Hybrid weights are only honored by the `search` action; they're ignored by the
-  pure `semantic_search` / `lexical_search` actions.
+  fused RRF score; don't compare scores across tools.
+- Hybrid weights are only honored by `vector_search`; the pure `vector_semantic_search` / `vector_lexical_search` tools ignore them.
 - A typical `rrf_k` is 60; smaller `rrf_k` sharpens toward top ranks, larger
   flattens the fusion.
 - Retrieval only covers the specified `collection_name` on the specified backend —
