@@ -8,7 +8,7 @@
 
 # Vector / RAG retrieval ontology — collections, chunks, embeddings, backends, and the
 # semantic / lexical / hybrid search operations exposed by the vector-mcp MCP surface
-# (vector_collection_management + vector_search). All classes and properties live in the
+# (the vector_* collection and search tools). All classes and properties live in the
 # shared `:` (kg#) namespace; only the owl:Ontology node gets the per-package IRI. The
 # shared :Document and :Person classes are REUSED (never redefined) — a :Chunk is a
 # retrievable segment of a :Document.
@@ -160,7 +160,7 @@
     rdfs:label "Vector Retrieval Ontology" ;
     rdfs:comment """Vector-database / RAG retrieval model — collections, backends, chunks,
     embeddings and semantic / lexical / hybrid search — backing the vector-mcp MCP tool
-    surface (vector_collection_management + vector_search) and federated into the
+    surface (the vector_* collection and search tools) and federated into the
     agent-utilities knowledge-graph hub. Reuses the shared :Document and :Person classes.""" .
 
 # ontology-codemod R3

@@ -4,7 +4,7 @@ The current server uses two condensed MCP tools:
 
 ```text
 MCP client
-  -> vector_collection_management / vector_search
+  -> vector_* collection and search tools
   -> bounded validation and privacy controls
   -> authenticated current API boundary
   -> configured vector provider

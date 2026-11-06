@@ -1,6 +1,6 @@
 """Identity-scoped collection auto-load (CONCEPT:AU-OS.identity.identity-scoped-resource-autoload).
 
-``vector_collection_management(action="list_collections")`` routes the
+``vector_list_collections`` routes the
 returned collection names through the shared scion-sdk entitlement
 resolver so a caller's Okta/Keycloak groups scope which collections they
 see. The resolver itself is tested in scion-sdk; here we mock the

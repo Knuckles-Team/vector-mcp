@@ -7,7 +7,7 @@ Qdrant, and MongoDB Atlas.
 <!-- GOVERNED-CAPABILITY:START -->
 ## Governed capability
 
-- MCP tools: `vector_collection_management` and `vector_search`
+- MCP tools: `vector_create_collection`, `vector_add_documents`, `vector_delete_collection`, `vector_list_collections`, `vector_semantic_search`, `vector_lexical_search` and `vector_search`
 - Skill provider: the consolidated `vector-mcp-operations` workflow
 - Ontology provider: the packaged vector retrieval ontology
 - Source connector provider: a read-only vector collection inventory preset
@@ -62,8 +62,8 @@ _Auto-generated from the live MCP server — do not edit by hand._
 
 | MCP Tool | Toggle Env Var | Description |
 |----------|----------------|-------------|
-| `vector_collection_management` | `COLLECTION_MANAGEMENTTOOL` | Manage collection management operations. |
-| `vector_search` | `SEARCHTOOL` | Manage search operations. |
+| `vector_create_collection`, `vector_add_documents`, `vector_delete_collection`, `vector_list_collections` | `COLLECTION_MANAGEMENTTOOL` | Collection lifecycle. |
+| `vector_semantic_search`, `vector_lexical_search`, `vector_search` | `SEARCHTOOL` | Semantic, lexical and fused retrieval. |
 
 _2 action-routed tool(s) · 0 verbose 1:1 tool(s). Each is enabled unless its `<DOMAIN>TOOL` toggle is set false; `MCP_TOOL_MODE` selects the surface (**`intent` default** — the six verb-tools, granular set loaded on demand · `condensed` action-routed · `verbose` 1:1 · `both`). Auto-generated — do not edit._
 <!-- MCP-TOOLS-TABLE:END -->

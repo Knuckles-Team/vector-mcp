@@ -26,7 +26,7 @@ collection-inventory connector preset.
 
 ```text
 MCP client
-  -> vector_collection_management / vector_search
+  -> vector_* collection and search tools
   -> validation, privacy, and backend policy
   -> verified GraphSession boundary
   -> configured provider

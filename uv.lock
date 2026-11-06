@@ -4348,7 +4348,7 @@ wheels = [
 
 [[package]]
 name = "scion-sdk"
-version = "0.7.0"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -4361,9 +4361,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5a/94/872f94b88bd9a94ecb252becfa4a5ec82cf06940f6dd699800834e93ef09/scion_sdk-0.7.0.tar.gz", hash = "sha256:d634e02158ed854e0724391c14b06b5a0394a1ce212b2106225fcf2b82c86802", size = 1157671, upload-time = "2026-11-03T23:57:47.279Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ee/f7/dd721738f473d85cff0cf6c9da0bd3ec4c2074c6b77c7c6ff8acd9088713/scion_sdk-0.9.0.tar.gz", hash = "sha256:790bc113361113acd72518a18c2032409c7da4f6aafa4b4c1ec1dba792201448", size = 1232376, upload-time = "2026-11-06T17:46:33.46Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/36/fb/2f3e579efdef6d3d567a77eee2db4f4d23113f1159111a37477e5bd97dd2/scion_sdk-0.7.0-py3-none-any.whl", hash = "sha256:191b834676c975d80934ac7f340764c737001d7b28070539c8575f643a3a19c1", size = 1107757, upload-time = "2026-11-03T23:57:48.87Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/e2/ebcdfa941a09040790670e3f40a15b0d2ccd7291baf9c60ea6154e1d4421/scion_sdk-0.9.0-py3-none-any.whl", hash = "sha256:584a38421a262c8e500bb102978843bca635e5cd190ff3af2c6b5b11e46aa1ed", size = 1201656, upload-time = "2026-11-06T17:46:34.833Z" },
 ]
 
 [package.optional-dependencies]
@@ -4824,7 +4824,7 @@ wheels = [
 
 [[package]]
 name = "vector-mcp"
-version = "3.3.7"
+version = "3.3.8"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -4885,12 +4885,12 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=1.4.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=7.1.0" },
     { name = "pytest-xdist", marker = "extra == 'test'", specifier = ">=3.8.0" },
-    { name = "scion-sdk", extras = ["mcp"], specifier = ">=0.7.0,<0.8.0" },
-    { name = "scion-sdk", extras = ["mcp"], marker = "extra == 'mcp'", specifier = ">=0.7.0,<0.8.0" },
-    { name = "scion-sdk", extras = ["vector", "mcp"], marker = "extra == 'mongodb'", specifier = ">=0.7.0,<0.8.0" },
-    { name = "scion-sdk", extras = ["vector", "mcp"], marker = "extra == 'postgres'", specifier = ">=0.7.0,<0.8.0" },
-    { name = "scion-sdk", extras = ["vector", "mcp"], marker = "extra == 'qdrant'", specifier = ">=0.7.0,<0.8.0" },
-    { name = "scion-sdk", extras = ["vector-chroma", "mcp"], marker = "extra == 'chromadb'", specifier = ">=0.7.0,<0.8.0" },
+    { name = "scion-sdk", extras = ["mcp"], specifier = ">=0.9.0,<1.0.0" },
+    { name = "scion-sdk", extras = ["mcp"], marker = "extra == 'mcp'", specifier = ">=0.9.0,<1.0.0" },
+    { name = "scion-sdk", extras = ["vector", "mcp"], marker = "extra == 'mongodb'", specifier = ">=0.9.0,<1.0.0" },
+    { name = "scion-sdk", extras = ["vector", "mcp"], marker = "extra == 'postgres'", specifier = ">=0.9.0,<1.0.0" },
+    { name = "scion-sdk", extras = ["vector", "mcp"], marker = "extra == 'qdrant'", specifier = ">=0.9.0,<1.0.0" },
+    { name = "scion-sdk", extras = ["vector-chroma", "mcp"], marker = "extra == 'chromadb'", specifier = ">=0.9.0,<1.0.0" },
     { name = "vector-mcp", extras = ["mcp", "postgres", "qdrant", "mongodb", "chromadb"], marker = "extra == 'all'", specifier = ">=2.1.2" },
 ]
 provides-extras = ["mcp", "postgres", "qdrant", "mongodb", "chromadb", "all", "test"]

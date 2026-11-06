@@ -4,8 +4,7 @@ Load only the workflow relevant to the current request.
 
 ## Collection management
 
-Use `vector_collection_management` with one of `create_collection`,
-`add_documents`, `delete_collection`, or `list_collections`. Backend connections
+Use `vector_create_collection`, `vector_add_documents`, `vector_delete_collection` or `vector_list_collections`. Backend connections
 and credentials are operator configuration, not tool arguments. Collection names
 start with a letter and contain only bounded alphanumeric or underscore characters.
 
@@ -17,12 +16,12 @@ Use `confirm` for deletion only after impact review.
 
 ## Retrieval
 
-Use `vector_search` with `semantic_search`, `lexical_search`, or `search`. Bound
+Use `vector_semantic_search`, `vector_lexical_search`, or the hybrid `vector_search`. Bound
 result counts and validate the collection identifier before delegation.
 
-- `semantic_search`: conceptual similarity, paraphrases, and recall-oriented discovery.
-- `lexical_search`: identifiers, exact phrases, and terminology-sensitive retrieval.
-- `search`: hybrid fusion when both signals matter; keep semantic/lexical weights between
+- `vector_semantic_search`: conceptual similarity, paraphrases, and recall-oriented discovery.
+- `vector_lexical_search`: identifiers, exact phrases, and terminology-sensitive retrieval.
+- `vector_search`: hybrid fusion when both signals matter; keep semantic/lexical weights between
   zero and one and use a positive, bounded RRF constant.
 
 Return only content authorized by the active tenant, ACL, and retention policy. Do not
@@ -35,12 +34,11 @@ The native backend is `medulla`. The only external providers are `postgres`,
 backend policy reports it available and the operator has configured its endpoint,
 secret references, and TLS profile through AgentConfig.
 Never pass a database location, host, username, password, token, or certificate setting
-through an MCP action.
+through an MCP tool argument.
 
 ## Collection inventory ingestion
 
-The packaged source preset reads `list_collections` through the action-routed
-management tool. Activate it only when its observed tool-schema fingerprint and
+The packaged source preset reads `vector_list_collections`. Activate it only when its observed tool-schema fingerprint and
 signed release evidence match the installed package. Inventory metadata is the
 entire permitted scope; chunks, embeddings, endpoints, credentials, and source
 content are not.

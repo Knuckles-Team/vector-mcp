@@ -17,10 +17,9 @@ metadata:
 ---
 # Vector Backend Operations
 
-Backend selection and connection wiring for the `vector-mcp` MCP server. Both the
-`vector_collection_management` and `vector_search` tools take the same `db_type` +
-connection parameters — this skill is the reference for getting those right per
-engine.
+Backend selection and connection wiring for the `vector-mcp` MCP server. Every collection and search tool takes the same `db_type` argument; the
+connection details live in server configuration. This skill is the reference for
+getting both right per engine.
 
 ## When to use
 - Choose a vector backend for a workload (embedded vs. networked, dev vs. prod).
@@ -49,34 +48,21 @@ relevant backend extra must be installed on the server (`vector-mcp[chromadb]`,
 | `couchbase` | `host`, `db_name`, `username`, `password` | |
 | `mongodb` | `host`, `port`, `db_name`, `username`, `password` | Atlas Vector Search |
 
-The same params flow into `vector_collection_management` and `vector_search`, so
-once you know the backend shape, reuse it across every call.
+The `db_type` flows into every `vector_*` tool; connection details are server
+configuration, so once the backend is chosen, reuse the same `db_type` on each call.
 
-## Tools & actions
-Backend selection is not a standalone action — it is the `db_type` + connection
-arguments shared by both tools:
+## Tools
+Backend selection is the `db_type` argument shared by every tool:
 
-| Condensed tool | Actions using these params |
-|----------------|----------------------------|
-| `vector_collection_management` | `create_collection`, `add_documents`, `list_collections`, `delete_collection` |
-| `vector_search` | `semantic_search`, `lexical_search`, `search` |
+| Tools | Purpose |
+|-------|---------|
+| `vector_list_collections`, `vector_create_collection`, `vector_add_documents`, `vector_delete_collection` | collection lifecycle on the chosen backend |
+| `vector_semantic_search`, `vector_lexical_search`, `vector_search` | retrieval on the chosen backend |
 
 ## Recipes
-Probe an embedded chromadb backend by listing its collections:
-```json
-{"action":"list_collections","db_type":"chromadb","db_path":"./chroma"}
-```
-Point at a networked qdrant:
-```json
-{"action":"list_collections","db_type":"qdrant","host":"qdrant","port":"6333"}
-```
-Postgres/pgvector connection shape:
-```json
-{"action":"list_collections","db_type":"postgres","host":"pg","port":"5432","db_name":"rag","username":"rag","password":"<secret>"}
-```
-Migrate a corpus: `list_collections` + read from the source backend, then
-`create_collection` + `add_documents` against the target `db_type` (see
-`vector-collection-management`).
+Probe a backend by listing its collections: `vector_list_collections` with `db_type="chromadb"` (or `qdrant`, `postgres`, `mongodb`).
+
+Migrate a corpus: `vector_list_collections` and read from the source backend, then `vector_create_collection` and `vector_add_documents` with the target `db_type` (see `vector-collection-management`).
 
 ## Gotchas
 - Embedded chromadb wants `db_path`; networked engines want `host`/`port` — mixing

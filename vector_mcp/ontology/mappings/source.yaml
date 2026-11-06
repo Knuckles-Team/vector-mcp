@@ -4,8 +4,7 @@ ontology_source: vector
 sync:
 - preset: vector-collections
   server: vector-mcp
-  tool: vector_collection_management
-  action: list_collections
+  tool: vector_list_collections
   records_path: collections
   id_field: collection_name
   title_field: collection_name
