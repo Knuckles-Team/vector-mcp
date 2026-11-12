@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""Epistemic-graph vector backend — the native, default RAG store.
+"""Medulla vector backend — the native, default RAG store.
 
 Documents are stored as nodes in the local **medulla** engine (the
 AI-native, redb-authoritative database): the chunk text + metadata live in node

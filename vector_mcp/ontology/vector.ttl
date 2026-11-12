@@ -161,7 +161,7 @@
     rdfs:comment """Vector-database / RAG retrieval model — collections, backends, chunks,
     embeddings and semantic / lexical / hybrid search — backing the vector-mcp MCP tool
     surface (the vector_* collection and search tools) and federated into the
-    agent-utilities knowledge-graph hub. Reuses the shared :Document and :Person classes.""" .
+    meristem knowledge-graph hub. Reuses the shared :Document and :Person classes.""" .
 
 # ontology-codemod R3
 <http://knuckles.team/kg#VectorCollection> rdfs:subClassOf <http://knuckles.team/kg#Collection> .

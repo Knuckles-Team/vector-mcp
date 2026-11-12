@@ -32,7 +32,7 @@ MCP client
   -> configured provider
 ```
 
-Epistemic-graph is the native default. Optional providers are isolated behind extras and imported
+Medulla is the native default. Optional providers are isolated behind extras and imported
 only when selected.
 
 ## Non-negotiable design rules
@@ -65,7 +65,7 @@ only when selected.
 
 ### Supported backends
 
-- **Epistemic-Graph** (**DEFAULT**): the native local AI-native engine — durable
+- **Medulla** (**DEFAULT**): the native local AI-native engine — durable
   (redb-authoritative) with a native ANN/HNSW index, so semantic search is the engine's
   O(log N) vector search. Zero external infra (autostarts). Selected when `db_type` is
   unspecified (override with `DATABASE_TYPE`, alias `VECTOR_DB_TYPE`).
@@ -85,7 +85,7 @@ only when selected.
 
 ### Implementation notes
 
-- **Epistemic-Graph**: stores each chunk as an engine node (text in the indexed
+- **Medulla**: stores each chunk as an engine node (text in the indexed
   `description` property, plus metadata) with its embedding in the engine's native ANN
   index via `SyncMedullaClient` (transactional `.txn.add_node` + `.txn.add_embedding`,
   session-authority-cached connections). Semantic search is `.graph.semantic_search` (native
@@ -167,10 +167,10 @@ Before finishing a task, run `git status` and confirm no stray root files were a
 Working in parallel with other sessions/worktrees? **Reserve a concept id before you write its `CONCEPT:` marker** so two sessions never collide:
 
 ```bash
-agent-utilities --json concept reserve --ns EG-KG.compute.backend   # or a package prefix, e.g. KEY
+meristem --json concept reserve --ns EG-KG.compute.backend   # or a package prefix, e.g. KEY
 ```
 
-Full protocol (ledger, merge=union, reconcile, MCP/REST): <https://knuckles-team.github.io/agent-utilities/concept_coordination/>
+Full protocol (ledger, merge=union, reconcile, MCP/REST): <https://knuckles-team.github.io/meristem/concept_coordination/>
 <!-- END concept-coordination (generated) -->
 
 ## Version & lockfile drift edict (keep the version mirrors AND the lock in sync)
@@ -198,14 +198,14 @@ is what Dependabot flags. Rules:
 ## Upstream currency edict — target the newest release; a pin is a hypothesis, not a fact (READ BEFORE capping, deferring, or opt-in-gating an upgrade)
 
 This governs how this repository treat **other people's** releases, deprecations, and version caps in
-this repo (fleet-wide edict, propagated from `agent-utilities/AGENTS.md`).
+this repo (fleet-wide edict, propagated from `meristem/AGENTS.md`).
 
 1. **Latest by default.** Target the newest upstream release -- including a pre-release
    where the ecosystem has already moved onto it. Sitting on an old major because the
    upgrade is work is not a reason to defer it.
 2. **A conservative upstream pin is a hypothesis, not a fact -- test it, don't inherit
    it.** Upstream maintainers cap defensively (an unreleased major, an untested surface)
-   as often as they cap for a known break. Worked example (from `agent-utilities`):
+   as often as they cap for a known break. Worked example (from `meristem`):
    `pydantic-ai-slim` 2.18.0 declared `fastmcp-slim[client]>=3.3.0` with no upper bound;
    2.19.0 added `<4` purely as a defensive guard while fastmcp 4 was still pre-release --
    not because of an observed incompatibility. Blocking an upgrade on that kind of cap

@@ -10,7 +10,7 @@ MCP client
   -> configured vector provider
 ```
 
-Collection operations and search share a canonical backend-name policy. Epistemic-graph is the
+Collection operations and search share a canonical backend-name policy. Medulla is the
 native default. Optional providers are imported only when selected so an unused database SDK does
 not expand the default runtime.
 
@@ -30,13 +30,13 @@ the exact installed tool schema and ontology and must be signed by an authorized
 
 ## Enterprise Readiness
 
-All agents in the ecosystem inherit enterprise-grade infrastructure from `agent-utilities`:
+All agents in the ecosystem inherit enterprise-grade infrastructure from `meristem`:
 
 | Feature | Status | Source |
 |:--------|:-------|:-------|
-| **JWT/OIDC Authentication** | ✅ Built-in | `agent-utilities[auth]` — Authlib JWKS + API key middleware |
-| **OpenTelemetry Instrumentation** | ✅ Built-in | `agent-utilities[logfire]` — OTLP export, FastAPI auto-instrumentation |
-| **HashiCorp Vault Integration** | ✅ Built-in | `agent-utilities[vault]` — `secret://`, `env://`, `vault://` URI schemes |
+| **JWT/OIDC Authentication** | ✅ Built-in | `meristem[auth]` — Authlib JWKS + API key middleware |
+| **OpenTelemetry Instrumentation** | ✅ Built-in | `meristem[logfire]` — OTLP export, FastAPI auto-instrumentation |
+| **HashiCorp Vault Integration** | ✅ Built-in | `meristem[vault]` — `secret://`, `env://`, `vault://` URI schemes |
 | **Audit Logging** | ✅ Built-in | Append-only compliance trail with 30+ action types (CONCEPT:AU-OS.governance.wasm-micro-agent-sandbox) |
 | **Token Usage Analytics** | ✅ Built-in | 4-bucket tracking with budget alerting (CONCEPT:AU-OS.governance.wasm-micro-agent-sandbox) |
 | **Prompt Injection Defense** | ✅ Built-in | 25+ pattern scanner + jailbreak taxonomy (CONCEPT:AU-OS.config.secrets-authentication) |
@@ -51,8 +51,8 @@ This project implements or inherits the following ecosystem concepts:
 
 | Concept ID | Description | Source |
 |:-----------|:------------|:-------|
-| ECO-4.1 | MCP & Universal Skills | `agent-utilities` (inherited) |
-| KG-2.0 | Active Knowledge Graph | `agent-utilities` (inherited) |
-| KG-2.8 | **Retrieval Quality Gate** | `agent-utilities` (inherited) |
+| ECO-4.1 | MCP & Universal Skills | `meristem` (inherited) |
+| KG-2.0 | Active Knowledge Graph | `meristem` (inherited) |
+| KG-2.8 | **Retrieval Quality Gate** | `meristem` (inherited) |
 
-> 📖 **Full Registry**: See [`agent-utilities/docs/overview.md`](https://github.com/Knuckles-Team/agent-utilities/blob/main/docs/overview.md) for the complete 5-Pillar concept index.
+> 📖 **Full Registry**: See [`meristem/docs/overview.md`](https://github.com/Knuckles-Team/meristem/blob/main/docs/overview.md) for the complete 5-Pillar concept index.
