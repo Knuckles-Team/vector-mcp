@@ -277,7 +277,7 @@ consumed from a **remote deployment**. The
 | `VECTOR_MCP_MCP_IMAGE` | — | e.g. registry.example.invalid/vector-mcp@sha256:<digest> |
 | `VECTOR_MCP_AGENT_IMAGE` | — | e.g. registry.example.invalid/vector-mcp@sha256:<digest> |
 
-#### Inherited agent-utilities variables (apply to every connector)
+#### Inherited meristem variables (apply to every connector)
 
 | Variable | Example | Description |
 |----------|---------|-------------|
@@ -302,7 +302,7 @@ consumed from a **remote deployment**. The
 | `MODEL_ID` | — | Operator-configured model id for the agent |
 | `ENABLE_WEB_UI` | `True` | Serve the AG-UI web interface |
 
-_25 package + 20 inherited variable(s). Auto-generated from `.env.example` + the shared agent-utilities set — do not edit._
+_25 package + 20 inherited variable(s). Auto-generated from `.env.example` + the shared meristem set — do not edit._
 <!-- ENV-VARS-TABLE:END -->
 
 
@@ -385,15 +385,15 @@ compose service definition.
 See [LICENSE](LICENSE).
 
 
-<!-- BEGIN agent-utilities-deployment (generated; do not edit between markers) -->
+<!-- BEGIN meristem-deployment (generated; do not edit between markers) -->
 
-## Deploy with `agent-utilities-deployment`
+## Deploy with `meristem-deployment`
 
-Provision this package with the consolidated **`agent-utilities-deployment`**
+Provision this package with the consolidated **`meristem-deployment`**
 workflow. It selects an installed-package, editable-source, or immutable-container
 path; records only runtime secret and TLS-profile references in `AgentConfig`; and
 runs doctor, registration, policy, observability, and rollback gates. Ask your agent
-to **"deploy `vector-mcp` with agent-utilities-deployment"**.
+to **"deploy `vector-mcp` with meristem-deployment"**.
 
 | Install mode | Command |
 |------|---------|
@@ -405,7 +405,7 @@ The repository embeds no deployment profile, credential value, certificate path,
 environment-specific endpoint. Supply those at runtime through `AgentConfig` and the
 configured secret provider.
 
-<!-- END agent-utilities-deployment -->
+<!-- END meristem-deployment -->
 
 ---
 

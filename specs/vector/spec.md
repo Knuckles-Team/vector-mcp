@@ -9,12 +9,12 @@ Vector indexing and semantic-search operations require exact backend specificati
 
 ## Why a new spec
 
-No prior spec owns semantic-search backend specification, dimension contracts, or provider-specific refusal. Agent-utilities SDK specs define transport policy; this spec defines the served operation boundary.
+No prior spec owns semantic-search backend specification, dimension contracts, or provider-specific refusal. Meristem SDK specs define transport policy; this spec defines the served operation boundary.
 
 ## Scope and interfaces
 
 Owned: vector_search MCP tool, VectorAPI backend routing, supported provider profiles (medulla, postgresql/pgvector, qdrant, mongodb), index/query dimension validation, unsupported-profile refusal.
-Dependencies: Agent-utilities SDK transport layer, configured vector-database factory, embedding model (shared create_embedding_model).
+Dependencies: Meristem SDK transport layer, configured vector-database factory, embedding model (shared create_embedding_model).
 Non-goals: Collection lifecycle (create_collection), document metadata ingestion, full-text search.
 
 ## Open questions
