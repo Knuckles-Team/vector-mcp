@@ -1,7 +1,8 @@
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix core: <https://knuckles-team.github.io/ontology/core#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix dc: <http://purl.org/dc/terms/> .
-@prefix : <http://knuckles.team/kg#> .
+@prefix : <https://knuckles-team.github.io/ontology/connector/vector#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -20,21 +21,26 @@
     rdfs:comment "A named collection (index / namespace) of embedded chunks in a vector database, the unit created, listed, and deleted via vector_collection_management." .
 
 :VectorBackend a owl:Class ;
+    rdfs:subClassOf core:SourceBackend ;
     rdfs:label "Vector Backend" ;
     rdfs:comment "A vector-store engine that hosts collections — medulla (native default), postgres (pgvector), qdrant, or mongodb — selected by the db_type parameter." .
 
-:Chunk a owl:Class .
+:Chunk a owl:Class ;
+    rdfs:subClassOf core:Chunk .
 
 
 :Embedding a owl:Class ;
+    rdfs:subClassOf core:Embedding ;
     rdfs:label "Embedding" ;
     rdfs:comment "The dense vector representation of a Chunk produced by an embedding model, used for semantic (ANN) similarity search." .
 
 :SearchQuery a owl:Class ;
+    rdfs:subClassOf core:SearchQuery ;
     rdfs:label "Search Query" ;
     rdfs:comment "A retrieval request against a collection — the natural-language 'question' resolved by semantic_search, lexical_search, or the hybrid search action." .
 
 :SearchHit a owl:Class ;
+    rdfs:subClassOf core:SearchHit ;
     rdfs:label "Search Hit" ;
     rdfs:comment "A single ranked result returned for a SearchQuery: a matched Chunk paired with its similarity / relevance score." .
 
@@ -56,7 +62,7 @@
     rdfs:label "chunked from" ;
     rdfs:comment "Links a Chunk back to the source :Document it was split from." ;
     rdfs:domain :Chunk ;
-    rdfs:range :Document .
+    rdfs:range core:Document .
 
 :hasEmbedding a owl:ObjectProperty ;
     rdfs:label "has embedding" ;
@@ -156,7 +162,7 @@
     rdfs:domain :SearchQuery ;
     rdfs:range xsd:integer .
 
-<http://knuckles.team/kg/vector> a owl:Ontology ;
+<https://knuckles-team.github.io/ontology/connector/vector> a owl:Ontology ;
     rdfs:label "Vector Retrieval Ontology" ;
     rdfs:comment """Vector-database / RAG retrieval model — collections, backends, chunks,
     embeddings and semantic / lexical / hybrid search — backing the vector-mcp MCP tool
@@ -164,4 +170,4 @@
     meristem knowledge-graph hub. Reuses the shared :Document and :Person classes.""" .
 
 # ontology-codemod R3
-<http://knuckles.team/kg#VectorCollection> rdfs:subClassOf <http://knuckles.team/kg#Collection> .
+<https://knuckles-team.github.io/ontology/connector/vector#VectorCollection> rdfs:subClassOf <https://knuckles-team.github.io/ontology/core#Collection> .
