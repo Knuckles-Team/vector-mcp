@@ -2,14 +2,7 @@
 name: vector-collection-management
 skill_type: skill
 description: >-
-  Create, populate, list, and delete vector-store collections through the
-  vector-mcp MCP server's collection tools (vector_create_collection, vector_add_documents, vector_delete_collection, vector_list_collections). Use when the agent
-  must stand up a new RAG collection, ingest documents (from a directory, file
-  paths/URLs, or raw text) into an existing collection, enumerate collections, or
-  drop one — across any supported backend (chromadb, postgres/pgvector, qdrant,
-  couchbase, mongodb). Do NOT use for running queries against a collection (use
-  vector-hybrid-search) or for choosing/tuning a backend connection
-  (vector-backend-operations).
+  Create, populate, list, and delete vector-store collections through the vector-mcp MCP server's collection tools (vector_create_collection, vector_add_documents, vector_delete_collection, vector_list_collections). Do NOT use for running queries against a collection (use vector-hybrid-search) or for choosing/tuning a backend connection (vector-backend-operations).
 license: MIT
 tags: [vector, rag, collections, embeddings, mcp]
 metadata:
@@ -17,6 +10,8 @@ metadata:
   version: '0.1.0'
 ---
 # Vector Collection Management
+
+Scope: Create, populate, list, and delete vector-store collections through the vector-mcp MCP server's collection tools (vector_create_collection, vector_add_documents, vector_delete_collection, vector_list_collections). Use when the agent must stand up a new RAG collection, ingest documents (from a directory, file paths/URLs, or raw text) into an existing collection, enumerate collections, or drop one — across any supported backend (chromadb, postgres/pgvector, qdrant, couchbase, mongodb). Do NOT use for running queries against a collection (use vector-hybrid-search) or for choosing/tuning a backend connection (vector-backend-operations).
 
 Lifecycle operations on vector-store **collections** — the named indexes that hold
 embedded document chunks — via the `vector-mcp` MCP server. Four typed tools cover create / add / list / delete so the same call shape works
@@ -50,6 +45,22 @@ tool takes the `db_type` (or falls back to the server default); connection detai
 
 Embedding is handled server-side by the configured embedding model
 (`scion-sdk` embedding client (OpenAI-compatible or Ollama)).
+
+## Steps
+
+1. Inspect existing state with `vector_list_collections`(`db_type`) and verify the target `collection_name` is absent before creating, or present before adding or deleting.
+2. Create the collection with `vector_create_collection`(`db_type`, `collection_name`), adding `include_configured_directory=true` or `document_contents` to seed it, and verify the response names the collection.
+3. Add more documents with `vector_add_documents`(`collection_name`, `document_paths` or `document_contents`) using one ingestion input per call, and verify the response reports documents added.
+4. Re-run `vector_list_collections` and verify the collection is listed on the same `db_type`.
+5. Delete only when asked: call `vector_delete_collection`(`collection_name`, `confirm=true`). Verify with `vector_list_collections` that the name is gone.
+
+## Failure recovery
+
+| Failure | Cause | Recovery |
+|---------|-------|----------|
+| Delete reports no change | `confirm=true` was not passed | Call `vector_delete_collection` again with `confirm=true` after the user approves the deletion |
+| Ingest errors before any write | Backend unreachable or `document_paths` outside the configured document root | Fix `db_type` and connection settings with `vector-backend-operations`, and use paths relative to the document root |
+| Existing vectors disappeared | `overwrite=true` was set on `vector_create_collection` | Re-ingest with `vector_add_documents`, and use the default get-or-create mode in future |
 
 ## Tools
 | Tool | Purpose |

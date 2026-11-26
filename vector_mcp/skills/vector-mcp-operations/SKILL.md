@@ -30,6 +30,22 @@ Use the provider's governed MCP tools through Arbora delegation.
 7. Verify the durable result and report only sanitized status, counts, and opaque
    references.
 
+## Steps
+
+1. Discover the installed tool schema with `find`(intent="vector collection") and verify the tool names and parameters you will use are listed.
+2. Inspect before changing by calling `vector_list_collections`, and verify the target collection state matches expectations.
+3. Run the approved read or write call, such as `vector_search`, `vector_semantic_search`, `vector_lexical_search` or `vector_add_documents`, with bounded `number_results`, and verify the response status.
+4. For deletion or overwrite, obtain explicit approval and call `vector_delete_collection` with `confirm=true`. Verify the collection is absent from `vector_list_collections`.
+5. Report only sanitized status, counts and opaque references from `vector_list_collections` results, and verify the report contains no credentials, endpoints or local paths.
+
+## Failure recovery
+
+| Failure | Cause | Recovery |
+|---------|-------|----------|
+| Tool or parameter not found | Stale tool name assumed | Re-run `find` for the operation and use the schema it returns |
+| Request denied | Session lacks `kg:read`, `kg:write` or `kg:admin` for the action | Stop and ask the operator to grant the scope, since ACL state is never bypassed |
+| Ingestion rejected | Absolute path or endpoint or credential argument supplied | Pass a relative name under the configured document root and remove connection arguments |
+
 ## Safety contract
 
 - Persist only policy-approved, PII-sanitized document content. Never persist
