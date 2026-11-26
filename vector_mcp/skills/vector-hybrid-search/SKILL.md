@@ -2,13 +2,7 @@
 name: vector-hybrid-search
 skill_type: skill
 description: >-
-  Retrieve knowledge from a vector-store collection via the vector-mcp MCP
-  server's vector_semantic_search, vector_lexical_search and vector_search tools — semantic (ANN) search, lexical BM25 search, or a
-  hybrid of the two fused with Reciprocal Rank Fusion. Use when the agent must
-  answer a question from an indexed corpus, pull top-k relevant chunks for RAG
-  context, or tune the semantic-vs-lexical balance of retrieval. Do NOT use for
-  creating collections or ingesting documents (use vector-collection-management)
-  or for backend connection setup (vector-backend-operations).
+  Retrieve knowledge from a vector-store collection with vector_semantic_search, vector_lexical_search or hybrid vector_search (RRF) on the vector-mcp server. Use to answer a question from an indexed corpus, pull top-k chunks for RAG or tune semantic vs lexical balance. Do NOT use for ingestion (vector-collection-management) or backend setup (vector-backend-operations).
 license: MIT
 tags: [vector, rag, search, semantic, bm25, hybrid, mcp]
 metadata:
@@ -16,6 +10,8 @@ metadata:
   version: '0.1.0'
 ---
 # Vector Hybrid Search
+
+Scope: Retrieve knowledge from a vector-store collection via the vector-mcp MCP server's vector_semantic_search, vector_lexical_search and vector_search tools — semantic (ANN) search, lexical BM25 search, or a hybrid of the two fused with Reciprocal Rank Fusion. Use when the agent must answer a question from an indexed corpus, pull top-k relevant chunks for RAG context, or tune the semantic-vs-lexical balance of retrieval. Do NOT use for creating collections or ingesting documents (use vector-collection-management) or for backend connection setup (vector-backend-operations).
 
 Retrieval over vector-store **collections** through the `vector-mcp` MCP server.
 Three tools expose three retrieval strategies: dense semantic search,
@@ -38,6 +34,22 @@ sparse lexical BM25 search, and a hybrid that fuses both rankings.
 Connect via the `mcp-client` skill against the **`vector-mcp`** MCP server. The
 collection must already exist and be populated (see
 `vector-collection-management`). The tools take `db_type` and `collection_name`; connection details are server configuration.
+
+## Steps
+
+1. Confirm the collection exists with `vector_list_collections`(`db_type`) and verify `collection_name` appears in the result.
+2. Choose the strategy with `vector_search` for mixed signals, `vector_semantic_search` for concepts or `vector_lexical_search` for exact codes, and verify the choice matches the question type.
+3. Run the chosen tool with `question`, `collection_name` and a bounded `number_results`, and verify the response contains ranked chunks.
+4. For `vector_search`, set `semantic_weight`, `lexical_weight` and `rrf_k` (typically 60), and verify the top chunks shift as the weights change.
+5. Compare scores only within one tool, and verify any cited chunk text actually answers the `question` before using it as context.
+
+## Failure recovery
+
+| Failure | Cause | Recovery |
+|---------|-------|----------|
+| Empty result list | `question` empty, or collection unpopulated | Pass a non-empty `question` and load documents via `vector_add_documents` from `vector-collection-management` |
+| Weights have no effect | Weights sent to `vector_semantic_search` or `vector_lexical_search`, which ignore them | Call `vector_search` for weighted fusion |
+| Collection not found | Wrong `db_type` or `collection_name` | List collections with `vector_list_collections` and reuse the exact name and backend |
 
 ## Tools
 | Tool | Strategy |
