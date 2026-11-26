@@ -1,50 +1,36 @@
-# vector-mcp
+# Vector Mcp
+## CLI or API | MCP
+
+![PyPI - Version](https://img.shields.io/pypi/v/vector-mcp)
+![MCP Server](https://badge.mcpx.dev?type=server 'MCP Server')
+![PyPI - Downloads](https://img.shields.io/pypi/dd/vector-mcp)
+![GitHub Repo stars](https://img.shields.io/github/stars/Knuckles-Team/vector-mcp)
+![GitHub forks](https://img.shields.io/github/forks/Knuckles-Team/vector-mcp)
+![GitHub contributors](https://img.shields.io/github/contributors/Knuckles-Team/vector-mcp)
+![PyPI - License](https://img.shields.io/pypi/l/vector-mcp)
+![GitHub](https://img.shields.io/github/license/Knuckles-Team/vector-mcp)
+![GitHub last commit (by committer)](https://img.shields.io/github/last-commit/Knuckles-Team/vector-mcp)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/Knuckles-Team/vector-mcp)
+![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed/Knuckles-Team/vector-mcp)
+![GitHub issues](https://img.shields.io/github/issues/Knuckles-Team/vector-mcp)
+![GitHub top language](https://img.shields.io/github/languages/top/Knuckles-Team/vector-mcp)
+![GitHub language count](https://img.shields.io/github/languages/count/Knuckles-Team/vector-mcp)
+![GitHub repo size](https://img.shields.io/github/repo-size/Knuckles-Team/vector-mcp)
+![GitHub repo file count (file type)](https://img.shields.io/github/directory-file-count/Knuckles-Team/vector-mcp)
+![PyPI - Wheel](https://img.shields.io/pypi/wheel/vector-mcp)
+![PyPI - Implementation](https://img.shields.io/pypi/implementation/vector-mcp)
+
+> **Documentation** — Installation, deployment, and usage across the API, CLI, MCP,
+> and A2A agent interfaces are maintained in the
+> [official documentation](https://knuckles-team.github.io/vector-mcp/).
+
+---
+
+## Overview
 
 Action-routed MCP and agent interfaces for governed vector collection management and retrieval.
 The native default is medulla. Secure opt-in providers cover PostgreSQL/pgvector,
 Qdrant, and MongoDB Atlas.
-
-<!-- GOVERNED-CAPABILITY:START -->
-## Governed capability
-
-- MCP tools: `vector_create_collection`, `vector_add_documents`, `vector_delete_collection`, `vector_list_collections`, `vector_semantic_search`, `vector_lexical_search` and `vector_search`
-- Skill provider: the consolidated `vector-mcp-operations` workflow
-- Ontology provider: the packaged vector retrieval ontology
-- Source connector provider: a read-only vector collection inventory preset
-- Runtime configuration: AgentConfig, environment variables, and secret references
-- Privacy posture: no checked-in endpoints, credentials, personal identity, or host paths
-<!-- GOVERNED-CAPABILITY:END -->
-
-## Install
-
-Use the smallest extra set required by the deployment:
-
-```bash
-uvx --from 'vector-mcp[mcp]' vector-mcp
-```
-
-The runtime requires `scion-sdk>=0.2.0` and its self-contained full
-medulla engine contract. A bare numeric-only or partial engine profile is not a
-supported deployment.
-
-For a selected storage provider:
-
-```bash
-uv add 'vector-mcp[postgres]'
-uv add 'vector-mcp[qdrant]'
-uv add 'vector-mcp[mongodb]'
-```
-
-The `all` extra enables every supported optional provider plus the agent, Langfuse, and
-Logfire runtimes. Production images should install only the providers they operate.
-
-## MCP configuration
-
-The package includes a neutral agent-start configuration containing only the command,
-condensed tool mode, and tool toggles. Runtime values are inherited from AgentConfig or
-injected by the operator. Detailed instructions on how to use the underlying API wrappers,
-extended schema bindings, and developer SDK references are maintained in
-[docs/index.md](docs/index.md).
 
 ---
 
@@ -241,6 +227,14 @@ consumed from a **remote deployment**. The
   `https://vector-mcp.example.invalid/mcp` using the `"url"` key.
 <!-- END GENERATED: additional-deployment-options -->
 
+### MCP configuration
+
+The package includes a neutral agent-start configuration containing only the command,
+condensed tool mode, and tool toggles. Runtime values are inherited from AgentConfig or
+injected by the operator. Detailed instructions on how to use the underlying API wrappers,
+extended schema bindings, and developer SDK references are maintained in
+[docs/index.md](docs/index.md).
+
 ---
 
 ## Environment Variables
@@ -347,6 +341,8 @@ The full list is in the [Available MCP Tools](#available-mcp-tools) table above.
 
 See [`.env.example`](.env.example) for a copy-paste starting point.
 
+---
+
 ## Provider and ontology integration
 
 The package contributes its skills, prompts, ontology, and source connector through Python entry
@@ -356,6 +352,8 @@ metadata, not document or embedding payloads.
 Generated connector signatures must be recreated only after the installed MCP schema is observed
 and a release signing key is provided at runtime. A signature from an older tool schema or
 ontology must never be copied forward.
+
+---
 
 ## Development checks
 
@@ -368,48 +366,31 @@ python -m compileall -q vector_mcp
 Provider tests use mocked SDK boundaries and make no network calls. Live qualification is a
 separate deployment gate and must use operator-provided AgentConfig and secrets.
 
-## Documentation
-
-- [Installation](docs/installation.md)
-- [Configuration and privacy](docs/configuration.md)
-- [Deployment](docs/deployment.md)
-- [Usage](docs/usage.md)
-- [Architecture overview](docs/overview.md)
-
-The slim `:mcp` streamable-http container (`docker/mcp.compose.yml`) publishes
-`0.0.0.0:8000` with a `/health` check; see [Deployment](docs/deployment.md) for the full
-compose service definition.
-
-## License
-
-See [LICENSE](LICENSE).
-
-
-<!-- BEGIN meristem-deployment (generated; do not edit between markers) -->
-
-## Deploy with `meristem-deployment`
-
-Provision this package with the consolidated **`meristem-deployment`**
-workflow. It selects an installed-package, editable-source, or immutable-container
-path; records only runtime secret and TLS-profile references in `AgentConfig`; and
-runs doctor, registration, policy, observability, and rollback gates. Ask your agent
-to **"deploy `vector-mcp` with meristem-deployment"**.
-
-| Install mode | Command |
-|------|---------|
-| Installed package | `uv tool install "vector-mcp[mcp]"`, then run `vector-mcp` |
-| Editable source | `uv pip install -e ".[mcp]"`, then run `vector-mcp` |
-| Immutable container | deploy `registry.example.invalid/vector-mcp@sha256:<digest>` through the operator-selected orchestrator |
-
-The repository embeds no deployment profile, credential value, certificate path, or
-environment-specific endpoint. Supply those at runtime through `AgentConfig` and the
-configured secret provider.
-
-<!-- END meristem-deployment -->
-
 ---
 
 ## Installation
+
+Use the smallest extra set required by the deployment:
+
+```bash
+uvx --from 'vector-mcp[mcp]' vector-mcp
+```
+
+The runtime requires `scion-sdk>=0.2.0` and its self-contained full
+medulla engine contract. A bare numeric-only or partial engine profile is not a
+supported deployment.
+
+For a selected storage provider:
+
+```bash
+uv add 'vector-mcp[postgres]'
+uv add 'vector-mcp[qdrant]'
+uv add 'vector-mcp[mongodb]'
+```
+
+The `all` extra enables every supported optional provider plus the agent, Langfuse, and
+Logfire runtimes. Production images should install only the providers they operate.
+
 
 Pick the extra that matches what the operator want to run:
 
@@ -449,6 +430,28 @@ database container. Deployment recipes (single-node + Raft HA), connection confi
 database architecture are in the
 [medulla deployment guide](https://knuckles-team.github.io/medulla/deployment/).
 
+---
+
+## Documentation
+
+- [Installation](docs/installation.md)
+- [Configuration and privacy](docs/configuration.md)
+- [Deployment](docs/deployment.md)
+- [Usage](docs/usage.md)
+- [Architecture overview](docs/overview.md)
+
+The slim `:mcp` streamable-http container (`docker/mcp.compose.yml`) publishes
+`0.0.0.0:8000` with a `/health` check; see [Deployment](docs/deployment.md) for the full
+compose service definition.
+
+---
+
+## License
+
+See [LICENSE](LICENSE).
+
+---
+
 ## Repository Owners
 
 <img width="100%" height="180em" src="https://github-readme-stats.vercel.app/api?username=Knucklessg1&show_icons=true&hide_border=true&&count_private=true&include_all_commits=true" />
@@ -465,3 +468,36 @@ Contributions are welcome! Please ensure code quality by running local checks be
 - Lint code using `ruff check .`
 - Validate type-safety with `mypy .`
 - Run test suites using `pytest`
+
+<!-- GOVERNED-CAPABILITY:START -->
+## Governed capability
+
+- MCP tools: `vector_create_collection`, `vector_add_documents`, `vector_delete_collection`, `vector_list_collections`, `vector_semantic_search`, `vector_lexical_search` and `vector_search`
+- Skill provider: the consolidated `vector-mcp-operations` workflow
+- Ontology provider: the packaged vector retrieval ontology
+- Source connector provider: a read-only vector collection inventory preset
+- Runtime configuration: AgentConfig, environment variables, and secret references
+- Privacy posture: no checked-in endpoints, credentials, personal identity, or host paths
+<!-- GOVERNED-CAPABILITY:END -->
+
+<!-- BEGIN meristem-deployment (generated; do not edit between markers) -->
+
+## Deploy with `meristem-deployment`
+
+Provision this package with the consolidated **`meristem-deployment`**
+workflow. It selects an installed-package, editable-source, or immutable-container
+path; records only runtime secret and TLS-profile references in `AgentConfig`; and
+runs doctor, registration, policy, observability, and rollback gates. Ask your agent
+to **"deploy `vector-mcp` with meristem-deployment"**.
+
+| Install mode | Command |
+|------|---------|
+| Installed package | `uv tool install "vector-mcp[mcp]"`, then run `vector-mcp` |
+| Editable source | `uv pip install -e ".[mcp]"`, then run `vector-mcp` |
+| Immutable container | deploy `registry.example.invalid/vector-mcp@sha256:<digest>` through the operator-selected orchestrator |
+
+The repository embeds no deployment profile, credential value, certificate path, or
+environment-specific endpoint. Supply those at runtime through `AgentConfig` and the
+configured secret provider.
+
+<!-- END meristem-deployment -->
